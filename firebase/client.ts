@@ -17,16 +17,24 @@ import { getFirestore } from "firebase/firestore";
  // appId: "1:1044600296070:web:558fde4ad9da314f2d3707",
   //measurementId: "G-PTTHK4M8KR"
 //};
+//const firebaseConfig = {
+  //apiKey: "AIzaSyBmXBBPsa2GecsegkljuBTgFZUTicDaxWI",
+  //authDomain: "hugos-aeebf.firebaseapp.com",
+  //projectId: "hugos-aeebf",
+  //storageBucket: "hugos-aeebf.firebasestorage.app",
+  //messagingSenderId: "170860596112",
+  //appId: "1:170860596112:web:c2fed1be25b3b4017ac115",
+  //measurementId: "G-JPF2L3H08N"
+//};
 const firebaseConfig = {
-  apiKey: "AIzaSyBmXBBPsa2GecsegkljuBTgFZUTicDaxWI",
-  authDomain: "hugos-aeebf.firebaseapp.com",
-  projectId: "hugos-aeebf",
-  storageBucket: "hugos-aeebf.firebasestorage.app",
-  messagingSenderId: "170860596112",
-  appId: "1:170860596112:web:c2fed1be25b3b4017ac115",
-  measurementId: "G-JPF2L3H08N"
+  apiKey: "AIzaSyDymmvqyH4UAyy7GCkqSujO5aZBLM1OdJ0",
+  authDomain: "agriculturehugo.firebaseapp.com",
+  projectId: "agriculturehugo",
+  storageBucket: "agriculturehugo.firebasestorage.app",
+  messagingSenderId: "311517721134",
+  appId: "1:311517721134:web:70c17935a7f6447fc9a5bf",
+  measurementId: "G-8ZBCPYBGXM"
 };
-
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
