@@ -341,8 +341,8 @@ const CreateInterviewAgent = ({
     }));
 
     await voiceAssistantRef.current.speak(
-      "Welcome! I'll help you create interview and practice for job you are applying for. " +
-      "First i congratulate you for reaching this fur, above all  I need to ask you a few questions  i hope it is ok with you. " +
+      "Welcome! Agricultural extension services are faced with many challenges  for example one officer is supposed to handle too many farmers way fur beyond her reach.   imagine  overwhemingly  two hundred and eighty farmers or households   depends on forty five agricultural officers  for agricultural extension services .    this have led to more than  eighty  percent of these farmers getting inadequate agricultural extension services,    to intervene and ensure all the 280000 farmers not only get these services but get them at their own time ,cheaply,accessibly and at 24/7 basis i have designed this platform .Farmers WILL ASK QUESTIONS AND get their answears  INSTANTLY AND VERBALlY.  take note  tHIS IS NOT A Substitube for agricultural officers but a compliment and farmers are   adviced to reach out to the nearest agricultural office if need be . i repeat questions will be answeared at 24/7 basis . " +
+      "I have been designed to do so by mugo this is after two hundred and eighty thousand farmers were seeking agricultural services i congratulate you for reaching this fur, above all  I need to ask you a few questions  i hope it is ok with you. " +
       "and Please speak clearly after each question."
     );
 
