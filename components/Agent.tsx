@@ -1,4 +1,4 @@
-// components/Agent.tsx - COMPLETE FIXED VERSION WITH VOICE INITIALIZATION FIX
+// components/Agent.tsx - COMPLETE VERSION WITH FLOATING SUBMIT BUTTON
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -23,7 +23,8 @@ import {
   Brain,
   Zap,
   Send,
-  Loader2
+  Loader2,
+  Mic
 } from "lucide-react";
 
 interface AgentProps {
@@ -109,6 +110,7 @@ const Agent = ({
   const [recommendationsSpoken, setRecommendationsSpoken] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [voiceInitializing, setVoiceInitializing] = useState(false);
+  const [isVoiceListening, setIsVoiceListening] = useState(false);
 
   const [debugInfo, setDebugInfo] = useState({
     callStatus: "INACTIVE",
@@ -186,6 +188,16 @@ const Agent = ({
     }
   }, [sessionData]);
 
+  // ============ DEBUG: Monitor transcript updates ============
+  useEffect(() => {
+    console.log("📝 userTranscript UPDATED:", {
+      value: userTranscript,
+      length: userTranscript.length,
+      hasContent: userTranscript.trim().length > 0,
+      timestamp: new Date().toLocaleTimeString()
+    });
+  }, [userTranscript]);
+
   // ============ STREAMING VOICE FUNCTION ============
   const speakStreaming = async (text: string) => {
     if (!voiceServiceRef.current) {
@@ -249,12 +261,12 @@ const Agent = ({
 
     try {
       await speakStreaming("I have prepared some personalized recommendations for your farm. Let me read them to you.");
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       for (let i = 0; i < sessionData.recommendations.length; i++) {
         const rec = sessionData.recommendations[i];
         await speakStreaming(`Recommendation ${i + 1}: ${rec}`);
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Add to answer history
         const newEntry: AnswerHistory = {
@@ -266,7 +278,7 @@ const Agent = ({
         setAnswerHistory(prev => [...prev, newEntry]);
       }
 
-      await speakStreaming("You can now ask me any questions about your farm. Just speak clearly and press the submit button.");
+      await speakStreaming("You can now ask me any questions about your farm. Just speak clearly or type your question below.");
     } catch (error) {
       console.error("Error speaking recommendations:", error);
       toast.info("📢 Read your recommendations below:");
@@ -381,7 +393,13 @@ const Agent = ({
         voiceServiceRef.current.onStateChange((state) => {
           if (!mountedRef.current) return;
 
+          // CRITICAL: Update transcript from voice service
           if (state.transcript !== userTranscript) {
+            console.log("🎤 Voice state transcript update:", {
+              old: userTranscript,
+              new: state.transcript,
+              isListening: state.isListening
+            });
             setUserTranscript(state.transcript);
           }
 
@@ -411,7 +429,7 @@ const Agent = ({
             const latestUserMessage = userMessages[userMessages.length - 1];
             const question = latestUserMessage.content;
 
-            console.log("🌾 Farmer asked:", question);
+            console.log("🌾 Farmer asked (voice):", question);
 
             // Add user message to UI
             setMessages(prev => [...prev, {
@@ -658,7 +676,7 @@ const Agent = ({
         setWelcomeSpoken(true);
 
         // Welcome message
-        const welcomeMsg = `I am ready to answer your farming questions. Please speak clearly and press the submit button after you finish speaking.`;
+        const welcomeMsg = `I am ready to answer your farming questions. You can speak your question or type it below.`;
 
         // Use browser speech synthesis for welcome (more reliable)
         try {
@@ -675,6 +693,20 @@ const Agent = ({
           console.error("Speech synthesis error:", speechError);
           toast.info("📢 Read your recommendations below:");
         }
+      }
+
+      // Auto-start listening after recommendations
+      if (sessionData && voiceServiceRef.current && typeof voiceServiceRef.current.listenForQuestion === 'function') {
+        console.log("🎤 Auto-starting listening for questions...");
+        setTimeout(async () => {
+          try {
+            await voiceServiceRef.current?.listenForQuestion();
+            setIsVoiceListening(true);
+            toast.success("🎤 I'm listening - speak your question!", { duration: 3000 });
+          } catch (error) {
+            console.error("Failed to start listening:", error);
+          }
+        }, 3000);
       }
 
       toast.success(sessionData ? "🌾 Ask your farming questions!" : "🎤 Interview started! Speak your answers clearly.");
@@ -698,14 +730,25 @@ const Agent = ({
         isSpeaking: false
       }));
       toast.info("🛑 Session stopped");
+      setIsVoiceListening(false);
     }
   };
 
+  // ============ FIXED: submitAnswer with debug logging ============
   const submitAnswer = async () => {
-    if (!userTranscript.trim()) {
-      toast.warning("Please speak your question first");
+    console.log("🔘 Submit button clicked!");
+    console.log("📝 Current userTranscript:", userTranscript);
+    console.log("📝 userTranscript length:", userTranscript?.length);
+    console.log("📝 userTranscript trimmed:", userTranscript?.trim());
+    console.log("📝 Transcript empty?", !userTranscript || !userTranscript.trim());
+
+    if (!userTranscript || !userTranscript.trim()) {
+      console.log("⚠️ No transcript to submit");
+      toast.warning("Please speak or type your question first.");
       return;
     }
+
+    console.log("✅ Transcript valid, submitting question:", userTranscript);
 
     // For farmer mode, manually submit the question
     if (sessionData) {
@@ -728,6 +771,8 @@ const Agent = ({
       setIsLoading(true);
 
       try {
+        console.log("📡 Sending question to farmer API:", userTranscript);
+
         const response = await fetch('/api/farmer/query', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -740,6 +785,7 @@ const Agent = ({
         });
 
         const data = await response.json();
+        console.log("📡 API Response:", data);
 
         if (data.success) {
           setAnswerHistory(prev => {
@@ -759,15 +805,17 @@ const Agent = ({
 
           await speakStreaming(data.answer);
           toast.success("✅ Answer ready!");
+
+          // Clear transcript after successful submission
+          setUserTranscript("");
         } else {
           toast.error(data.error || "Failed to get answer");
         }
       } catch (error) {
-        console.error("Query error:", error);
+        console.error("❌ Query error:", error);
         toast.error("Failed to process question");
       } finally {
         setIsLoading(false);
-        setUserTranscript("");
       }
     } else if (voiceServiceRef.current) {
       // Interview mode
@@ -813,6 +861,28 @@ const Agent = ({
         isSpeaking: false,
         serviceStatus: "DISABLED"
       }));
+      setIsVoiceListening(false);
+    }
+  };
+
+  // ============ Manual voice listening start ============
+  const startVoiceListening = async () => {
+    if (!voiceServiceRef.current) {
+      toast.error("Voice service not ready");
+      return;
+    }
+
+    if (typeof voiceServiceRef.current.listenForQuestion === 'function') {
+      try {
+        await voiceServiceRef.current.listenForQuestion();
+        setIsVoiceListening(true);
+        toast.success("🎤 Listening... speak your question");
+      } catch (error) {
+        console.error("Failed to start listening:", error);
+        toast.error("Failed to start listening");
+      }
+    } else {
+      toast.error("Listen function not available");
     }
   };
 
@@ -876,8 +946,6 @@ const Agent = ({
   // ============ INTERVIEW COMPLETION HANDLER (for interview mode) ============
   const handleInterviewCompletion = async (data: any, capturedAnswers?: AnswerHistory[]) => {
     console.log("🎉 Interview completed:", data);
-    // This would contain the original interview completion logic
-    // For brevity, we're not including the full implementation here
     toast.success("Interview completed!");
     setTimeout(() => {
       window.location.href = '/';
@@ -909,6 +977,9 @@ const Agent = ({
     if (interviewId && userId && !hasPaid) return "Pay KES 3 to Start";
     return sessionData ? "🌾 Start Asking" : "Start Practice";
   };
+
+  // Determine if submit button should be enabled
+  const isSubmitEnabled = userTranscript?.trim()?.length > 0 && !isLoading;
 
   return (
     <div className="flex flex-col gap-6">
@@ -1110,8 +1181,8 @@ const Agent = ({
         )}
 
         <div className="mt-4 text-sm text-gray-600 space-y-1">
-          <p>{sessionData ? "• Speak your farming questions clearly" : "• Speak your answer after each question"}</p>
-          <p>{sessionData ? "• Click 'Submit Answer' after you finish speaking" : "• Click 'Submit Answer' to move forward"}</p>
+          <p>{sessionData ? "• Speak OR type your farming questions" : "• Speak your answer after each question"}</p>
+          <p>{sessionData ? "• Click 'Submit Answer' after you finish speaking/typing" : "• Click 'Submit Answer' to move forward"}</p>
           <p>{sessionData ? "• Get instant answers from agricultural knowledge base" : "• Your answers are saved below"}</p>
           <p>{sessionData ? "• Your questions and answers are saved below" : ""}</p>
 
@@ -1126,7 +1197,7 @@ const Agent = ({
             <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-green-700">
               <p className="font-medium">🌾 Ask about:</p>
               <p className="text-xs">Planting, pests, diseases, fertilizers, harvesting, and more!</p>
-              <p className="text-xs font-medium mt-1 text-green-800">👉 Speak clearly, then press Submit Answer button</p>
+              <p className="text-xs font-medium mt-1 text-green-800">👉 Speak clearly OR type, then press Submit Answer button</p>
             </div>
           ) : (
             <>
@@ -1173,8 +1244,140 @@ const Agent = ({
           <div className="flex items-center gap-2">
             <span className="text-2xl">🗣️</span>
             <p className="text-yellow-800 font-medium">
-              Speak your question clearly, then press the <span className="bg-green-600 text-white px-2 py-1 rounded mx-1">Submit Answer</span> button
+              Speak OR type your question, then press the <span className="bg-green-600 text-white px-2 py-1 rounded mx-1">Submit Answer</span> button
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Voice Listening Indicator */}
+      {isVoiceListening && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-2 flex items-center gap-2">
+          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+          <span className="text-green-700">🎤 Listening for your question... Speak now</span>
+        </div>
+      )}
+
+      {/* Manual Voice Start Button */}
+      {sessionData && debugInfo.callStatus === "ACTIVE" && !isVoiceListening && (
+        <button
+          onClick={startVoiceListening}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 w-fit"
+        >
+          <Mic className="w-4 h-4" />
+          Start Voice Listening
+        </button>
+      )}
+
+      {/* ========== 🔥 FLOATING SUBMIT BUTTON - ALWAYS VISIBLE ========== */}
+      {sessionData && debugInfo.callStatus === "ACTIVE" && (
+        <div className="sticky top-4 z-50 bg-white border-4 border-green-500 rounded-xl p-4 shadow-2xl">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-bold text-green-800 text-lg">✅ Ready to Submit Your Question</h3>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-green-700">
+                {userTranscript ? "Question captured!" : "Speak now..."}
+              </span>
+            </div>
+          </div>
+
+          {/* Display current transcript */}
+          <div className="bg-green-100 border-2 border-green-300 rounded-lg p-4 mb-4 min-h-[100px]">
+            {userTranscript ? (
+              <p className="text-gray-800 text-lg font-medium">"{userTranscript}"</p>
+            ) : (
+              <div className="text-center text-gray-500">
+                <p className="text-lg">🎤 Say something...</p>
+                <p className="text-sm mt-2">Your words will appear here</p>
+              </div>
+            )}
+            {userTranscript && (
+              <p className="text-xs text-green-600 mt-2 text-right">
+                {userTranscript.length} characters
+              </p>
+            )}
+          </div>
+
+          {/* GIANT SUBMIT BUTTON */}
+          <button
+            onClick={submitAnswer}
+            disabled={!userTranscript.trim() || isLoading}
+            className={`w-full py-6 rounded-xl font-bold text-2xl transition-all ${
+              userTranscript.trim() && !isLoading
+                ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl animate-pulse'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                PROCESSING...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-3">
+                <span className="text-3xl">✅</span>
+                SUBMIT QUESTION
+              </span>
+            )}
+          </button>
+
+          {/* Manual text input backup */}
+          <div className="mt-4">
+            <p className="text-sm text-gray-600 mb-2">✏️ Or type your question:</p>
+            <input
+              type="text"
+              value={userTranscript}
+              onChange={(e) => setUserTranscript(e.target.value)}
+              placeholder="Type here..."
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 text-lg"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 🔍 DEBUG INFO - Remove after fixing */}
+      {sessionData && (
+        <div className="bg-red-100 p-2 text-xs border border-red-300 rounded">
+          <p><span className="font-bold">Debug:</span> sessionData: ✅ | callStatus: {debugInfo.callStatus} | ACTIVE: {debugInfo.callStatus === "ACTIVE" ? "✅" : "❌"}</p>
+        </div>
+      )}
+
+      {/* Live Transcript Display (when listening) */}
+      {debugInfo.isListening && (
+        <div className="border border-green-200 bg-green-50 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center">
+                <span className="text-sm">🎤</span>
+              </div>
+              <h4 className="font-bold text-green-800">Live Transcription</h4>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                {userTranscript.length} chars
+              </span>
+              <button
+                onClick={() => setUserTranscript("")}
+                className="text-sm text-green-600 hover:text-green-800 hover:bg-green-100 px-2 py-1 rounded"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <div
+            ref={transcriptRef}
+            className="min-h-[80px] max-h-[150px] overflow-y-auto bg-white border border-green-100 rounded-lg p-3"
+          >
+            {userTranscript ? (
+              <p className="text-gray-800 leading-relaxed">{userTranscript}</p>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                <span className="text-2xl mb-2">🎤</span>
+                <p>Start speaking to see your words here...</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1219,67 +1422,6 @@ const Agent = ({
               <span className="text-sm font-medium text-red-600">🎤 Listening...</span>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Real-time Transcript Display */}
-      {debugInfo.isListening && (
-        <div className="border border-green-200 bg-green-50 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center">
-                <span className="text-sm">🎤</span>
-              </div>
-              <h4 className="font-bold text-green-800">Live Transcription</h4>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                {userTranscript.length} chars
-              </span>
-              <button
-                onClick={() => setUserTranscript("")}
-                className="text-sm text-green-600 hover:text-green-800 hover:bg-green-100 px-2 py-1 rounded"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-
-          <div
-            ref={transcriptRef}
-            className="min-h-[100px] max-h-[200px] overflow-y-auto bg-white border border-green-100 rounded-lg p-3"
-          >
-            {userTranscript ? (
-              <p className="text-gray-800 leading-relaxed">{userTranscript}</p>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                <span className="text-2xl mb-2">🎤</span>
-                <p>Start speaking to see your words here...</p>
-                <p className="text-xs mt-1">Your speech will appear in real-time</p>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <div className="text-center">
-              <div className="text-xs text-gray-500">Words</div>
-              <div className="font-bold text-gray-700">
-                {userTranscript.split(/\s+/).filter(w => w.length > 0).length}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-xs text-gray-500">Characters</div>
-              <div className="font-bold text-gray-700">
-                {userTranscript.length}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-xs text-gray-500">Status</div>
-              <div className={`font-bold ${debugInfo.isListening ? 'text-green-600' : 'text-gray-600'}`}>
-                {debugInfo.isListening ? 'Listening' : 'Idle'}
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1439,22 +1581,6 @@ const Agent = ({
             </button>
           )}
 
-          {/* Submit Answer button for FARMER mode - Always visible when active */}
-          {sessionData && debugInfo.callStatus === "ACTIVE" && (
-            <button
-              onClick={submitAnswer}
-              disabled={!userTranscript.trim() || isLoading}
-              className={`px-6 py-3 rounded-lg flex items-center gap-2 font-bold text-lg ${
-                userTranscript.trim() && !isLoading
-                  ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl animate-pulse'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              <span>✅</span>
-              {isLoading ? "Processing..." : "SUBMIT ANSWER"}
-            </button>
-          )}
-
           {interviewId && userId && paymentChecked && (paymentUsed || !hasPaid) && (
             <button
               onClick={() => {
@@ -1507,7 +1633,7 @@ const Agent = ({
             )}
             {debugInfo.callStatus === "ACTIVE" && !debugInfo.isListening && !debugInfo.isSpeaking && (
               <p className="text-sm text-green-600 mt-1">
-                ⏳ {sessionData ? "Ready for your question - speak and press Submit" : "Ready for your answer"}
+                ⏳ {sessionData ? "Ready for your question - speak/type and press Submit" : "Ready for your answer"}
               </p>
             )}
           </div>
