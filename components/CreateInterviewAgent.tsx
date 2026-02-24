@@ -24,12 +24,64 @@ const CreateInterviewAgent = ({
   const [currentStep, setCurrentStep] = useState<"idle" | "configuring" | "generating" | "redirecting" | "error">("idle");
   const [configStep, setConfigStep] = useState(0);
 
-  const [userConfig, setUserConfig] = useState({
-    role: "",
-    level: "Mid-level",
-    type: "Technical",
-    techstack: "",
-    amount: 5
+  // 🌾 NEW: Farmer details state with all fields
+  const [farmerDetails, setFarmerDetails] = useState({
+    // Location
+    crops: "",
+    season: "",
+    county: "",
+    subCounty: "",
+    village: "",
+
+    // Crop details
+    cropOfInterest: "",
+    acres: "",
+    previousCrop: "",
+    averageHarvest: "",
+    harvestUnit: "bags",
+
+    // Fertilizer - Planting
+    usePlantingFertilizer: "",
+    plantingFertilizerType: "",
+    plantingFertilizerQuantity: "",
+    noPlantingFertilizerReason: "",
+
+    // Fertilizer - Topdressing
+    useTopdressingFertilizer: "",
+    topdressingFertilizerType: "",
+    topdressingFertilizerQuantity: "",
+    noTopdressingFertilizerReason: "",
+
+    // Soil & Organic
+    soilTested: "",
+    soilType: "",
+    organicManure: "",
+
+    // Seed details
+    useCertifiedSeed: "",
+    certifiedSeedReason: "",
+    seedQuantity: "",
+
+    // Conservation practices
+    terracing: "",
+    mulching: "",
+    coverCrops: "",
+    rainwaterHarvesting: "",
+    contourFarming: "",
+
+    // Livestock
+    cattle: "",
+    cattleType: "",
+    milkProduction: "",
+    otherLivestock: "",
+
+    // Technology
+    smartphone: "",
+    phoneNumber: "",
+
+    // Farmer profile
+    experience: "",
+    mainChallenge: "",
   });
 
   const [debugInfo, setDebugInfo] = useState({
@@ -39,10 +91,7 @@ const CreateInterviewAgent = ({
     isListening: false,
     userId: userId || "MISSING",
     voiceMode: "SIMULATED" as "REAL" | "SIMULATED",
-    generatedInterviewId: "",
-    fromCache: false,
-    cacheUsageCount: 0,
-    cacheRating: 0
+    generatedSessionId: "",
   });
 
   const voiceAssistantRef = useRef<any>(null);
@@ -51,49 +100,212 @@ const CreateInterviewAgent = ({
   const retryCountRef = useRef(0);
   const maxRetries = 3;
 
-  // Configuration questions
+  // 🌾 NEW: Farmer configuration questions (16 questions)
   const configQuestions = [
+    // Location & Crops (4)
     {
-      id: "role",
-      question: "What role are do you want interviewing for? For example:  lawyer,  teacher,  or  shoe maker.",
+      id: "crops",
+      question: "What crops do you grow? For example: maize, beans, coffee, or vegetables.",
       parse: (answer: string) => answer
     },
     {
-      id: "level",
-      question: "and What is your experience level in this ? For example: Junior, Mid-level, or Senior.",
-      parse: (answer: string) => {
-        if (answer.toLowerCase().includes("junior")) return "Junior";
-        if (answer.toLowerCase().includes("senior")) return "Senior";
-        if (answer.toLowerCase().includes("entry")) return "Entry";
-        return "Mid-level";
-      }
+      id: "season",
+      question: "Which season are you planting for? Long rains, short rains, or dry season?",
+      parse: (answer: string) => answer.toLowerCase().includes("long") ? "long rains" :
+                                    answer.toLowerCase().includes("short") ? "short rains" : "dry season"
     },
     {
-      id: "techstack",
-      question: "therefore What technologies or skills should we focus on? For example: React, TypeScript, Node.js.",
+      id: "county",
+      question: "What county are you in?",
       parse: (answer: string) => answer
     },
     {
-      id: "type",
-      question: "if  i may  ask. What  type  of  interview should we focus on? Technical,  behavioral, or  mixed?",
+      id: "subCounty",
+      question: "Which sub-county or district?",
+      parse: (answer: string) => answer
+    },
+    {
+      id: "village",
+      question: "Which village?",
+      parse: (answer: string) => answer
+    },
+
+    // Crop Details (4)
+    {
+      id: "cropOfInterest",
+      question: "Which crop are you most interested in learning about?",
+      parse: (answer: string) => answer
+    },
+    {
+      id: "acres",
+      question: "How many acres are you planting?",
+      parse: (answer: string) => answer.replace(/[^0-9.]/g, '')
+    },
+    {
+      id: "previousCrop",
+      question: "What was your previous crop in this field?",
+      parse: (answer: string) => answer
+    },
+    {
+      id: "averageHarvest",
+      question: "What is your average harvest per acre? For example: 15 bags of maize.",
       parse: (answer: string) => {
-        if (answer.toLowerCase().includes("behavioral")) return "Behavioral";
-        if (answer.toLowerCase().includes("mixed")) return "Mixed";
-        return "Technical";
+        const match = answer.match(/\d+/);
+        return match ? match[0] : "";
       }
     },
     {
-      id: "amount",
-      question: "in that case How many questions would you like? 3,  5, or  10?",
-      parse: (answer: string) => {
-        const num = parseInt(answer);
-        if ([3, 5, 10].includes(num)) return num;
-        return 5;
-      }
+      id: "harvestUnit",
+      question: "What unit do you use? Bags, kg, or tonnes?",
+      parse: (answer: string) => answer.toLowerCase().includes("kg") ? "kg" :
+                                    answer.toLowerCase().includes("tonne") ? "tonnes" : "bags"
+    },
+
+    // Planting Fertilizer (3)
+    {
+      id: "usePlantingFertilizer",
+      question: "Do you use planting fertilizer? Say yes or no.",
+      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
+    },
+    {
+      id: "plantingFertilizerType",
+      question: "If yes, what type? For example: DAP or NPK. If no, say 'not applicable'.",
+      parse: (answer: string) => answer
+    },
+    {
+      id: "plantingFertilizerQuantity",
+      question: "How many kilograms per acre? If no, say zero.",
+      parse: (answer: string) => answer.replace(/[^0-9.]/g, '') || "0"
+    },
+
+    // Topdressing Fertilizer (3)
+    {
+      id: "useTopdressingFertilizer",
+      question: "Do you use topdressing fertilizer? Say yes or no.",
+      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
+    },
+    {
+      id: "topdressingFertilizerType",
+      question: "If yes, what type? For example: CAN or Urea. If no, say 'not applicable'.",
+      parse: (answer: string) => answer
+    },
+    {
+      id: "topdressingFertilizerQuantity",
+      question: "How many kilograms per acre? If no, say zero.",
+      parse: (answer: string) => answer.replace(/[^0-9.]/g, '') || "0"
+    },
+
+    // Seed Details (3)
+    {
+      id: "useCertifiedSeed",
+      question: "Do you use certified seed? Say yes or no.",
+      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
+    },
+    {
+      id: "certifiedSeedReason",
+      question: "If no, why not? Too expensive, not available, or other reason? If yes, say 'not applicable'.",
+      parse: (answer: string) => answer
+    },
+    {
+      id: "seedQuantity",
+      question: "If yes, how many kilograms per acre? If no, say zero.",
+      parse: (answer: string) => answer.replace(/[^0-9.]/g, '') || "0"
+    },
+
+    // Soil & Organic (3)
+    {
+      id: "soilTested",
+      question: "Have you ever done comprehensive soil testing? Say yes or no.",
+      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
+    },
+    {
+      id: "soilType",
+      question: "What type of soil do you have? Clay, loam, sandy, or not sure?",
+      parse: (answer: string) => answer.toLowerCase().includes("clay") ? "clay" :
+                                    answer.toLowerCase().includes("loam") ? "loam" :
+                                    answer.toLowerCase().includes("sandy") ? "sandy" : "not sure"
+    },
+    {
+      id: "organicManure",
+      question: "Do you use organic manure? Say yes or no.",
+      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
+    },
+
+    // Conservation Practices (5)
+    {
+      id: "terracing",
+      question: "Do you use terracing? Say yes or no.",
+      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
+    },
+    {
+      id: "mulching",
+      question: "Do you use mulching? Say yes or no.",
+      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
+    },
+    {
+      id: "coverCrops",
+      question: "Do you use cover crops? Say yes or no.",
+      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
+    },
+    {
+      id: "rainwaterHarvesting",
+      question: "Do you practice rainwater harvesting? Say yes or no.",
+      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
+    },
+    {
+      id: "contourFarming",
+      question: "Do you use contour farming? Say yes or no.",
+      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
+    },
+
+    // Livestock (4)
+    {
+      id: "cattle",
+      question: "How many cattle do you have? Say zero if none.",
+      parse: (answer: string) => answer.replace(/[^0-9]/g, '') || "0"
+    },
+    {
+      id: "cattleType",
+      question: "If you have cattle, are they hybrid, local, or mixed? If none, say 'none'.",
+      parse: (answer: string) => answer.toLowerCase().includes("hybrid") ? "hybrid" :
+                                    answer.toLowerCase().includes("local") ? "local" :
+                                    answer.toLowerCase().includes("mixed") ? "mixed" : "none"
+    },
+    {
+      id: "milkProduction",
+      question: "How many liters of milk per day? If no cattle, say zero.",
+      parse: (answer: string) => answer.replace(/[^0-9.]/g, '') || "0"
+    },
+    {
+      id: "otherLivestock",
+      question: "Do you have other livestock like goats or chickens?",
+      parse: (answer: string) => answer
+    },
+
+    // Technology & Profile (4)
+    {
+      id: "smartphone",
+      question: "Can you access a smartphone? Say yes or no.",
+      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
+    },
+    {
+      id: "phoneNumber",
+      question: "What is your phone number for alerts?",
+      parse: (answer: string) => answer.replace(/[^0-9+]/g, '')
+    },
+    {
+      id: "experience",
+      question: "How many years of farming experience do you have?",
+      parse: (answer: string) => answer.replace(/[^0-9]/g, '') || "0"
+    },
+    {
+      id: "mainChallenge",
+      question: "What is your biggest farming challenge? Pests, disease, market, water, or other?",
+      parse: (answer: string) => answer
     }
   ];
 
-  // Initialize voice and speech recognition
+  // Initialize voice and speech recognition (KEEP EXISTING)
   useEffect(() => {
     const checkVoiceSupport = () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -109,7 +321,7 @@ const CreateInterviewAgent = ({
     checkVoiceSupport();
     setTimeout(checkVoiceSupport, 500);
 
-    // Initialize speech recognition if available
+    // Initialize speech recognition
     if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
@@ -186,7 +398,7 @@ const CreateInterviewAgent = ({
     };
   }, [currentStep]);
 
-  // Initialize voice assistant
+  // Initialize voice assistant (KEEP EXISTING)
   useEffect(() => {
     if (!voiceEnabled) {
       voiceAssistantRef.current = null;
@@ -252,7 +464,7 @@ const CreateInterviewAgent = ({
       const currentConfig = configQuestions[configStep];
       const parsedValue = currentConfig.parse(transcript);
 
-      setUserConfig(prev => ({
+      setFarmerDetails(prev => ({
         ...prev,
         [currentConfig.id]: parsedValue
       }));
@@ -264,7 +476,7 @@ const CreateInterviewAgent = ({
         setTimeout(() => askConfigurationQuestion(configStep + 1), 1500);
       } else {
         setCurrentStep("generating");
-        generateInterviewWithVoice();
+        generateFarmerSession();
       }
     }
   };
@@ -315,35 +527,36 @@ const CreateInterviewAgent = ({
       return;
     }
 
-    console.log("Starting voice setup...");
+    console.log("Starting farmer voice setup...");
 
     // Reset everything
     safeStopListening();
     setCurrentStep("configuring");
     setConfigStep(0);
     setUserTranscript("");
-    setUserConfig({
-      role: "",
-      level: "Mid-level",
-      type: "Technical",
-      techstack: "",
-      amount: 5
+    setFarmerDetails({
+      crops: "", season: "", county: "", subCounty: "", village: "",
+      cropOfInterest: "", acres: "", previousCrop: "", averageHarvest: "", harvestUnit: "bags",
+      usePlantingFertilizer: "", plantingFertilizerType: "", plantingFertilizerQuantity: "", noPlantingFertilizerReason: "",
+      useTopdressingFertilizer: "", topdressingFertilizerType: "", topdressingFertilizerQuantity: "", noTopdressingFertilizerReason: "",
+      soilTested: "", soilType: "", organicManure: "",
+      useCertifiedSeed: "", certifiedSeedReason: "", seedQuantity: "",
+      terracing: "", mulching: "", coverCrops: "", rainwaterHarvesting: "", contourFarming: "",
+      cattle: "", cattleType: "", milkProduction: "", otherLivestock: "",
+      smartphone: "", phoneNumber: "", experience: "", mainChallenge: "",
     });
     retryCountRef.current = 0;
     setDebugInfo(prev => ({
       ...prev,
       callStatus: "CONFIGURING",
       currentQuestion: 0,
-      generatedInterviewId: "",
-      fromCache: false,
-      cacheUsageCount: 0,
-      cacheRating: 0
+      generatedSessionId: "",
     }));
 
     await voiceAssistantRef.current.speak(
-      "Welcome! Agricultural extension services are faced with many challenges  for example one officer is supposed to handle too many farmers way fur beyond her reach.   imagine  overwhemingly  two hundred and eighty farmers or households   depends on forty five agricultural officers  for agricultural extension services .    this have led to more than  eighty  percent of these farmers getting inadequate agricultural extension services,    to intervene and ensure all the 280000 farmers not only get these services but get them at their own time ,cheaply,accessibly and at 24/7 basis i have designed this platform .Farmers WILL ASK QUESTIONS AND get their answears  INSTANTLY AND VERBALlY.  take note  tHIS IS NOT A Substitube for agricultural officers but a compliment and farmers are   adviced to reach out to the nearest agricultural office if need be . i repeat questions will be answeared at 24/7 basis . " +
-      "I have been designed to do so by mugo this is after two hundred and eighty thousand farmers were seeking agricultural services i congratulate you for reaching this fur, above all  I need to ask you a few questions  i hope it is ok with you. " +
-      "and Please speak clearly after each question."
+      "Welcome! I'm your agricultural assistant. I'll help you set up your farm profile by asking you a few questions. " +
+      "This will help me give you personalized farming advice. Please speak clearly after each question. " +
+      "Let's begin!"
     );
 
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -373,16 +586,15 @@ const CreateInterviewAgent = ({
     safeStartListening();
   };
 
-  const generateInterviewWithVoice = async () => {
+  const generateFarmerSession = async () => {
     if (!voiceAssistantRef.current) return;
 
     setIsLoading(true);
     setDebugInfo(prev => ({ ...prev, callStatus: "GENERATING" }));
 
     await voiceAssistantRef.current.speak(
-      `oooo!such amazing answers you are having ! let me say Based on your preferences, I'm now generating your interview questions. ` +
-      `and You'll be interviewing for what you choosed if am not wrong it is a ${userConfig.level} ${userConfig.role} position. ` +
-      `Please wait a moment while I create the questions.`
+      `Thank you for providing all your farm details! I'm now creating your personalized farming profile. ` +
+      `Please wait a moment while I prepare your recommendations.`
     );
 
     // Get or create userId
@@ -393,25 +605,23 @@ const CreateInterviewAgent = ({
     }
 
     try {
-      console.log("📞 Calling generate-with-cache API...");
+      console.log("🌾 Calling farmer session API...");
 
-      const response = await fetch("/api/vapi/generate-with-cache", {
+      const response = await fetch("/api/vapi/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...userConfig,
+          ...farmerDetails,
           userid: currentUserId
         })
       });
 
-      // First, check if the response is OK
       if (!response.ok) {
         const errorText = await response.text();
         console.error("❌ Server returned error:", response.status, errorText);
         throw new Error(`Server error ${response.status}: ${response.statusText}`);
       }
 
-      // Try to parse as JSON
       let data;
       try {
         const text = await response.text();
@@ -427,49 +637,32 @@ const CreateInterviewAgent = ({
         throw new Error("Invalid JSON response from server");
       }
 
-      // Check if data exists and has the expected structure
       if (!data) {
         throw new Error("No data received from server");
       }
 
-      // Check for success and questions
-      if (data.success && Array.isArray(data.questions) && data.questions.length > 0 && data.interviewId) {
-        console.log(`✅ Got ${data.questions.length} questions from API`);
+      if (data.success && data.sessionId) {
+        console.log(`✅ Got session ID: ${data.sessionId} with ${data.count} recommendations`);
 
-        // Set cache info
         setDebugInfo(prev => ({
           ...prev,
-          generatedInterviewId: data.interviewId,
-          totalQuestions: data.questions.length,
+          generatedSessionId: data.sessionId,
+          totalQuestions: data.count,
           callStatus: "REDIRECTING",
-          fromCache: data.fromCache || false,
-          cacheUsageCount: data.cacheStats?.usageCount || 0,
-          cacheRating: data.cacheStats?.rating || 0
         }));
 
-        // Custom voice message based on cache status
-        if (data.fromCache) {
-          await voiceAssistantRef.current.speak(
-            `let me found what we have in store.wow! I found ${data.questions.length} pre-generated interview questions in our cache. ` +
-            `and These questions have been used ${data.cacheStats?.usageCount || 0} times by other users. ` +
-            `I'll now redirect you to the interview practice page have a nice time wont you.`
-          );
-          console.log(`🎯 Using cached questions (Used ${data.cacheStats?.usageCount || 0} times)`);
-          toast.success(`📚 CACHE HIT! Using cached questions (${data.cacheStats?.usageCount || 0} uses)`);
-        } else {
-          await voiceAssistantRef.current.speak(
-            `wow! I've generated ${data.questions.length} new interview questions for you . ` +
-            `and I've saved them to our cache for future users. ` +
-            `I am now redirect you to the interview practice page where you can answer them one by one.`
-          );
-          console.log(`🔄 Generated new questions and cached them`);
-          toast.success(`✅ Generated ${data.questions.length} new questions!`);
-        }
+        await voiceAssistantRef.current.speak(
+          `Great! I've prepared ${data.count} personalized recommendations for your farm. ` +
+          `I'll now take you to the Q&A page where you can ask me anything about your crops. ` +
+          `Just speak your questions and I'll answer them with helpful information and images.`
+        );
 
-        // Redirect to interview practice page after a delay
+        console.log(`✅ Redirecting to interview page with session: ${data.sessionId}`);
+        toast.success(`✅ Farm profile created! Redirecting...`);
+
         setTimeout(() => {
-          if (data.interviewId) {
-            window.location.href = `/interview/${data.interviewId}`;
+          if (data.sessionId) {
+            window.location.href = `/interview/${data.sessionId}`;
           } else {
             window.location.href = '/';
           }
@@ -478,20 +671,15 @@ const CreateInterviewAgent = ({
         setCurrentStep("redirecting");
 
       } else {
-        // Handle error from API
-        const errorMessage = data.error ||
-                            (data.questions && data.questions.length === 0 ? "No questions generated" :
-                            !data.interviewId ? "No interview ID received" :
-                            "Failed to generate questions");
-        console.error("❌ API returned error:", errorMessage, data);
+        const errorMessage = data.error || "Failed to create farm session";
+        console.error("❌ API returned error:", errorMessage);
         throw new Error(errorMessage);
       }
     } catch (error: any) {
-      console.error("❌ Error generating interview:", error);
+      console.error("❌ Error creating farm session:", error);
 
-      // Show error to user
       await voiceAssistantRef.current?.speak(
-        "Sorry, there was an error generating your interview questions. Please try again."
+        "Sorry, there was an error creating your farm profile. Please try again."
       );
 
       toast.error(`❌ ${error.message || "Unknown error occurred"}`);
@@ -509,7 +697,6 @@ const CreateInterviewAgent = ({
     toast.info("Setup stopped");
   };
 
-  // Submit answer function
   const submitAnswer = () => {
     if (userTranscript.trim()) {
       processAnswer(userTranscript);
@@ -522,17 +709,26 @@ const CreateInterviewAgent = ({
 
   const skipQuestion = () => {
     if (currentStep === "configuring") {
-      const defaultAnswers = ["Software Developer", "Mid-level", "General", "Technical", "5"];
-      const answer = defaultAnswers[configStep];
+      // Provide smart defaults based on question type
+      const defaultAnswers = [
+        "maize", "long rains", "Kiambu", "Kikuyu", "Gachie",
+        "maize", "2", "beans", "15", "bags",
+        "yes", "DAP", "50", "yes", "CAN", "50",
+        "yes", "not applicable", "10", "no", "loam", "yes",
+        "no", "no", "no", "no", "no",
+        "0", "none", "0", "none",
+        "yes", "0712345678", "5", "pests"
+      ];
+      const answer = defaultAnswers[configStep] || "not specified";
 
       processAnswer(answer);
-      toast.info(`⏭️ Skipped to next question`);
+      toast.info(`⏭️ Using default: ${answer}`);
     }
   };
 
-  const displayName = userName || "User";
+  const displayName = userName || "Farmer";
   const userAltText = `${displayName}'s profile picture`;
-  const aiAltText = "AI Interviewer avatar";
+  const aiAltText = "AI Agricultural Assistant";
 
   return (
     <div className="flex flex-col gap-6">
@@ -540,7 +736,7 @@ const CreateInterviewAgent = ({
       <div className="flex flex-row items-center justify-between">
         <div className="flex flex-row items-center gap-4">
           <Image
-            src={profileImage || "/beautiful-avatar.png"}
+            src={profileImage || "/farmer-avatar.png"}
             alt={userAltText}
             width={40}
             height={40}
@@ -548,7 +744,7 @@ const CreateInterviewAgent = ({
           />
           <div>
             <h4 className="font-semibold">{displayName}</h4>
-            <p className="text-sm text-gray-500">Create Interview</p>
+            <p className="text-sm text-gray-500">🌾 Farm Profile Setup</p>
             <p className="text-xs text-gray-400">ID: {debugInfo.userId.substring(0, 8)}...</p>
           </div>
         </div>
@@ -558,19 +754,19 @@ const CreateInterviewAgent = ({
           disabled={isLoading || !voiceEnabled || currentStep !== "idle"}
           className={`px-4 py-2 rounded-lg font-medium ${
             voiceEnabled && currentStep === "idle"
-              ? 'bg-blue-500 hover:bg-blue-600 text-white'
+              ? 'bg-green-600 hover:bg-green-700 text-white'
               : 'bg-gray-200 text-gray-500 cursor-not-allowed'
           } ${isLoading ? 'animate-pulse' : ''}`}
         >
           {isLoading ? (
             <span className="flex items-center gap-2">
               <span className="animate-spin">⏳</span>
-              Generating...
+              Creating Profile...
             </span>
           ) : currentStep === "redirecting" ? (
             "Redirecting..."
           ) : (
-            "Start Voice Setup"
+            "🌾 Start Farm Setup"
           )}
         </button>
       </div>
@@ -578,7 +774,7 @@ const CreateInterviewAgent = ({
       {/* Voice Toggle */}
       <div className="border border-gray-300 rounded-xl p-4">
         <div className="flex justify-between items-center mb-4">
-          <h4 className="font-bold">Voice Interview Setup</h4>
+          <h4 className="font-bold">🌱 Voice Farm Setup</h4>
           <span className={`text-sm font-medium px-2 py-1 rounded ${
             debugInfo.callStatus === "REDIRECTING" ? 'bg-green-100 text-green-800' :
             debugInfo.callStatus === "GENERATING" ? 'bg-blue-100 text-blue-800' :
@@ -596,49 +792,28 @@ const CreateInterviewAgent = ({
         />
 
         <div className="mt-4 text-sm text-gray-600 space-y-1">
-          <p>• I will ask you 5 configuration questions</p>
-          <p>• I'll generate personalized interview questions</p>
-          <p>• You'll be redirected to practice answering them</p>
-          <p className="text-green-600 font-medium">• Smart caching saves AI costs!</p>
+          <p>• I'll ask you about your farm, crops, and livestock</p>
+          <p>• Answer each question by voice</p>
+          <p>• Get personalized farming recommendations</p>
+          <p className="text-green-600 font-medium">• Then ask any farming questions by voice!</p>
         </div>
       </div>
 
-      {/* Cache Status Display */}
-      {debugInfo.fromCache && (
-        <div className="border border-green-200 bg-green-50 rounded-xl p-4 animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-              <span className="text-green-600 text-xl">📚</span>
-            </div>
-            <div className="flex-1">
-              <h4 className="font-bold text-green-800">Using Cached Questions!</h4>
-              <p className="text-sm text-green-600">
-                These questions have been used <span className="font-bold">{debugInfo.cacheUsageCount}</span> times
-                {debugInfo.cacheRating > 0 && ` • Rated ${debugInfo.cacheRating.toFixed(1)}/5 ⭐`}
-              </p>
-              <p className="text-xs text-green-500 mt-1">
-                (Instant loading • Saved AI costs • Community-tested)
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Current Configuration Status */}
+      {/* Current Question Status */}
       {currentStep === "configuring" && (
-        <div className="border border-blue-200 bg-blue-50 rounded-xl p-4">
+        <div className="border border-green-200 bg-green-50 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+            <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
               {debugInfo.currentQuestion}
             </div>
-            <h4 className="font-bold text-blue-800">Configuration Question {debugInfo.currentQuestion} of 5</h4>
+            <h4 className="font-bold text-green-800">Question {debugInfo.currentQuestion} of {debugInfo.totalQuestions}</h4>
           </div>
-          <p className="text-blue-900 mb-3">{configQuestions[configStep]?.question}</p>
+          <p className="text-green-900 mb-3">{configQuestions[configStep]?.question}</p>
 
           {userTranscript && (
-            <div className="mt-3 p-3 bg-white border border-blue-100 rounded-lg mb-3">
+            <div className="mt-3 p-3 bg-white border border-green-100 rounded-lg mb-3">
               <div className="flex justify-between items-start mb-1">
-                <span className="text-sm font-medium text-blue-700">Your Answer:</span>
+                <span className="text-sm font-medium text-green-700">Your Answer:</span>
                 <button
                   onClick={() => setUserTranscript("")}
                   className="text-xs text-gray-500 hover:text-gray-700"
@@ -659,62 +834,31 @@ const CreateInterviewAgent = ({
         </div>
       )}
 
-      {/* Configuration Summary */}
-      {(currentStep === "configuring" || currentStep === "generating" || currentStep === "redirecting") && (
+      {/* Summary Panel */}
+      {currentStep === "configuring" && (
         <div className="border border-purple-200 bg-purple-50 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center">
-              <span className="text-sm">⚙️</span>
-            </div>
-            <h4 className="font-bold text-purple-800">Your Configuration</h4>
+          <h4 className="font-bold text-purple-800 mb-2">📋 Your Farm Profile So Far</h4>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div><span className="font-medium">Crops:</span> {farmerDetails.crops || "⏳"}</div>
+            <div><span className="font-medium">County:</span> {farmerDetails.county || "⏳"}</div>
+            <div><span className="font-medium">Acres:</span> {farmerDetails.acres || "⏳"}</div>
+            <div><span className="font-medium">Cattle:</span> {farmerDetails.cattle || "⏳"}</div>
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white p-3 rounded-lg border border-purple-100">
-              <div className="text-xs text-purple-600">Role</div>
-              <div className="font-medium">{userConfig.role || "Not set yet"}</div>
-            </div>
-            <div className="bg-white p-3 rounded-lg border border-purple-100">
-              <div className="text-xs text-purple-600">Level</div>
-              <div className="font-medium">{userConfig.level}</div>
-            </div>
-            <div className="bg-white p-3 rounded-lg border border-purple-100">
-              <div className="text-xs text-purple-600">Type</div>
-              <div className="font-medium">{userConfig.type}</div>
-            </div>
-            <div className="bg-white p-3 rounded-lg border border-purple-100">
-              <div className="text-xs text-purple-600">Tech Stack</div>
-              <div className="font-medium">{userConfig.techstack || "Not set yet"}</div>
-            </div>
-            <div className="bg-white p-3 rounded-lg border border-purple-100">
-              <div className="text-xs text-purple-600">Questions</div>
-              <div className="font-medium">{userConfig.amount}</div>
-            </div>
-            <div className="bg-white p-3 rounded-lg border border-purple-100">
-              <div className="text-xs text-purple-600">Cache Status</div>
-              <div className="font-medium">
-                {debugInfo.fromCache ? (
-                  <span className="text-green-600">📚 Cached ({debugInfo.cacheUsageCount} uses)</span>
-                ) : currentStep === "generating" ? (
-                  <span className="text-blue-600">🔄 Generating...</span>
-                ) : (
-                  <span className="text-gray-600">Not generated yet</span>
-                )}
-              </div>
-            </div>
-          </div>
+          <p className="text-xs text-purple-600 mt-2">
+            {debugInfo.currentQuestion}/{configQuestions.length} questions answered
+          </p>
         </div>
       )}
 
-      {/* Status Panel with Control Buttons */}
+      {/* Status Panel with Buttons */}
       <div className="border border-gray-300 rounded-xl p-4">
         <h4 className="font-bold text-lg mb-4">📊 Setup Status</h4>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
           <div className="bg-gray-50 p-3 rounded-lg">
-            <div className="text-sm text-gray-500">Step</div>
+            <div className="text-sm text-gray-500">Progress</div>
             <div className="font-bold text-gray-800">
-              {debugInfo.currentQuestion}/5
+              {debugInfo.currentQuestion}/{debugInfo.totalQuestions}
             </div>
           </div>
 
@@ -733,67 +877,34 @@ const CreateInterviewAgent = ({
               {debugInfo.voiceMode}
             </div>
           </div>
-
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <div className="text-sm text-gray-500">Cache</div>
-            <div className={`font-bold ${
-              debugInfo.fromCache ? 'text-green-600' :
-              currentStep === "generating" ? 'text-blue-600' : 'text-gray-600'
-            }`}>
-              {debugInfo.fromCache ? "HIT" : currentStep === "generating" ? "MISS" : "N/A"}
-            </div>
-          </div>
         </div>
 
         {/* Progress Bar */}
         <div className="mt-4">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium text-gray-700">Progress</span>
-            <span className="text-sm font-bold text-gray-800">
-              {currentStep === "idle" ? "0%" :
-               currentStep === "configuring" ? `${debugInfo.currentQuestion * 20}%` :
-               currentStep === "generating" ? "80%" :
-               currentStep === "redirecting" ? "100%" : "0%"}
-            </span>
-          </div>
           <div className="w-full bg-gray-200 rounded-full h-2.5">
             <div
-              className="bg-green-500 h-2.5 rounded-full transition-all duration-300"
+              className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
               style={{
                 width: currentStep === "idle" ? "0%" :
-                       currentStep === "configuring" ? `${debugInfo.currentQuestion * 20}%` :
-                       currentStep === "generating" ? "80%" :
+                       currentStep === "configuring" ? `${(debugInfo.currentQuestion / debugInfo.totalQuestions) * 100}%` :
+                       currentStep === "generating" ? "90%" :
                        currentStep === "redirecting" ? "100%" : "0%"
               }}
             ></div>
-          </div>
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>
-              {currentStep === "idle" ? "Ready to start" :
-               currentStep === "configuring" ? `Question ${debugInfo.currentQuestion} of 5` :
-               currentStep === "generating" ? "Generating questions..." :
-               currentStep === "redirecting" ? "Redirecting to practice..." : "Error"}
-            </span>
-            <span>
-              {currentStep === "redirecting" && debugInfo.generatedInterviewId ?
-               `ID: ${debugInfo.generatedInterviewId.substring(0, 8)}...` : ""}
-            </span>
           </div>
         </div>
 
         {/* Control Buttons */}
         <div className="flex flex-wrap gap-2 mt-4">
-          {/* Start Button */}
           <button
             onClick={startVoiceSetup}
             disabled={isLoading || !voiceEnabled || currentStep !== "idle"}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
           >
-            <span>🎤</span>
-            {currentStep === "idle" ? "Start Voice Setup" : "In Progress"}
+            <span>🌾</span>
+            {currentStep === "idle" ? "Start Farm Setup" : "In Progress"}
           </button>
 
-          {/* Stop Button */}
           {(currentStep === "configuring" || currentStep === "generating") && (
             <button
               onClick={stopEverything}
@@ -805,7 +916,6 @@ const CreateInterviewAgent = ({
             </button>
           )}
 
-          {/* Submit Answer Button */}
           {currentStep === "configuring" && userTranscript && (
             <button
               onClick={submitAnswer}
@@ -817,7 +927,6 @@ const CreateInterviewAgent = ({
             </button>
           )}
 
-          {/* Skip Button */}
           {currentStep === "configuring" && (
             <button
               onClick={skipQuestion}
@@ -827,67 +936,30 @@ const CreateInterviewAgent = ({
               Skip Question
             </button>
           )}
-
-          {/* Redirect Button */}
-          {currentStep === "redirecting" && debugInfo.generatedInterviewId && (
-            <button
-              onClick={() => window.location.href = `/interview/${debugInfo.generatedInterviewId}`}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
-            >
-              <span>🚀</span>
-              Go to Interview Now
-            </button>
-          )}
         </div>
-
-        {/* Completion Status */}
-        {currentStep === "redirecting" && (
-          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-green-800">✅ Interview Created!</h4>
-                <p className="text-green-700 text-sm">
-                  {userConfig.amount} questions generated for {userConfig.level} {userConfig.role}
-                </p>
-                <p className="text-green-600 text-xs mt-1">
-                  {debugInfo.fromCache ?
-                    "📚 Using cached questions (instant loading)" :
-                    "🔄 Generated new questions (saved to cache for future users)"}
-                </p>
-              </div>
-              <div className="animate-pulse">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* AI Interviewer */}
+      {/* AI Assistant */}
       <div className="border border-gray-300 rounded-xl p-4">
         <div className="flex flex-row items-center gap-4">
           <Image
-            src="/interview-panel.jpg"
+            src="/farmer-assistant.jpg"
             alt={aiAltText}
             width={40}
             height={40}
             className="rounded-full object-cover size-10"
           />
           <div className="flex-1">
-            <h4 className="font-semibold">AI Interviewer</h4>
+            <h4 className="font-semibold">🌾 Agricultural Assistant</h4>
             <p className="text-gray-600">
               {currentStep === "idle"
-                ? "Ready to create your custom interview"
+                ? "Ready to learn about your farm"
                 : currentStep === "configuring"
-                ? `Asking configuration question ${debugInfo.currentQuestion} of 5`
+                ? `Asking question ${debugInfo.currentQuestion} of ${debugInfo.totalQuestions}`
                 : currentStep === "generating"
-                ? `Generating ${debugInfo.fromCache ? "cached" : "new"} interview questions...`
+                ? "Creating your personalized farm profile..."
                 : currentStep === "redirecting"
-                ? "Redirecting you to practice the interview..."
+                ? "Taking you to the Q&A page..."
                 : "Error occurred"}
             </p>
             {debugInfo.isListening && (
@@ -897,44 +969,7 @@ const CreateInterviewAgent = ({
             )}
             {isSpeaking && (
               <p className="text-sm text-purple-600 mt-1 animate-pulse">
-                🔊 Asking question...
-              </p>
-            )}
-            {currentStep === "configuring" && !debugInfo.isListening && !isSpeaking && userTranscript && (
-              <p className="text-sm text-green-600 mt-1">
-                ✅ Ready to submit your answer
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* User */}
-      <div className="border border-gray-300 rounded-xl p-4">
-        <div className="flex flex-row items-center gap-4">
-          <Image
-            src={profileImage || "/beautiful-avatar.png"}
-            alt={userAltText}
-            width={40}
-            height={40}
-            className="rounded-full object-cover size-10"
-          />
-          <div className="flex-1">
-            <h4 className="font-semibold">{displayName}</h4>
-            <p className="text-gray-600">
-              {currentStep === "idle"
-                ? "Enable voice mode and click Start Voice Setup"
-                : currentStep === "configuring"
-                ? "🎤 Speak your answer, then click Submit Answer"
-                : currentStep === "generating"
-                ? `Please wait while I ${debugInfo.fromCache ? "retrieve cached" : "generate new"} questions...`
-                : currentStep === "redirecting"
-                ? "✅ Interview created! Redirecting to practice..."
-                : "Please try again"}
-            </p>
-            {debugInfo.fromCache && (
-              <p className="text-sm text-green-600 mt-2">
-                🎉 You're saving AI costs by using cached questions!
+                🔊 Speaking...
               </p>
             )}
           </div>
@@ -946,32 +981,12 @@ const CreateInterviewAgent = ({
         <h4 className="font-bold mb-3">📋 How It Works:</h4>
         <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
           <li><span className="font-medium">Turn on Voice Mode</span> above</li>
-          <li><span className="font-medium">Click Start Voice Setup</span></li>
-          <li><span className="font-medium">Answer 5 configuration questions</span> by voice</li>
-          <li><span className="font-medium">Click Submit Answer</span> after each response</li>
-          <li><span className="font-medium">I check cache first</span> (saves money and time!)</li>
-          <li><span className="font-medium">Generate or retrieve questions</span></li>
-          <li><span className="font-medium">You'll be redirected to practice</span> answering the questions</li>
+          <li><span className="font-medium">Click "Start Farm Setup"</span></li>
+          <li><span className="font-medium">Answer questions</span> about your farm by voice</li>
+          <li><span className="font-medium">Get personalized recommendations</span></li>
+          <li><span className="font-medium">Ask any farming question</span> on the next page</li>
+          <li><span className="font-medium">Receive answers with images</span> from our knowledge base</li>
         </ol>
-        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded text-sm">
-          <p className="font-medium text-green-800">💰 Cost Savings with Cache:</p>
-          <div className="grid grid-cols-1 gap-2 mt-2">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-green-500 text-white rounded-lg flex items-center justify-center text-sm">📚</div>
-              <div>
-                <p className="font-medium text-green-800">Cache Hit</p>
-                <p className="text-green-600 text-xs">Questions already exist → Instant loading, zero AI cost</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center text-sm">🔄</div>
-              <div>
-                <p className="font-medium text-green-800">Cache Miss</p>
-                <p className="text-green-600 text-xs">Generate new questions → Save to cache for future users</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { Toaster } from "sonner";
 import type { Metadata } from "next";
 import { Mona_Sans } from "next/font/google";
+import Navigation from "@/components/Navigation";
 
 import "./globals.css";
 
@@ -22,8 +23,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${monaSans.className} antialiased pattern`}>
+        <Navigation />
         {children}
-
         <Toaster />
       </body>
     </html>

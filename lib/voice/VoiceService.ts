@@ -1,4 +1,4 @@
-// lib/voice/VoiceService.ts - COMPLETE FIXED VERSION WITH ANSWER VALIDATION
+// lib/voice/VoiceService.ts - COMPLETE FIXED VERSION WITH STREAMING SUPPORT
 "use client";
 
 import { toast } from "sonner";
@@ -226,7 +226,6 @@ export class VoiceService {
     return humanized;
   }
 
-  // ============ FIXED: submitAnswer with validation ============
   public async submitAnswer(): Promise<void> {
     console.log(`✅ Submit answer for question ${this.currentQuestionIndex + 1}`);
 
@@ -332,7 +331,6 @@ export class VoiceService {
     await this.askCurrentQuestion();
   }
 
-  // ============ FIXED: completeInterview with LOUD DEBUG ============
   private async completeInterview(): Promise<void> {
     console.log("🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁");
     console.log("🏁 COMPLETE INTERVIEW CALLED! 🏁");
@@ -411,6 +409,107 @@ export class VoiceService {
     console.log("✅ Interview completion process finished");
   }
 
+  // ============ NEW: Streaming speak method ============
+  public async speakStreaming(text: string): Promise<void> {
+    if (!this.textToSpeech) {
+      console.log("🤖 AI:", text);
+      return;
+    }
+
+    this.updateState({ isSpeaking: true });
+
+    try {
+      // Split into sentences for natural streaming
+      const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+
+      for (const sentence of sentences) {
+        if (!this.isActive && this.type !== "review") break; // Allow streaming even when not in active mode for recommendations
+
+        await this.textToSpeech.speak(sentence);
+
+        // Small pause between sentences
+        await this.delay(300);
+      }
+    } catch (error) {
+      console.log("🤖 AI (fallback):", text);
+    } finally {
+      this.updateState({ isSpeaking: false });
+    }
+  }
+
+  // ============ NEW: Speak recommendations one by one ============
+  public async speakRecommendations(recommendations: string[]): Promise<void> {
+    if (!recommendations || recommendations.length === 0) return;
+
+    // Speak intro
+    await this.speakStreaming("I have prepared some personalized recommendations for your farm. Let me read them to you.");
+    await this.delay(1000);
+
+    // Speak each recommendation with a pause
+    for (let i = 0; i < recommendations.length; i++) {
+      const rec = recommendations[i];
+      await this.speakStreaming(`Recommendation ${i + 1}: ${rec}`);
+      await this.delay(800);
+    }
+
+    await this.speakStreaming("You can now ask me any questions about your farm. Just speak clearly and press the submit button.");
+  }
+
+  // ============ NEW: Start farmer session ============
+  public async startFarmerSession(sessionData: any): Promise<void> {
+    console.log("🌾 Starting farmer session");
+
+    this.isActive = true;
+    this.manualStop = false;
+    this.messages = [];
+    this.updateState({
+      isProcessing: false,
+      transcript: ""
+    });
+
+    // Just set active state - recommendations will be spoken by Agent
+    this.updateState({ isSpeaking: false, isListening: false });
+  }
+
+  // ============ NEW: Listen for farmer question ============
+  public async listenForQuestion(): Promise<void> {
+    console.log("👂 Listening for farmer question");
+
+    if (!this.isActive || !this.speechToText) {
+      console.log("⏸️ Cannot start listening");
+      return;
+    }
+
+    // Stop any existing session
+    try {
+      if (this.speechToText.getIsListening()) {
+        this.speechToText.stop();
+        await this.delay(300);
+      }
+    } catch (e) {}
+
+    this.updateState({
+      isListening: true,
+      isSpeaking: false
+    });
+
+    this.isMicrophoneActive = true;
+    this.manualStop = false;
+
+    toast.info("🎤 Listening for your question...");
+
+    try {
+      this.speechToText.clearTranscript();
+      await this.speechToText.start();
+      console.log("✅ Listening started successfully");
+    } catch (error: any) {
+      console.error("❌ Failed to start listening:", error);
+      this.updateState({ isListening: false });
+      this.isMicrophoneActive = false;
+      toast.error("Microphone access failed. Please check permissions.");
+    }
+  }
+
   private async speak(text: string): Promise<void> {
     if (!this.textToSpeech) {
       console.log("🤖 AI:", text);
@@ -457,6 +556,10 @@ export class VoiceService {
     });
   }
 
+  public getState(): VoiceState {
+    return this.state;
+  }
+
   public onStateChange(callback: (state: VoiceState) => void): void {
     this.onStateChangeCallback = callback;
   }
@@ -483,4 +586,5 @@ export class VoiceService {
   }
 }
 
+// ✅ CRITICAL: This line MUST be here!
 export default VoiceService;
