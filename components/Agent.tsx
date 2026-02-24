@@ -1,4 +1,4 @@
-// components/Agent.tsx - COMPLETE VERSION WITH FLOATING SUBMIT BUTTON
+// components/Agent.tsx - COMPLETE VERSION WITH TEST BUTTONS AND DEBUG INFO
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -134,6 +134,23 @@ const Agent = ({
   const initAttemptsRef = useRef(0);
   const voiceServiceInitializedRef = useRef(false);
   const isComponentMounted = useRef(true);
+
+  // ============ PERSIST STATE ACROSS FAST REFRESH ============
+  useEffect(() => {
+    // Save transcript to sessionStorage on changes
+    if (userTranscript) {
+      sessionStorage.setItem('lastTranscript', userTranscript);
+    }
+  }, [userTranscript]);
+
+  useEffect(() => {
+    // Restore transcript from sessionStorage on load
+    const saved = sessionStorage.getItem('lastTranscript');
+    if (saved) {
+      setUserTranscript(saved);
+      sessionStorage.removeItem('lastTranscript');
+    }
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -808,6 +825,7 @@ const Agent = ({
 
           // Clear transcript after successful submission
           setUserTranscript("");
+          sessionStorage.removeItem('lastTranscript');
         } else {
           toast.error(data.error || "Failed to get answer");
         }
@@ -1269,116 +1287,112 @@ const Agent = ({
         </button>
       )}
 
-      {/* ========== 🔥 FLOATING SUBMIT BUTTON - ALWAYS VISIBLE ========== */}
-      {sessionData && debugInfo.callStatus === "ACTIVE" && (
-        <div className="sticky top-4 z-50 bg-white border-4 border-green-500 rounded-xl p-4 shadow-2xl">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-bold text-green-800 text-lg">✅ Ready to Submit Your Question</h3>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-green-700">
-                {userTranscript ? "Question captured!" : "Speak now..."}
-              </span>
-            </div>
+      {/* ========== 🔧 TEST BUTTONS AND DEBUG INFO ========== */}
+      {sessionData && (
+        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-3">
+          <h4 className="font-bold text-yellow-800 mb-2">🔧 TEST CONTROLS (Remove later)</h4>
+
+          {/* Test buttons */}
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={() => setUserTranscript("What is the best fertilizer for maize?")}
+              className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
+            >
+              Test: Set Transcript
+            </button>
+            <button
+              onClick={() => {
+                console.log("Current transcript:", userTranscript);
+                toast.info(`Transcript: "${userTranscript}"`);
+              }}
+              className="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600"
+            >
+              Log Transcript
+            </button>
+            <button
+              onClick={() => setUserTranscript("")}
+              className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+            >
+              Clear Transcript
+            </button>
           </div>
 
-          {/* Display current transcript */}
-          <div className="bg-green-100 border-2 border-green-300 rounded-lg p-4 mb-4 min-h-[100px]">
-            {userTranscript ? (
-              <p className="text-gray-800 text-lg font-medium">"{userTranscript}"</p>
-            ) : (
-              <div className="text-center text-gray-500">
-                <p className="text-lg">🎤 Say something...</p>
-                <p className="text-sm mt-2">Your words will appear here</p>
-              </div>
-            )}
-            {userTranscript && (
-              <p className="text-xs text-green-600 mt-2 text-right">
-                {userTranscript.length} characters
-              </p>
+          {/* Debug info */}
+          <div className="bg-white p-3 rounded-lg border border-yellow-200 text-xs font-mono">
+            <p><span className="font-bold">Transcript:</span> "{userTranscript || "(empty)"}"</p>
+            <p><span className="font-bold">Length:</span> {userTranscript.length}</p>
+            <p><span className="font-bold">Has content:</span> {userTranscript.trim().length > 0 ? "✅" : "❌"}</p>
+            <p><span className="font-bold">isVoiceListening:</span> {isVoiceListening ? "✅" : "❌"}</p>
+            <p><span className="font-bold">callStatus:</span> {debugInfo.callStatus}</p>
+            <p><span className="font-bold">Button enabled:</span> {userTranscript.trim().length > 0 && !isLoading ? "✅" : "❌"}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ========== ✅ COMPACT SUBMIT SECTION ========== */}
+      {sessionData && (
+        <div className="bg-white border-2 border-green-500 rounded-xl p-3 shadow-md">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="font-bold text-green-800">📝 Your Question</h3>
+            {userTranscript.trim().length > 0 && (
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Ready to submit</span>
             )}
           </div>
 
-          {/* GIANT SUBMIT BUTTON */}
-          <button
-            onClick={submitAnswer}
-            disabled={!userTranscript.trim() || isLoading}
-            className={`w-full py-6 rounded-xl font-bold text-2xl transition-all ${
-              userTranscript.trim() && !isLoading
-                ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl animate-pulse'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center gap-3">
-                <Loader2 className="w-8 h-8 animate-spin" />
-                PROCESSING...
-              </span>
-            ) : (
-              <span className="flex items-center justify-center gap-3">
-                <span className="text-3xl">✅</span>
-                SUBMIT QUESTION
-              </span>
-            )}
-          </button>
-
-          {/* Manual text input backup */}
-          <div className="mt-4">
-            <p className="text-sm text-gray-600 mb-2">✏️ Or type your question:</p>
+          {/* Main input area */}
+          <div className="flex gap-2">
             <input
               type="text"
               value={userTranscript}
               onChange={(e) => setUserTranscript(e.target.value)}
-              placeholder="Type here..."
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 text-lg"
+              placeholder="Type your question here..."
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-1 focus:ring-green-200"
             />
+
+            {/* SUBMIT BUTTON */}
+            <button
+              onClick={submitAnswer}
+              disabled={!userTranscript.trim() || isLoading}
+              className={`px-6 py-2 rounded-lg font-bold whitespace-nowrap ${
+                userTranscript.trim() && !isLoading
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  ...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <span>✅</span>
+                  ASK
+                </span>
+              )}
+            </button>
           </div>
-        </div>
-      )}
 
-      {/* 🔍 DEBUG INFO - Remove after fixing */}
-      {sessionData && (
-        <div className="bg-red-100 p-2 text-xs border border-red-300 rounded">
-          <p><span className="font-bold">Debug:</span> sessionData: ✅ | callStatus: {debugInfo.callStatus} | ACTIVE: {debugInfo.callStatus === "ACTIVE" ? "✅" : "❌"}</p>
-        </div>
-      )}
+          {/* Character count */}
+          <p className="text-xs text-gray-500 mt-1">
+            {userTranscript.length} characters • {userTranscript.trim().length > 0 ? "Ready to submit" : "Type or speak your question"}
+          </p>
 
-      {/* Live Transcript Display (when listening) */}
-      {debugInfo.isListening && (
-        <div className="border border-green-200 bg-green-50 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center">
-                <span className="text-sm">🎤</span>
-              </div>
-              <h4 className="font-bold text-green-800">Live Transcription</h4>
+          {/* Manual voice start button (compact) */}
+          {!isVoiceListening ? (
+            <button
+              onClick={startVoiceListening}
+              className="mt-2 w-full px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2 text-sm"
+            >
+              <Mic className="w-4 h-4" />
+              Start Voice Listening
+            </button>
+          ) : (
+            <div className="mt-2 flex items-center gap-2 text-green-600 text-sm">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span>Listening... Speak now</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                {userTranscript.length} chars
-              </span>
-              <button
-                onClick={() => setUserTranscript("")}
-                className="text-sm text-green-600 hover:text-green-800 hover:bg-green-100 px-2 py-1 rounded"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-
-          <div
-            ref={transcriptRef}
-            className="min-h-[80px] max-h-[150px] overflow-y-auto bg-white border border-green-100 rounded-lg p-3"
-          >
-            {userTranscript ? (
-              <p className="text-gray-800 leading-relaxed">{userTranscript}</p>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                <span className="text-2xl mb-2">🎤</span>
-                <p>Start speaking to see your words here...</p>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       )}
 
