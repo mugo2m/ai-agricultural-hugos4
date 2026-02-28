@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
     if (!question || !userId || !sessionId) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { success: false, error: "Missing required fields" },
         { status: 400 }
       );
     }
@@ -62,6 +62,7 @@ ANSWER:
       // Continue even if save fails
     }
 
+    // ✅ ALWAYS return success: true with answer
     return NextResponse.json({
       success: true,
       answer
@@ -69,8 +70,13 @@ ANSWER:
 
   } catch (error: any) {
     console.error("❌ Farmer query error:", error);
+
+    // ✅ ALWAYS return JSON, even on error
     return NextResponse.json(
-      { error: error.message || "Failed to process question" },
+      {
+        success: false,
+        error: error.message || "Failed to process question"
+      },
       { status: 500 }
     );
   }

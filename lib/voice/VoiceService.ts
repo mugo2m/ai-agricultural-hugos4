@@ -1,4 +1,4 @@
-// lib/voice/VoiceService.ts - COMPLETE FIXED VERSION WITH STREAMING SUPPORT
+// lib/voice/VoiceService.ts - COMPLETE FIXED VERSION WITH ECHO CANCELLATION
 "use client";
 
 import { toast } from "sonner";
@@ -48,6 +48,14 @@ export class VoiceService {
   private isMicrophoneActive: boolean = false;
   private manualStop: boolean = false;
 
+  // ============ NEW: Echo cancellation flags ============
+  private isAISpeaking: boolean = false;
+  private lastUserTranscript: string = "";
+  private postSpeechTimeout: NodeJS.Timeout | null = null;
+  private autoRestartTimeout: NodeJS.Timeout | null = null;
+  private autoRestartAttempts: number = 0;
+  private readonly MAX_AUTO_RESTART_ATTEMPTS = 10;
+
   private speechToText: SpeechToText | null = null;
   private textToSpeech: TextToSpeech | null = null;
 
@@ -88,10 +96,39 @@ export class VoiceService {
     }
   }
 
+  // ============ ENHANCED: Handle user transcript with AI speech filtering ============
   private handleUserTranscript = (text: string, isFinal: boolean): void => {
     console.log(`📝 Transcript: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}", isFinal: ${isFinal}`);
 
-    // ALWAYS update transcript immediately
+    // ============ NEW: Filter out AI speech ============
+    const lowerText = text.toLowerCase();
+    const isLikelyAISpeech =
+      this.isAISpeaking || // AI is currently speaking
+      lowerText.includes('recommendation') ||
+      lowerText.includes('soil testing') ||
+      lowerText.includes('terracing') ||
+      lowerText.includes('contour farming') ||
+      lowerText.includes('mulching') ||
+      lowerText.includes('dap') ||
+      lowerText.includes('can fertilizer') ||
+      lowerText.includes('let me see') ||
+      lowerText.includes('well') ||
+      lowerText.includes('alright') ||
+      lowerText.includes('great') ||
+      lowerText.includes('hmm') ||
+      lowerText.includes('interesting') ||
+      lowerText.includes('monitor for pests') ||
+      lowerText.includes('download agricultural apps') ||
+      text === this.lastUserTranscript; // Prevent duplicates
+
+    if (isLikelyAISpeech) {
+      console.log("🚫 Ignoring likely AI speech:", text.substring(0, 50));
+      return;
+    }
+
+    // This is real user speech - update transcript
+    console.log("🎤 User speech detected:", text.substring(0, 50));
+    this.lastUserTranscript = text;
     this.updateState({ transcript: text });
 
     if (!this.isActive || !this.isMicrophoneActive) {
@@ -174,11 +211,18 @@ export class VoiceService {
     await this.startListening();
   }
 
+  // ============ ENHANCED: Start listening with AI speaking check ============
   private async startListening(): Promise<void> {
     console.log(`👂 Start listening for question ${this.currentQuestionIndex + 1}`);
 
     if (!this.isActive || !this.speechToText) {
       console.log("⏸️ Cannot start listening");
+      return;
+    }
+
+    // Don't start if AI is speaking
+    if (this.isAISpeaking) {
+      console.log("🔇 Not starting listening - AI is speaking");
       return;
     }
 
@@ -199,6 +243,79 @@ export class VoiceService {
     this.manualStop = false;
 
     toast.info(`🎤 Question ${this.currentQuestionIndex + 1} - Speak your answer`);
+
+    try {
+      this.speechToText.clearTranscript();
+      await this.speechToText.start();
+      console.log("✅ Listening started successfully");
+    } catch (error: any) {
+      console.error("❌ Failed to start listening:", error);
+      this.updateState({ isListening: false });
+      this.isMicrophoneActive = false;
+      toast.error("Microphone access failed. Please check permissions.");
+    }
+  }
+
+  // ============ NEW: Public method to stop listening ============
+  public stopListening(): void {
+    console.log("🛑 VoiceService: Stopping listening");
+
+    if (this.autoRestartTimeout) {
+      clearTimeout(this.autoRestartTimeout);
+      this.autoRestartTimeout = null;
+    }
+
+    if (this.postSpeechTimeout) {
+      clearTimeout(this.postSpeechTimeout);
+      this.postSpeechTimeout = null;
+    }
+
+    if (this.speechToText && this.speechToText.getIsListening()) {
+      try {
+        this.speechToText.stop();
+      } catch (error) {
+        console.error("Error stopping speech recognition:", error);
+      }
+    }
+
+    this.isMicrophoneActive = false;
+    this.updateState({ isListening: false });
+    this.autoRestartAttempts = 0;
+  }
+
+  // ============ NEW: Listen for question with AI speaking check ============
+  public async listenForQuestion(): Promise<void> {
+    console.log("👂 Listening for farmer question");
+
+    if (!this.isActive || !this.speechToText) {
+      console.log("⏸️ Cannot start listening");
+      return;
+    }
+
+    // Don't start if AI is speaking
+    if (this.isAISpeaking) {
+      console.log("🔇 Not starting listening - AI is speaking");
+      toast.info("Please wait for AI to finish speaking");
+      return;
+    }
+
+    // Stop any existing session
+    try {
+      if (this.speechToText.getIsListening()) {
+        this.speechToText.stop();
+        await this.delay(300);
+      }
+    } catch (e) {}
+
+    this.updateState({
+      isListening: true,
+      isSpeaking: false
+    });
+
+    this.isMicrophoneActive = true;
+    this.manualStop = false;
+
+    toast.info("🎤 Listening for your question...");
 
     try {
       this.speechToText.clearTranscript();
@@ -409,12 +526,46 @@ export class VoiceService {
     console.log("✅ Interview completion process finished");
   }
 
-  // ============ NEW: Streaming speak method ============
+  // ============ ENHANCED: speak method with AI speaking flag ============
+  private async speak(text: string): Promise<void> {
+    if (!this.textToSpeech) {
+      console.log("🤖 AI:", text);
+      return;
+    }
+
+    // Set AI speaking flag
+    this.isAISpeaking = true;
+
+    // Stop listening while speaking
+    this.stopListening();
+
+    this.updateState({ isSpeaking: true });
+
+    try {
+      await this.textToSpeech.speak(text);
+    } catch (error) {
+      console.log("🤖 AI (fallback):", text);
+    } finally {
+      this.updateState({ isSpeaking: false });
+      this.isAISpeaking = false;
+
+      // Schedule restart of listening after AI finishes
+      this.schedulePostSpeechListening();
+    }
+  }
+
+  // ============ ENHANCED: Streaming speak method with AI speaking flag ============
   public async speakStreaming(text: string): Promise<void> {
     if (!this.textToSpeech) {
       console.log("🤖 AI:", text);
       return;
     }
+
+    // Set AI speaking flag
+    this.isAISpeaking = true;
+
+    // Stop listening while speaking
+    this.stopListening();
 
     this.updateState({ isSpeaking: true });
 
@@ -434,7 +585,30 @@ export class VoiceService {
       console.log("🤖 AI (fallback):", text);
     } finally {
       this.updateState({ isSpeaking: false });
+      this.isAISpeaking = false;
+
+      // Schedule restart of listening after AI finishes
+      this.schedulePostSpeechListening();
     }
+  }
+
+  // ============ NEW: Schedule listening after AI speech ============
+  private schedulePostSpeechListening(): void {
+    if (this.postSpeechTimeout) {
+      clearTimeout(this.postSpeechTimeout);
+    }
+
+    this.postSpeechTimeout = setTimeout(() => {
+      if (!this.isAISpeaking && this.isActive && !this.manualStop) {
+        console.log("🎤 Restarting listening after AI speech");
+        if (this.type === "review" || this.currentQuestionIndex < this.interviewQuestions.length) {
+          this.startListening().catch(err => {
+            console.error("Failed to restart listening:", err);
+          });
+        }
+      }
+      this.postSpeechTimeout = null;
+    }, 1000); // 1 second delay to prevent catching echo
   }
 
   // ============ NEW: Speak recommendations one by one ============
@@ -471,61 +645,6 @@ export class VoiceService {
     this.updateState({ isSpeaking: false, isListening: false });
   }
 
-  // ============ NEW: Listen for farmer question ============
-  public async listenForQuestion(): Promise<void> {
-    console.log("👂 Listening for farmer question");
-
-    if (!this.isActive || !this.speechToText) {
-      console.log("⏸️ Cannot start listening");
-      return;
-    }
-
-    // Stop any existing session
-    try {
-      if (this.speechToText.getIsListening()) {
-        this.speechToText.stop();
-        await this.delay(300);
-      }
-    } catch (e) {}
-
-    this.updateState({
-      isListening: true,
-      isSpeaking: false
-    });
-
-    this.isMicrophoneActive = true;
-    this.manualStop = false;
-
-    toast.info("🎤 Listening for your question...");
-
-    try {
-      this.speechToText.clearTranscript();
-      await this.speechToText.start();
-      console.log("✅ Listening started successfully");
-    } catch (error: any) {
-      console.error("❌ Failed to start listening:", error);
-      this.updateState({ isListening: false });
-      this.isMicrophoneActive = false;
-      toast.error("Microphone access failed. Please check permissions.");
-    }
-  }
-
-  private async speak(text: string): Promise<void> {
-    if (!this.textToSpeech) {
-      console.log("🤖 AI:", text);
-      return;
-    }
-
-    this.updateState({ isSpeaking: true });
-    try {
-      await this.textToSpeech.speak(text);
-    } catch (error) {
-      console.log("🤖 AI (fallback):", text);
-    } finally {
-      this.updateState({ isSpeaking: false });
-    }
-  }
-
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
@@ -547,6 +666,19 @@ export class VoiceService {
     this.isActive = false;
     this.isMicrophoneActive = false;
     this.manualStop = true;
+    this.isAISpeaking = false;
+
+    // Clear timeouts
+    if (this.autoRestartTimeout) {
+      clearTimeout(this.autoRestartTimeout);
+      this.autoRestartTimeout = null;
+    }
+
+    if (this.postSpeechTimeout) {
+      clearTimeout(this.postSpeechTimeout);
+      this.postSpeechTimeout = null;
+    }
+
     this.speechToText?.stop();
     this.textToSpeech?.stop();
     this.updateState({
@@ -583,6 +715,11 @@ export class VoiceService {
     this.onCompleteCallback = null;
     this.messages = [];
     this.interviewQuestions = [];
+  }
+
+  // ============ NEW: Getter for AI speaking state ============
+  public getIsAISpeaking(): boolean {
+    return this.isAISpeaking;
   }
 }
 

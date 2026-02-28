@@ -4,6 +4,23 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { VoiceToggle } from "@/components/VoiceToggle";
+import {
+  Sparkles,
+  Sprout,
+  MapPin,
+  Droplets,
+  Sun,
+  Leaf,
+  Wheat,
+  Flower2,
+  Loader2,
+  Mic,
+  Send,
+  CheckCircle,
+  ArrowRight,
+  Zap,
+  Heart
+} from "lucide-react";
 
 interface CreateInterviewAgentProps {
   userName: string;
@@ -24,64 +41,17 @@ const CreateInterviewAgent = ({
   const [currentStep, setCurrentStep] = useState<"idle" | "configuring" | "generating" | "redirecting" | "error">("idle");
   const [configStep, setConfigStep] = useState(0);
 
-  // 🌾 NEW: Farmer details state with all fields
+  // 🌱 Farmer details state
   const [farmerDetails, setFarmerDetails] = useState({
-    // Location
-    crops: "",
-    season: "",
-    county: "",
-    subCounty: "",
-    village: "",
-
-    // Crop details
-    cropOfInterest: "",
-    acres: "",
-    previousCrop: "",
-    averageHarvest: "",
-    harvestUnit: "bags",
-
-    // Fertilizer - Planting
-    usePlantingFertilizer: "",
-    plantingFertilizerType: "",
-    plantingFertilizerQuantity: "",
-    noPlantingFertilizerReason: "",
-
-    // Fertilizer - Topdressing
-    useTopdressingFertilizer: "",
-    topdressingFertilizerType: "",
-    topdressingFertilizerQuantity: "",
-    noTopdressingFertilizerReason: "",
-
-    // Soil & Organic
-    soilTested: "",
-    soilType: "",
-    organicManure: "",
-
-    // Seed details
-    useCertifiedSeed: "",
-    certifiedSeedReason: "",
-    seedQuantity: "",
-
-    // Conservation practices
-    terracing: "",
-    mulching: "",
-    coverCrops: "",
-    rainwaterHarvesting: "",
-    contourFarming: "",
-
-    // Livestock
-    cattle: "",
-    cattleType: "",
-    milkProduction: "",
-    otherLivestock: "",
-
-    // Technology
-    smartphone: "",
-    phoneNumber: "",
-
-    // Farmer profile
-    experience: "",
-    mainChallenge: "",
+    crops: "", season: "", county: "", subCounty: "", village: "",
+    cropOfInterest: "", acres: "", previousCrop: "", averageHarvest: "", harvestUnit: "bags",
+    usePlantingFertilizer: "", plantingFertilizerType: "", plantingFertilizerQuantity: "", noPlantingFertilizerReason: "",
+    useTopdressingFertilizer: "", topdressingFertilizerType: "", topdressingFertilizerQuantity: "", noTopdressingFertilizerReason: "",
+    soilTested: "", soilType: "", organicManure: "",
+    useCertifiedSeed: "", certifiedSeedReason: "", seedQuantity: "",
+    terracing: "", mulching: "", coverCrops: "", rainwaterHarvesting: "", contourFarming: "",
+    cattle: "", cattleType: "", milkProduction: "", otherLivestock: "",
+    smartphone: "", phoneNumber: "", experience: "", mainChallenge: "",
   });
 
   const [debugInfo, setDebugInfo] = useState({
@@ -100,221 +70,52 @@ const CreateInterviewAgent = ({
   const retryCountRef = useRef(0);
   const maxRetries = 3;
 
-  // 🌾 NEW: Farmer configuration questions (16 questions)
+  // Configuration questions
   const configQuestions = [
-    // Location & Crops (4)
-    {
-      id: "crops",
-      question: "What crops do you grow? For example: maize, beans, coffee, or vegetables.",
-      parse: (answer: string) => answer
-    },
-    {
-      id: "season",
-      question: "Which season are you planting for? Long rains, short rains, or dry season?",
-      parse: (answer: string) => answer.toLowerCase().includes("long") ? "long rains" :
-                                    answer.toLowerCase().includes("short") ? "short rains" : "dry season"
-    },
-    {
-      id: "county",
-      question: "What county are you in?",
-      parse: (answer: string) => answer
-    },
-    {
-      id: "subCounty",
-      question: "Which sub-county or district?",
-      parse: (answer: string) => answer
-    },
-    {
-      id: "village",
-      question: "Which village?",
-      parse: (answer: string) => answer
-    },
-
-    // Crop Details (4)
-    {
-      id: "cropOfInterest",
-      question: "Which crop are you most interested in learning about?",
-      parse: (answer: string) => answer
-    },
-    {
-      id: "acres",
-      question: "How many acres are you planting?",
-      parse: (answer: string) => answer.replace(/[^0-9.]/g, '')
-    },
-    {
-      id: "previousCrop",
-      question: "What was your previous crop in this field?",
-      parse: (answer: string) => answer
-    },
-    {
-      id: "averageHarvest",
-      question: "What is your average harvest per acre? For example: 15 bags of maize.",
-      parse: (answer: string) => {
-        const match = answer.match(/\d+/);
-        return match ? match[0] : "";
-      }
-    },
-    {
-      id: "harvestUnit",
-      question: "What unit do you use? Bags, kg, or tonnes?",
-      parse: (answer: string) => answer.toLowerCase().includes("kg") ? "kg" :
-                                    answer.toLowerCase().includes("tonne") ? "tonnes" : "bags"
-    },
-
-    // Planting Fertilizer (3)
-    {
-      id: "usePlantingFertilizer",
-      question: "Do you use planting fertilizer? Say yes or no.",
-      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
-    },
-    {
-      id: "plantingFertilizerType",
-      question: "If yes, what type? For example: DAP or NPK. If no, say 'not applicable'.",
-      parse: (answer: string) => answer
-    },
-    {
-      id: "plantingFertilizerQuantity",
-      question: "How many kilograms per acre? If no, say zero.",
-      parse: (answer: string) => answer.replace(/[^0-9.]/g, '') || "0"
-    },
-
-    // Topdressing Fertilizer (3)
-    {
-      id: "useTopdressingFertilizer",
-      question: "Do you use topdressing fertilizer? Say yes or no.",
-      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
-    },
-    {
-      id: "topdressingFertilizerType",
-      question: "If yes, what type? For example: CAN or Urea. If no, say 'not applicable'.",
-      parse: (answer: string) => answer
-    },
-    {
-      id: "topdressingFertilizerQuantity",
-      question: "How many kilograms per acre? If no, say zero.",
-      parse: (answer: string) => answer.replace(/[^0-9.]/g, '') || "0"
-    },
-
-    // Seed Details (3)
-    {
-      id: "useCertifiedSeed",
-      question: "Do you use certified seed? Say yes or no.",
-      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
-    },
-    {
-      id: "certifiedSeedReason",
-      question: "If no, why not? Too expensive, not available, or other reason? If yes, say 'not applicable'.",
-      parse: (answer: string) => answer
-    },
-    {
-      id: "seedQuantity",
-      question: "If yes, how many kilograms per acre? If no, say zero.",
-      parse: (answer: string) => answer.replace(/[^0-9.]/g, '') || "0"
-    },
-
-    // Soil & Organic (3)
-    {
-      id: "soilTested",
-      question: "Have you ever done comprehensive soil testing? Say yes or no.",
-      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
-    },
-    {
-      id: "soilType",
-      question: "What type of soil do you have? Clay, loam, sandy, or not sure?",
-      parse: (answer: string) => answer.toLowerCase().includes("clay") ? "clay" :
-                                    answer.toLowerCase().includes("loam") ? "loam" :
-                                    answer.toLowerCase().includes("sandy") ? "sandy" : "not sure"
-    },
-    {
-      id: "organicManure",
-      question: "Do you use organic manure? Say yes or no.",
-      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
-    },
-
-    // Conservation Practices (5)
-    {
-      id: "terracing",
-      question: "Do you use terracing? Say yes or no.",
-      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
-    },
-    {
-      id: "mulching",
-      question: "Do you use mulching? Say yes or no.",
-      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
-    },
-    {
-      id: "coverCrops",
-      question: "Do you use cover crops? Say yes or no.",
-      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
-    },
-    {
-      id: "rainwaterHarvesting",
-      question: "Do you practice rainwater harvesting? Say yes or no.",
-      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
-    },
-    {
-      id: "contourFarming",
-      question: "Do you use contour farming? Say yes or no.",
-      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
-    },
-
-    // Livestock (4)
-    {
-      id: "cattle",
-      question: "How many cattle do you have? Say zero if none.",
-      parse: (answer: string) => answer.replace(/[^0-9]/g, '') || "0"
-    },
-    {
-      id: "cattleType",
-      question: "If you have cattle, are they hybrid, local, or mixed? If none, say 'none'.",
-      parse: (answer: string) => answer.toLowerCase().includes("hybrid") ? "hybrid" :
-                                    answer.toLowerCase().includes("local") ? "local" :
-                                    answer.toLowerCase().includes("mixed") ? "mixed" : "none"
-    },
-    {
-      id: "milkProduction",
-      question: "How many liters of milk per day? If no cattle, say zero.",
-      parse: (answer: string) => answer.replace(/[^0-9.]/g, '') || "0"
-    },
-    {
-      id: "otherLivestock",
-      question: "Do you have other livestock like goats or chickens?",
-      parse: (answer: string) => answer
-    },
-
-    // Technology & Profile (4)
-    {
-      id: "smartphone",
-      question: "Can you access a smartphone? Say yes or no.",
-      parse: (answer: string) => answer.toLowerCase().includes("yes") ? "yes" : "no"
-    },
-    {
-      id: "phoneNumber",
-      question: "What is your phone number for alerts?",
-      parse: (answer: string) => answer.replace(/[^0-9+]/g, '')
-    },
-    {
-      id: "experience",
-      question: "How many years of farming experience do you have?",
-      parse: (answer: string) => answer.replace(/[^0-9]/g, '') || "0"
-    },
-    {
-      id: "mainChallenge",
-      question: "What is your biggest farming challenge? Pests, disease, market, water, or other?",
-      parse: (answer: string) => answer
-    }
+    { id: "crops", question: "What crops do you grow? For example: maize, beans, coffee, or vegetables.", parse: (a: string) => a },
+    { id: "season", question: "Which season are you planting for? Long rains, short rains, or dry season?", parse: (a: string) => a.toLowerCase().includes("long") ? "long rains" : a.toLowerCase().includes("short") ? "short rains" : "dry season" },
+    { id: "county", question: "What county are you in?", parse: (a: string) => a },
+    { id: "subCounty", question: "Which sub-county or district?", parse: (a: string) => a },
+    { id: "village", question: "Which village?", parse: (a: string) => a },
+    { id: "cropOfInterest", question: "Which crop are you most interested in learning about?", parse: (a: string) => a },
+    { id: "acres", question: "How many acres are you planting?", parse: (a: string) => a.replace(/[^0-9.]/g, '') },
+    { id: "previousCrop", question: "What was your previous crop in this field?", parse: (a: string) => a },
+    { id: "averageHarvest", question: "What is your average harvest per acre? For example: 15 bags of maize.", parse: (a: string) => { const match = a.match(/\d+/); return match ? match[0] : ""; } },
+    { id: "harvestUnit", question: "What unit do you use? Bags, kg, or tonnes?", parse: (a: string) => a.toLowerCase().includes("kg") ? "kg" : a.toLowerCase().includes("tonne") ? "tonnes" : "bags" },
+    { id: "usePlantingFertilizer", question: "Do you use planting fertilizer? Say yes or no.", parse: (a: string) => a.toLowerCase().includes("yes") ? "yes" : "no" },
+    { id: "plantingFertilizerType", question: "If yes, what type? For example: DAP or NPK. If no, say 'not applicable'.", parse: (a: string) => a },
+    { id: "plantingFertilizerQuantity", question: "How many kilograms per acre? If no, say zero.", parse: (a: string) => a.replace(/[^0-9.]/g, '') || "0" },
+    { id: "useTopdressingFertilizer", question: "Do you use topdressing fertilizer? Say yes or no.", parse: (a: string) => a.toLowerCase().includes("yes") ? "yes" : "no" },
+    { id: "topdressingFertilizerType", question: "If yes, what type? For example: CAN or Urea. If no, say 'not applicable'.", parse: (a: string) => a },
+    { id: "topdressingFertilizerQuantity", question: "How many kilograms per acre? If no, say zero.", parse: (a: string) => a.replace(/[^0-9.]/g, '') || "0" },
+    { id: "useCertifiedSeed", question: "Do you use certified seed? Say yes or no.", parse: (a: string) => a.toLowerCase().includes("yes") ? "yes" : "no" },
+    { id: "certifiedSeedReason", question: "If no, why not? Too expensive, not available, or other reason? If yes, say 'not applicable'.", parse: (a: string) => a },
+    { id: "seedQuantity", question: "If yes, how many kilograms per acre? If no, say zero.", parse: (a: string) => a.replace(/[^0-9.]/g, '') || "0" },
+    { id: "soilTested", question: "Have you ever done comprehensive soil testing? Say yes or no.", parse: (a: string) => a.toLowerCase().includes("yes") ? "yes" : "no" },
+    { id: "soilType", question: "What type of soil do you have? Clay, loam, sandy, or not sure?", parse: (a: string) => a.toLowerCase().includes("clay") ? "clay" : a.toLowerCase().includes("loam") ? "loam" : a.toLowerCase().includes("sandy") ? "sandy" : "not sure" },
+    { id: "organicManure", question: "Do you use organic manure? Say yes or no.", parse: (a: string) => a.toLowerCase().includes("yes") ? "yes" : "no" },
+    { id: "terracing", question: "Do you use terracing? Say yes or no.", parse: (a: string) => a.toLowerCase().includes("yes") ? "yes" : "no" },
+    { id: "mulching", question: "Do you use mulching? Say yes or no.", parse: (a: string) => a.toLowerCase().includes("yes") ? "yes" : "no" },
+    { id: "coverCrops", question: "Do you use cover crops? Say yes or no.", parse: (a: string) => a.toLowerCase().includes("yes") ? "yes" : "no" },
+    { id: "rainwaterHarvesting", question: "Do you practice rainwater harvesting? Say yes or no.", parse: (a: string) => a.toLowerCase().includes("yes") ? "yes" : "no" },
+    { id: "contourFarming", question: "Do you use contour farming? Say yes or no.", parse: (a: string) => a.toLowerCase().includes("yes") ? "yes" : "no" },
+    { id: "cattle", question: "How many cattle do you have? Say zero if none.", parse: (a: string) => a.replace(/[^0-9]/g, '') || "0" },
+    { id: "cattleType", question: "If you have cattle, are they hybrid, local, or mixed? If none, say 'none'.", parse: (a: string) => a.toLowerCase().includes("hybrid") ? "hybrid" : a.toLowerCase().includes("local") ? "local" : a.toLowerCase().includes("mixed") ? "mixed" : "none" },
+    { id: "milkProduction", question: "How many liters of milk per day? If no cattle, say zero.", parse: (a: string) => a.replace(/[^0-9.]/g, '') || "0" },
+    { id: "otherLivestock", question: "Do you have other livestock like goats or chickens?", parse: (a: string) => a },
+    { id: "smartphone", question: "Can you access a smartphone? Say yes or no.", parse: (a: string) => a.toLowerCase().includes("yes") ? "yes" : "no" },
+    { id: "phoneNumber", question: "What is your phone number for alerts?", parse: (a: string) => a.replace(/[^0-9+]/g, '') },
+    { id: "experience", question: "How many years of farming experience do you have?", parse: (a: string) => a.replace(/[^0-9]/g, '') || "0" },
+    { id: "mainChallenge", question: "What is your biggest farming challenge? Pests, disease, market, water, or other?", parse: (a: string) => a }
   ];
 
-  // Initialize voice and speech recognition (KEEP EXISTING)
+  // Initialize voice
   useEffect(() => {
     const checkVoiceSupport = () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         const voices = window.speechSynthesis.getVoices();
         const hasRealVoice = voices.length > 0;
-        setDebugInfo(prev => ({
-          ...prev,
-          voiceMode: hasRealVoice ? "REAL" : "SIMULATED"
-        }));
+        setDebugInfo(prev => ({ ...prev, voiceMode: hasRealVoice ? "REAL" : "SIMULATED" }));
       }
     };
 
@@ -328,8 +129,6 @@ const CreateInterviewAgent = ({
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
       recognitionRef.current.lang = 'en-US';
-      recognitionRef.current.maxAlternatives = 1;
-
       recognitionRef.current.timeout = 15000;
       recognitionRef.current.nospeech_timeout = 15000;
 
@@ -398,7 +197,7 @@ const CreateInterviewAgent = ({
     };
   }, [currentStep]);
 
-  // Initialize voice assistant (KEEP EXISTING)
+  // Initialize voice assistant
   useEffect(() => {
     if (!voiceEnabled) {
       voiceAssistantRef.current = null;
@@ -529,7 +328,6 @@ const CreateInterviewAgent = ({
 
     console.log("Starting farmer voice setup...");
 
-    // Reset everything
     safeStopListening();
     setCurrentStep("configuring");
     setConfigStep(0);
@@ -554,9 +352,9 @@ const CreateInterviewAgent = ({
     }));
 
     await voiceAssistantRef.current.speak(
-      "Welcome! I'm your agricultural assistant. I'll help you set up your farm profile by asking you a few questions. " +
+      "Welcome bestie! I'm your Gen Z farming assistant. I'll help you set up your farm profile by asking you a few questions. " +
       "This will help me give you personalized farming advice. Please speak clearly after each question. " +
-      "Let's begin!"
+      "Let's get this bread!"
     );
 
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -593,11 +391,10 @@ const CreateInterviewAgent = ({
     setDebugInfo(prev => ({ ...prev, callStatus: "GENERATING" }));
 
     await voiceAssistantRef.current.speak(
-      `Thank you for providing all your farm details! I'm now creating your personalized farming profile. ` +
+      `Thank you bestie for sharing all your farm deets! I'm now creating your personalized farming profile. ` +
       `Please wait a moment while I prepare your recommendations.`
     );
 
-    // Get or create userId
     let currentUserId = userId;
     if (!currentUserId) {
       currentUserId = localStorage.getItem('userId') || `user-${Date.now()}`;
@@ -652,16 +449,17 @@ const CreateInterviewAgent = ({
         }));
 
         await voiceAssistantRef.current.speak(
-          `Great! I've prepared ${data.count} personalized recommendations for your farm. ` +
-          `I'll now take you to the Q&A page where you can ask me anything about your crops. ` +
-          `Just speak your questions and I'll answer them with helpful information and images.`
+          `Great! I've prepared ${data.count} personalized recommendations for your farm bestie. ` +
+          `I'll now take you to the recommendations page where you can see all your tips. ` +
+          `After that, you can ask me anything about your crops!`
         );
 
-        console.log(`✅ Redirecting to interview page with session: ${data.sessionId}`);
-        toast.success(`✅ Farm profile created! Redirecting...`);
+        console.log(`✅ Redirecting to recommendations page: /interview/${data.sessionId}`);
+        toast.success(`✅ Farm profile created! Check out your recommendations!`);
 
         setTimeout(() => {
           if (data.sessionId) {
+            // 🔥 CHANGED: First go to recommendations page
             window.location.href = `/interview/${data.sessionId}`;
           } else {
             window.location.href = '/';
@@ -679,7 +477,7 @@ const CreateInterviewAgent = ({
       console.error("❌ Error creating farm session:", error);
 
       await voiceAssistantRef.current?.speak(
-        "Sorry, there was an error creating your farm profile. Please try again."
+        "Sorry bestie, there was an error creating your farm profile. Please try again."
       );
 
       toast.error(`❌ ${error.message || "Unknown error occurred"}`);
@@ -709,7 +507,6 @@ const CreateInterviewAgent = ({
 
   const skipQuestion = () => {
     if (currentStep === "configuring") {
-      // Provide smart defaults based on question type
       const defaultAnswers = [
         "maize", "long rains", "Kiambu", "Kikuyu", "Gachie",
         "maize", "2", "beans", "15", "bags",
@@ -728,59 +525,94 @@ const CreateInterviewAgent = ({
 
   const displayName = userName || "Farmer";
   const userAltText = `${displayName}'s profile picture`;
-  const aiAltText = "AI Agricultural Assistant";
+  const aiAltText = "Gen Z AI Agricultural Assistant";
+
+  // Gen Z color palette
+  const colors = {
+    primary: "from-emerald-400 via-teal-400 to-cyan-400",
+    secondary: "from-purple-400 via-pink-400 to-rose-400",
+    accent: "from-amber-400 via-orange-400 to-red-400",
+    success: "from-green-400 via-emerald-400 to-teal-400",
+    warning: "from-yellow-400 via-amber-400 to-orange-400",
+    info: "from-blue-400 via-indigo-400 to-purple-400",
+    background: "bg-gradient-to-br from-slate-50 via-white to-emerald-50",
+    card: "bg-white/80 backdrop-blur-sm border border-white/30",
+  };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className={`flex flex-col gap-6 p-4 ${colors.background} rounded-2xl min-h-screen`}>
       {/* Header */}
-      <div className="flex flex-row items-center justify-between">
-        <div className="flex flex-row items-center gap-4">
-          <Image
-            src={profileImage || "/farmer-avatar.png"}
-            alt={userAltText}
-            width={40}
-            height={40}
-            className="rounded-full object-cover size-10"
-          />
-          <div>
-            <h4 className="font-semibold">{displayName}</h4>
-            <p className="text-sm text-gray-500">🌾 Farm Profile Setup</p>
-            <p className="text-xs text-gray-400">ID: {debugInfo.userId.substring(0, 8)}...</p>
+      <div className={`${colors.card} rounded-2xl p-5 shadow-xl border border-emerald-200/50`}>
+        <div className="flex flex-row items-center justify-between">
+          <div className="flex flex-row items-center gap-4">
+            <div className="relative">
+              <Image
+                src={profileImage || "/farmer-avatar.png"}
+                alt={userAltText}
+                width={48}
+                height={48}
+                className="rounded-full object-cover size-12 ring-4 ring-emerald-200/50"
+              />
+              {debugInfo.callStatus === "CONFIGURING" && (
+                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full ring-2 ring-white animate-pulse"></span>
+              )}
+            </div>
+            <div>
+              <h4 className={`font-bold text-xl bg-gradient-to-r ${colors.primary} bg-clip-text text-transparent`}>
+                {displayName}
+              </h4>
+              <p className="text-sm text-gray-500 flex items-center gap-1">
+                <Sparkles className="w-4 h-4 text-emerald-500" />
+                Gen Z Farmer • Let's vibe 🌱
+              </p>
+              <p className="text-xs text-gray-400">ID: {debugInfo.userId.substring(0, 8)}...</p>
+            </div>
           </div>
-        </div>
 
-        <button
-          onClick={startVoiceSetup}
-          disabled={isLoading || !voiceEnabled || currentStep !== "idle"}
-          className={`px-4 py-2 rounded-lg font-medium ${
-            voiceEnabled && currentStep === "idle"
-              ? 'bg-green-600 hover:bg-green-700 text-white'
-              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-          } ${isLoading ? 'animate-pulse' : ''}`}
-        >
-          {isLoading ? (
-            <span className="flex items-center gap-2">
-              <span className="animate-spin">⏳</span>
-              Creating Profile...
-            </span>
-          ) : currentStep === "redirecting" ? (
-            "Redirecting..."
-          ) : (
-            "🌾 Start Farm Setup"
-          )}
-        </button>
+          <button
+            onClick={startVoiceSetup}
+            disabled={isLoading || !voiceEnabled || currentStep !== "idle"}
+            className={`px-6 py-3 rounded-xl font-bold transition-all duration-300 shadow-lg hover:shadow-xl ${
+              voiceEnabled && currentStep === "idle"
+                ? `bg-gradient-to-r ${colors.primary} text-white hover:scale-105`
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            } ${isLoading ? 'animate-pulse' : ''}`}
+          >
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Creating...
+              </span>
+            ) : currentStep === "redirecting" ? (
+              <span className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 animate-pulse" />
+                Redirecting...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Sprout className="w-5 h-5" />
+                Start Farm Setup
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Voice Toggle */}
-      <div className="border border-gray-300 rounded-xl p-4">
+      <div className={`${colors.card} rounded-2xl p-5 shadow-xl border border-purple-200/50`}>
         <div className="flex justify-between items-center mb-4">
-          <h4 className="font-bold">🌱 Voice Farm Setup</h4>
-          <span className={`text-sm font-medium px-2 py-1 rounded ${
-            debugInfo.callStatus === "REDIRECTING" ? 'bg-green-100 text-green-800' :
-            debugInfo.callStatus === "GENERATING" ? 'bg-blue-100 text-blue-800' :
-            debugInfo.callStatus === "CONFIGURING" ? 'bg-yellow-100 text-yellow-800' :
-            debugInfo.callStatus === "ERROR" ? 'bg-red-100 text-red-800' :
-            'bg-gray-100 text-gray-800'
+          <h4 className="font-bold text-lg flex items-center gap-2">
+            <Mic className="w-5 h-5 text-purple-500" />
+            <span className={`bg-gradient-to-r ${colors.secondary} bg-clip-text text-transparent`}>
+              Voice Mode
+            </span>
+          </h4>
+          <span className={`text-sm font-medium px-3 py-1.5 rounded-xl ${
+            debugInfo.callStatus === "REDIRECTING" ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700' :
+            debugInfo.callStatus === "GENERATING" ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700' :
+            debugInfo.callStatus === "CONFIGURING" ? 'bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700' :
+            debugInfo.callStatus === "ERROR" ? 'bg-gradient-to-r from-rose-100 to-red-100 text-red-700' :
+            'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700'
           }`}>
             {debugInfo.callStatus}
           </span>
@@ -791,32 +623,49 @@ const CreateInterviewAgent = ({
           initialEnabled={voiceEnabled}
         />
 
-        <div className="mt-4 text-sm text-gray-600 space-y-1">
-          <p>• I'll ask you about your farm, crops, and livestock</p>
-          <p>• Answer each question by voice</p>
-          <p>• Get personalized farming recommendations</p>
-          <p className="text-green-600 font-medium">• Then ask any farming questions by voice!</p>
+        <div className="mt-4 text-sm text-gray-600 space-y-2">
+          <p className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
+            I'll ask you about your farm, crops, and livestock
+          </p>
+          <p className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
+            Answer each question by voice
+          </p>
+          <p className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-pink-400 rounded-full"></span>
+            Get personalized farming recommendations
+          </p>
+          <p className="flex items-center gap-2 font-medium text-emerald-600">
+            <Zap className="w-4 h-4" />
+            Then ask unlimited questions on next page!
+          </p>
         </div>
       </div>
 
       {/* Current Question Status */}
       {currentStep === "configuring" && (
-        <div className="border border-green-200 bg-green-50 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+        <div className="bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-5 shadow-xl border border-green-200 animate-fade-in">
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`w-8 h-8 bg-gradient-to-r ${colors.primary} text-white rounded-xl flex items-center justify-center text-sm font-bold shadow-md`}>
               {debugInfo.currentQuestion}
             </div>
-            <h4 className="font-bold text-green-800">Question {debugInfo.currentQuestion} of {debugInfo.totalQuestions}</h4>
+            <h4 className="font-bold text-lg text-emerald-800">
+              Question {debugInfo.currentQuestion} of {debugInfo.totalQuestions}
+            </h4>
           </div>
-          <p className="text-green-900 mb-3">{configQuestions[configStep]?.question}</p>
+          <p className="text-emerald-900 mb-4 text-lg">{configQuestions[configStep]?.question}</p>
 
           {userTranscript && (
-            <div className="mt-3 p-3 bg-white border border-green-100 rounded-lg mb-3">
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-sm font-medium text-green-700">Your Answer:</span>
+            <div className="mt-4 p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-emerald-200 mb-4">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-sm font-medium text-emerald-700 flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" />
+                  Your Answer:
+                </span>
                 <button
                   onClick={() => setUserTranscript("")}
-                  className="text-xs text-gray-500 hover:text-gray-700"
+                  className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 bg-white rounded-lg"
                 >
                   Clear
                 </button>
@@ -826,9 +675,9 @@ const CreateInterviewAgent = ({
           )}
 
           {debugInfo.isListening && (
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-4 flex items-center gap-3 p-3 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl">
               <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-red-600">🎤 Listening... Speak now</span>
+              <span className="text-sm font-medium text-red-600">🎤 Listening... Spill the tea!</span>
             </div>
           )}
         </div>
@@ -836,42 +685,61 @@ const CreateInterviewAgent = ({
 
       {/* Summary Panel */}
       {currentStep === "configuring" && (
-        <div className="border border-purple-200 bg-purple-50 rounded-xl p-4">
-          <h4 className="font-bold text-purple-800 mb-2">📋 Your Farm Profile So Far</h4>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div><span className="font-medium">Crops:</span> {farmerDetails.crops || "⏳"}</div>
-            <div><span className="font-medium">County:</span> {farmerDetails.county || "⏳"}</div>
-            <div><span className="font-medium">Acres:</span> {farmerDetails.acres || "⏳"}</div>
-            <div><span className="font-medium">Cattle:</span> {farmerDetails.cattle || "⏳"}</div>
+        <div className="bg-gradient-to-r from-purple-50 via-pink-50 to-rose-50 rounded-2xl p-5 shadow-xl border border-purple-200">
+          <h4 className="font-bold text-lg mb-3 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-purple-500" />
+            <span className={`bg-gradient-to-r ${colors.secondary} bg-clip-text text-transparent`}>
+              Your Farm Profile So Far
+            </span>
+          </h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white/60 backdrop-blur-sm p-2 rounded-lg">
+              <span className="font-medium text-emerald-600">Crops:</span> {farmerDetails.crops || "⏳"}
+            </div>
+            <div className="bg-white/60 backdrop-blur-sm p-2 rounded-lg">
+              <span className="font-medium text-blue-600">County:</span> {farmerDetails.county || "⏳"}
+            </div>
+            <div className="bg-white/60 backdrop-blur-sm p-2 rounded-lg">
+              <span className="font-medium text-amber-600">Acres:</span> {farmerDetails.acres || "⏳"}
+            </div>
+            <div className="bg-white/60 backdrop-blur-sm p-2 rounded-lg">
+              <span className="font-medium text-purple-600">Cattle:</span> {farmerDetails.cattle || "⏳"}
+            </div>
           </div>
-          <p className="text-xs text-purple-600 mt-2">
+          <p className="text-xs text-purple-600 mt-3 flex items-center gap-1">
+            <Heart className="w-3 h-3" />
             {debugInfo.currentQuestion}/{configQuestions.length} questions answered
           </p>
         </div>
       )}
 
       {/* Status Panel with Buttons */}
-      <div className="border border-gray-300 rounded-xl p-4">
-        <h4 className="font-bold text-lg mb-4">📊 Setup Status</h4>
+      <div className={`${colors.card} rounded-2xl p-5 shadow-xl border border-gray-200/50`}>
+        <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
+          <Zap className="w-5 h-5 text-amber-500" />
+          <span className={`bg-gradient-to-r ${colors.accent} bg-clip-text text-transparent`}>
+            Setup Status
+          </span>
+        </h4>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <div className="text-sm text-gray-500">Progress</div>
-            <div className="font-bold text-gray-800">
+          <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-3 border border-gray-200">
+            <div className="text-xs text-gray-500 mb-1">Progress</div>
+            <div className="font-bold text-lg text-gray-800">
               {debugInfo.currentQuestion}/{debugInfo.totalQuestions}
             </div>
           </div>
 
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <div className="text-sm text-gray-500">Voice</div>
-            <div className={`font-bold ${voiceEnabled ? 'text-green-600' : 'text-red-600'}`}>
+          <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-3 border border-gray-200">
+            <div className="text-xs text-gray-500 mb-1">Voice</div>
+            <div className={`font-bold text-lg ${voiceEnabled ? 'text-green-600' : 'text-red-600'}`}>
               {voiceEnabled ? "ON" : "OFF"}
             </div>
           </div>
 
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <div className="text-sm text-gray-500">Mode</div>
-            <div className={`font-bold ${
+          <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-3 border border-gray-200">
+            <div className="text-xs text-gray-500 mb-1">Mode</div>
+            <div className={`font-bold text-lg ${
               debugInfo.voiceMode === "REAL" ? 'text-green-600' : 'text-yellow-600'
             }`}>
               {debugInfo.voiceMode}
@@ -881,9 +749,9 @@ const CreateInterviewAgent = ({
 
         {/* Progress Bar */}
         <div className="mt-4">
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div className="w-full bg-gray-200 rounded-full h-3">
             <div
-              className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
+              className={`bg-gradient-to-r ${colors.primary} h-3 rounded-full transition-all duration-500`}
               style={{
                 width: currentStep === "idle" ? "0%" :
                        currentStep === "configuring" ? `${(debugInfo.currentQuestion / debugInfo.totalQuestions) * 100}%` :
@@ -895,13 +763,13 @@ const CreateInterviewAgent = ({
         </div>
 
         {/* Control Buttons */}
-        <div className="flex flex-wrap gap-2 mt-4">
+        <div className="flex flex-wrap gap-3 mt-4">
           <button
             onClick={startVoiceSetup}
             disabled={isLoading || !voiceEnabled || currentStep !== "idle"}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
           >
-            <span>🌾</span>
+            <Sprout className="w-4 h-4" />
             {currentStep === "idle" ? "Start Farm Setup" : "In Progress"}
           </button>
 
@@ -909,7 +777,7 @@ const CreateInterviewAgent = ({
             <button
               onClick={stopEverything}
               disabled={isSpeaking}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center gap-2 disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-500 text-white font-medium hover:from-rose-600 hover:to-red-600 flex items-center gap-2 disabled:opacity-50 shadow-lg hover:shadow-xl transition-all"
             >
               <span>🛑</span>
               Stop Setup
@@ -920,9 +788,9 @@ const CreateInterviewAgent = ({
             <button
               onClick={submitAnswer}
               disabled={!userTranscript.trim()}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 text-white font-medium hover:from-emerald-600 hover:to-green-600 disabled:opacity-50 flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
             >
-              <span>✅</span>
+              <Send className="w-4 h-4" />
               Submit Answer
             </button>
           )}
@@ -930,9 +798,9 @@ const CreateInterviewAgent = ({
           {currentStep === "configuring" && (
             <button
               onClick={skipQuestion}
-              className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium hover:from-amber-600 hover:to-orange-600 flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
             >
-              <span>⏭️</span>
+              <ArrowRight className="w-4 h-4" />
               Skip Question
             </button>
           )}
@@ -940,35 +808,46 @@ const CreateInterviewAgent = ({
       </div>
 
       {/* AI Assistant */}
-      <div className="border border-gray-300 rounded-xl p-4">
+      <div className={`${colors.card} rounded-2xl p-4 shadow-xl border border-purple-200/50`}>
         <div className="flex flex-row items-center gap-4">
-          <Image
-            src="/farmer-assistant.jpg"
-            alt={aiAltText}
-            width={40}
-            height={40}
-            className="rounded-full object-cover size-10"
-          />
+          <div className="relative">
+            <Image
+              src="/farmer-assistant.jpg"
+              alt={aiAltText}
+              width={48}
+              height={48}
+              className="rounded-full object-cover size-12 ring-4 ring-purple-200/50"
+            />
+            {isSpeaking && (
+              <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center animate-pulse">
+                <span className="text-[10px] text-white">🔊</span>
+              </span>
+            )}
+          </div>
           <div className="flex-1">
-            <h4 className="font-semibold">🌾 Agricultural Assistant</h4>
+            <h4 className={`font-bold text-lg bg-gradient-to-r ${colors.secondary} bg-clip-text text-transparent`}>
+              🌱 Gen Z Farmer AI
+            </h4>
             <p className="text-gray-600">
               {currentStep === "idle"
-                ? "Ready to learn about your farm"
+                ? "Ready to learn about your farm bestie!"
                 : currentStep === "configuring"
                 ? `Asking question ${debugInfo.currentQuestion} of ${debugInfo.totalQuestions}`
                 : currentStep === "generating"
                 ? "Creating your personalized farm profile..."
                 : currentStep === "redirecting"
-                ? "Taking you to the Q&A page..."
+                ? "Taking you to your recommendations..."
                 : "Error occurred"}
             </p>
             {debugInfo.isListening && (
-              <p className="text-sm text-blue-600 mt-1 animate-pulse">
-                🎤 I'm listening to your answer...
+              <p className="text-sm text-blue-600 mt-1 animate-pulse flex items-center gap-1">
+                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                🎤 Listening to your answer...
               </p>
             )}
             {isSpeaking && (
-              <p className="text-sm text-purple-600 mt-1 animate-pulse">
+              <p className="text-sm text-purple-600 mt-1 animate-pulse flex items-center gap-1">
+                <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
                 🔊 Speaking...
               </p>
             )}
@@ -977,16 +856,35 @@ const CreateInterviewAgent = ({
       </div>
 
       {/* Instructions */}
-      <div className="border border-gray-300 rounded-xl p-4">
-        <h4 className="font-bold mb-3">📋 How It Works:</h4>
-        <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
-          <li><span className="font-medium">Turn on Voice Mode</span> above</li>
-          <li><span className="font-medium">Click "Start Farm Setup"</span></li>
-          <li><span className="font-medium">Answer questions</span> about your farm by voice</li>
-          <li><span className="font-medium">Get personalized recommendations</span></li>
-          <li><span className="font-medium">Ask any farming question</span> on the next page</li>
-          <li><span className="font-medium">Receive answers with images</span> from our knowledge base</li>
-        </ol>
+      <div className={`${colors.card} rounded-2xl p-5 shadow-xl border border-emerald-200/50`}>
+        <h4 className="font-bold text-lg mb-3 flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-emerald-500" />
+          <span className={`bg-gradient-to-r ${colors.primary} bg-clip-text text-transparent`}>
+            How It Works
+          </span>
+        </h4>
+        <div className="space-y-3 text-sm text-gray-700">
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">1</div>
+            <p><span className="font-medium">Turn on Voice Mode</span> above</p>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">2</div>
+            <p><span className="font-medium">Click "Start Farm Setup"</span></p>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 bg-gradient-to-r from-amber-400 to-orange-400 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">3</div>
+            <p><span className="font-medium">Answer questions</span> about your farm by voice</p>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">4</div>
+            <p><span className="font-medium">Get personalized recommendations</span> on next page</p>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">5</div>
+            <p><span className="font-medium">Ask any farming question</span> with voice on Q&A page!</p>
+          </div>
+        </div>
       </div>
     </div>
   );
