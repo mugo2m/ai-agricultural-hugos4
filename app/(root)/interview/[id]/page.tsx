@@ -88,23 +88,6 @@ const InterviewDetails = async ({ params }: RouteParams) => {
         </div>
       </div>
 
-      {/* Recommendations Banner */}
-      {session.recommendations && session.recommendations.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-          <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
-            <span>📋</span> Your Personalized Recommendations
-          </h4>
-          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-            {session.recommendations.slice(0, 2).map((rec: string, idx: number) => (
-              <li key={idx}>{rec}</li>
-            ))}
-            {session.recommendations.length > 2 && (
-              <li className="text-blue-600">+ {session.recommendations.length - 2} more recommendations available</li>
-            )}
-          </ul>
-        </div>
-      )}
-
       {/* Agent Component - Now configured for farmer Q&A */}
       <Agent
         userName={user?.name || "Farmer"}

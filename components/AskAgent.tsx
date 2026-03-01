@@ -418,42 +418,6 @@ const AskAgent = ({
         </div>
       </div>
 
-      {/* Recommendations Panel - Rainbow colored */}
-      {showRecommendations && recommendations.length > 0 && (
-        <div className="bg-gradient-to-r from-indigo-100 via-purple-100 to-pink-100 rounded-2xl p-5 border-2 border-purple-300 shadow-xl animate-fade-in">
-          <h3 className="font-bold text-lg mb-3 flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            <Gem className="w-5 h-5 text-purple-500" />
-            Your Personalized Farming Gems
-          </h3>
-          <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-            {recommendations.map((rec, idx) => {
-              const gradients = [
-                "from-emerald-100 to-teal-100 border-emerald-300",
-                "from-blue-100 to-indigo-100 border-blue-300",
-                "from-purple-100 to-pink-100 border-purple-300",
-                "from-amber-100 to-orange-100 border-amber-300",
-                "from-rose-100 to-red-100 border-rose-300"
-              ];
-              return (
-                <div key={idx} className={`bg-gradient-to-r ${gradients[idx % gradients.length]} p-4 rounded-xl border-2 shadow-md hover:shadow-lg transition-all duration-300`}>
-                  <div className="flex items-start gap-3">
-                    <span className={`bg-gradient-to-r ${
-                      idx === 0 ? 'from-emerald-500 to-teal-500' :
-                      idx === 1 ? 'from-blue-500 to-indigo-500' :
-                      idx === 2 ? 'from-purple-500 to-pink-500' :
-                      idx === 3 ? 'from-amber-500 to-orange-500' :
-                      'from-rose-500 to-red-500'
-                    } text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold shadow-md flex-shrink-0`}>
-                      {idx + 1}
-                    </span>
-                    <p className="text-gray-800">{rec}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Voice Toggle - Cosmic theme */}
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-5 shadow-xl border-2 border-white/30">

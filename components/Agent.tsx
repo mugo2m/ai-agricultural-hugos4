@@ -1,4 +1,4 @@
-// components/Agent.tsx - FINAL VERSION (NO DUPLICATES, ONLY KARAOKE)
+// components/Agent.tsx - RECOMMENDATIONS ACCUMULATE (NO DUPLICATES)
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -42,6 +42,9 @@ const Agent = ({
   const [isLoading, setIsLoading] = useState(false);
   const [welcomeSpoken, setWelcomeSpoken] = useState(false);
   const [recommendationsSpoken, setRecommendationsSpoken] = useState(false);
+
+  // Track which recommendations have been read
+  const [readRecommendations, setReadRecommendations] = useState<Set<number>>(new Set());
 
   // Karaoke streaming for recommendations
   const [recommendationStreams, setRecommendationStreams] = useState<{[key: number]: string}>({});
@@ -140,6 +143,7 @@ const Agent = ({
   const streamRecommendationKaraoke = async (recommendation: string, index: number) => {
     if (!voiceEnabled || !window.speechSynthesis) {
       setRecommendationStreams(prev => ({ ...prev, [index]: recommendation }));
+      setReadRecommendations(prev => new Set(prev).add(index));
       return;
     }
 
@@ -168,12 +172,15 @@ const Agent = ({
     };
 
     utterance.onend = () => {
+      // Mark as read and keep full text
       setRecommendationStreams(prev => ({ ...prev, [index]: recommendation }));
+      setReadRecommendations(prev => new Set(prev).add(index));
       setActiveStreamingRec(null);
     };
 
     utterance.onerror = () => {
       setRecommendationStreams(prev => ({ ...prev, [index]: recommendation }));
+      setReadRecommendations(prev => new Set(prev).add(index));
       setActiveStreamingRec(null);
     };
 
@@ -186,6 +193,7 @@ const Agent = ({
 
     setRecommendationsSpoken(true);
     setRecommendationStreams({});
+    setReadRecommendations(new Set());
 
     await speakStreaming("I've got some fire recommendations for your farm. Let me drop them for you.");
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -394,7 +402,7 @@ const Agent = ({
         )}
       </div>
 
-      {/* ========== ONLY KARAOKE RECOMMENDATIONS - STATIC BLOCK REMOVED ========== */}
+      {/* ========== KARAOKE RECOMMENDATIONS - ACCUMULATE AFTER READING ========== */}
       {sessionData && sessionData.recommendations && sessionData.recommendations.length > 0 && (
         <div className="bg-white rounded-2xl p-6 border-2 border-purple-200 shadow-xl">
           <h3 className="font-bold text-2xl mb-4 flex items-center gap-2 text-purple-800">
@@ -410,8 +418,14 @@ const Agent = ({
 
           <div className="space-y-4">
             {sessionData.recommendations.map((rec: string, idx: number) => {
-              const streamingText = recommendationStreams[idx] || "";
+              const streamingText = recommendationStreams[idx];
               const isActive = activeStreamingRec === idx;
+              const isRead = readRecommendations.has(idx);
+
+              // Show if currently streaming OR already read
+              if (!streamingText && !isRead && !isActive) return null;
+
+              const displayText = streamingText || rec;
 
               return (
                 <div
@@ -420,7 +434,7 @@ const Agent = ({
                     rounded-xl p-5 transition-all duration-300 border-2
                     ${isActive
                       ? 'bg-purple-100 border-purple-500 shadow-2xl scale-105'
-                      : streamingText
+                      : isRead
                         ? 'bg-purple-50 border-purple-300'
                         : 'bg-gray-50 border-gray-200'
                     }
@@ -436,22 +450,16 @@ const Agent = ({
 
                     <div className="flex-1">
                       <div className="min-h-[60px]">
-                        {streamingText ? (
-                          <p className="text-xl text-gray-800 leading-relaxed">
-                            {streamingText.split(' ').map((word, wordIdx, arr) => (
-                              <span key={wordIdx}>
-                                <span className={isActive ? "text-purple-900 font-bold" : "text-gray-700"}>
-                                  {word}
-                                </span>
-                                {wordIdx < arr.length - 1 ? ' ' : ''}
+                        <p className="text-xl text-gray-800 leading-relaxed">
+                          {displayText.split(' ').map((word, wordIdx, arr) => (
+                            <span key={wordIdx}>
+                              <span className={isActive ? "text-purple-900 font-bold" : "text-gray-700"}>
+                                {word}
                               </span>
-                            ))}
-                          </p>
-                        ) : (
-                          <p className="text-lg text-gray-500">
-                            {isActive ? '🎤 Speaking...' : rec.substring(0, 100) + '...'}
-                          </p>
-                        )}
+                              {wordIdx < arr.length - 1 ? ' ' : ''}
+                            </span>
+                          ))}
+                        </p>
                       </div>
 
                       {isActive && recWordsRef.current[idx] && (
@@ -460,20 +468,14 @@ const Agent = ({
                             <div
                               className="h-full bg-purple-600 transition-all duration-150"
                               style={{
-                                width: `${(streamingText.split(' ').length / recWordsRef.current[idx].length) * 100}%`
+                                width: `${(streamingText?.split(' ').length || 0 / recWordsRef.current[idx].length) * 100}%`
                               }}
                             />
                           </div>
                           <span className="text-sm text-purple-700 font-medium">
-                            {streamingText.split(' ').length}/{recWordsRef.current[idx].length} words
+                            {streamingText?.split(' ').length || 0}/{recWordsRef.current[idx].length} words
                           </span>
                         </div>
-                      )}
-
-                      {recommendationStreams[idx] === rec && !isActive && (
-                        <p className="text-base text-gray-700 mt-2">
-                          {rec}
-                        </p>
                       )}
                     </div>
                   </div>

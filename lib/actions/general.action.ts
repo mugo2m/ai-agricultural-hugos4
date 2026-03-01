@@ -2,6 +2,9 @@
 
 import { db } from "@/firebase/admin";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { hybridSearch } from "@/lib/rag/hybridSearch";
+import { CacheManager } from "@/lib/rag/cacheManager";
+import { generateEmbedding } from "@/lib/rag/embeddings";
 
 let genAI: GoogleGenerativeAI | null = null;
 try {
@@ -17,7 +20,7 @@ function cleanGeminiJson(text: string) {
   return text.replace(/```json/g, "").replace(/```/g, "").trim();
 }
 
-// 🌾 NEW: Build Q&A history from farmer session
+// 🌾 Build Q&A history from farmer session
 function buildFarmerQaHistory(messages: any[]) {
   const pairs: { question: string; answer: string }[] = [];
 
@@ -37,7 +40,7 @@ function buildFarmerQaHistory(messages: any[]) {
   return pairs;
 }
 
-// 🌾 NEW: Generate farmer session summary
+// 🌾 ENHANCED: Generate farmer session summary with RAG
 export async function generateFarmerSessionSummary(params: {
   sessionId: string;
   userId: string;
@@ -46,13 +49,20 @@ export async function generateFarmerSessionSummary(params: {
   const { sessionId, userId, messages } = params;
 
   try {
-    // Get farmer session details
-    const sessionDoc = await db.collection("farmer_sessions").doc(sessionId).get();
-    if (!sessionDoc.exists) {
+    // Get farmer session details (cached)
+    const session = await CacheManager.getOrSet(
+      `session:${sessionId}`,
+      async () => {
+        const sessionDoc = await db.collection("farmer_sessions").doc(sessionId).get();
+        return sessionDoc.data() || null;
+      },
+      3600 // 1 hour cache
+    );
+
+    if (!session) {
       throw new Error("Session not found");
     }
 
-    const session = sessionDoc.data();
     const qaPairs = buildFarmerQaHistory(messages);
 
     if (qaPairs.length === 0) {
@@ -61,6 +71,13 @@ export async function generateFarmerSessionSummary(params: {
         error: "No Q&A history found"
       };
     }
+
+    // 🔍 RAG ENHANCEMENT: Retrieve relevant knowledge for summary
+    const topics = qaPairs.map(p => p.question).join(' ');
+    const relevantKnowledge = await hybridSearch(topics, {
+      cropType: session?.crops || [],
+      region: session?.county
+    });
 
     let summary = null;
     let source = "fallback";
@@ -71,10 +88,14 @@ export async function generateFarmerSessionSummary(params: {
           .map((pair, index) => `Q${index + 1}: ${pair.question}\nA${index + 1}: ${pair.answer}\n`)
           .join("");
 
+        const knowledgeContext = relevantKnowledge
+          .map(k => k.content)
+          .join('\n\n');
+
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `
-You are an agricultural extension officer. Based on this farmer's Q&A session, provide a helpful summary.
+You are an agricultural extension officer. Based on this farmer's Q&A session AND retrieved knowledge, provide a helpful summary.
 
 FARMER DETAILS:
 - Crops: ${session?.crops?.join(", ") || "Not specified"}
@@ -85,9 +106,12 @@ FARMER DETAILS:
 SESSION HISTORY:
 ${formattedHistory}
 
+RETRIEVED KNOWLEDGE (use to enhance recommendations):
+${knowledgeContext || "No specific knowledge retrieved."}
+
 INSTRUCTIONS:
 1. Summarize what the farmer learned in 3-4 sentences
-2. Provide 3 follow-up recommendations based on their questions
+2. Provide 3 follow-up recommendations based on their questions AND retrieved knowledge
 3. Highlight any crops or topics they asked about most
 4. Suggest what they should ask about next
 
@@ -106,7 +130,7 @@ Return as JSON with this structure:
 
         try {
           summary = JSON.parse(text);
-          source = "gemini";
+          source = "gemini-rag";
         } catch (parseError) {
           console.error("❌ Failed to parse Gemini response:", parseError);
         }
@@ -118,11 +142,11 @@ Return as JSON with this structure:
     // Fallback summary if Gemini fails
     if (!summary) {
       summary = {
-        summary: `You asked ${qaPairs.length} questions about ${session?.crops?.join(", ") || "your crops"}. The assistant provided information on farming practices, pest management, and crop care.`,
+        summary: `You asked ${qaPairs.length} questions about ${session?.crops?.join(", ") || "your crops"}. The assistant provided information based on our knowledge base.`,
         recommendations: [
-          "Consider asking about optimal planting times for your specific location",
-          "Learn about integrated pest management for your main crops",
-          "Ask about soil testing services in your area"
+          `Learn more about pest management for ${session?.crops?.[0] || "your crops"}`,
+          `Ask about optimal planting times for ${session?.county || "your location"}`,
+          `Explore soil testing options in your area`
         ],
         topics: session?.crops || ["general farming"],
         nextSteps: "Continue asking questions about your specific crops and challenges."
@@ -140,6 +164,7 @@ Return as JSON with this structure:
       topics: summary.topics,
       nextSteps: summary.nextSteps,
       questionCount: qaPairs.length,
+      ragUsed: relevantKnowledge.length > 0,
       createdAt: new Date().toISOString(),
       source
     });
@@ -156,7 +181,7 @@ Return as JSON with this structure:
   }
 }
 
-// 🌾 NEW: Get farmer session by ID
+// 🌾 ENHANCED: Get farmer session by ID with caching
 export async function getFarmerSessionById(id: string): Promise<any> {
   if (!id || typeof id !== 'string' || id.trim() === '') {
     console.error("Invalid session ID provided:", id);
@@ -164,15 +189,21 @@ export async function getFarmerSessionById(id: string): Promise<any> {
   }
 
   try {
-    const session = await db.collection("farmer_sessions").doc(id).get();
-    return session.data() || null;
+    return await CacheManager.getOrSet(
+      `session:${id}`,
+      async () => {
+        const session = await db.collection("farmer_sessions").doc(id).get();
+        return session.data() || null;
+      },
+      3600 // 1 hour
+    );
   } catch (error) {
     console.error("Error fetching farmer session:", error);
     return null;
   }
 }
 
-// 🌾 NEW: Get farmer sessions by user ID
+// 🌾 ENHANCED: Get farmer sessions by user ID with caching
 export async function getFarmerSessionsByUserId(userId: string): Promise<any[]> {
   if (!userId) {
     console.log("No userId provided, returning empty array");
@@ -180,23 +211,29 @@ export async function getFarmerSessionsByUserId(userId: string): Promise<any[]> 
   }
 
   try {
-    const sessions = await db
-      .collection("farmer_sessions")
-      .where("userId", "==", userId)
-      .orderBy("createdAt", "desc")
-      .get();
+    return await CacheManager.getOrSet(
+      `user-sessions:${userId}`,
+      async () => {
+        const sessions = await db
+          .collection("farmer_sessions")
+          .where("userId", "==", userId)
+          .orderBy("createdAt", "desc")
+          .get();
 
-    return sessions.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+        return sessions.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+      },
+      1800 // 30 minutes
+    );
   } catch (error) {
     console.error("Error fetching farmer sessions:", error);
     return [];
   }
 }
 
-// 🌾 NEW: Get session summary
+// 🌾 ENHANCED: Get session summary with caching
 export async function getSessionSummary(params: {
   sessionId: string;
   userId: string;
@@ -208,33 +245,41 @@ export async function getSessionSummary(params: {
   }
 
   try {
-    const summaries = await db
-      .collection("farmer_sessions")
-      .doc(sessionId)
-      .collection("summaries")
-      .orderBy("createdAt", "desc")
-      .limit(1)
-      .get();
+    return await CacheManager.getOrSet(
+      `summary:${sessionId}`,
+      async () => {
+        const summaries = await db
+          .collection("farmer_sessions")
+          .doc(sessionId)
+          .collection("summaries")
+          .orderBy("createdAt", "desc")
+          .limit(1)
+          .get();
 
-    if (summaries.empty) return null;
+        if (summaries.empty) return null;
 
-    const summaryDoc = summaries.docs[0];
-    return { id: summaryDoc.id, ...summaryDoc.data() };
+        const summaryDoc = summaries.docs[0];
+        return { id: summaryDoc.id, ...summaryDoc.data() };
+      },
+      86400 // 24 hours
+    );
   } catch (error) {
     console.error("Error fetching session summary:", error);
     return null;
   }
 }
 
-// 🌾 NEW: Save farmer query
+// 🌾 ENHANCED: Save farmer query with RAG metadata
 export async function saveFarmerQuery(params: {
   sessionId: string;
   userId: string;
   question: string;
   answer: string;
   images?: any[];
+  ragUsed?: boolean;
+  chunksUsed?: number;
 }) {
-  const { sessionId, userId, question, answer, images } = params;
+  const { sessionId, userId, question, answer, images, ragUsed, chunksUsed } = params;
 
   try {
     const queryRef = db.collection("farmer_sessions").doc(sessionId).collection("queries").doc();
@@ -246,6 +291,8 @@ export async function saveFarmerQuery(params: {
       question,
       answer,
       images: images || [],
+      ragUsed: ragUsed || false,
+      chunksUsed: chunksUsed || 0,
       timestamp: new Date().toISOString()
     });
 
@@ -255,6 +302,9 @@ export async function saveFarmerQuery(params: {
       lastQueryAt: new Date().toISOString()
     });
 
+    // Invalidate session cache
+    await CacheManager.invalidate(`session:${sessionId}`);
+
     return { success: true, queryId: queryRef.id };
   } catch (error) {
     console.error("Error saving farmer query:", error);
@@ -262,7 +312,7 @@ export async function saveFarmerQuery(params: {
   }
 }
 
-// 🌾 NEW: Get session queries
+// 🌾 ENHANCED: Get session queries with caching
 export async function getSessionQueries(params: {
   sessionId: string;
   userId: string;
@@ -275,30 +325,51 @@ export async function getSessionQueries(params: {
   }
 
   try {
-    const queries = await db
-      .collection("farmer_sessions")
-      .doc(sessionId)
-      .collection("queries")
-      .orderBy("timestamp", "asc")
-      .limit(limit)
-      .get();
+    return await CacheManager.getOrSet(
+      `queries:${sessionId}`,
+      async () => {
+        const queries = await db
+          .collection("farmer_sessions")
+          .doc(sessionId)
+          .collection("queries")
+          .orderBy("timestamp", "asc")
+          .limit(limit)
+          .get();
 
-    return queries.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+        return queries.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      },
+      300 // 5 minutes (queries update frequently)
+    );
   } catch (error) {
     console.error("Error fetching session queries:", error);
     return [];
   }
 }
 
-// 🌾 KEEP EXISTING INTERVIEW FUNCTIONS BUT RENAME FOR CLARITY
-// (These are kept but marked as deprecated - you can remove them later)
+// 🌾 NEW: Search farming knowledge base
+export async function searchFarmingKnowledge(
+  query: string,
+  filters?: {
+    cropType?: string[];
+    region?: string;
+    category?: string;
+  }
+) {
+  try {
+    const results = await hybridSearch(query, filters);
+    return { success: true, results };
+  } catch (error: any) {
+    console.error("Knowledge search failed:", error);
+    return { success: false, error: error.message };
+  }
+}
 
-/** @deprecated Use getFarmerSessionById instead */
+// 🌾 Keep existing functions with deprecation warnings
 export async function getInterviewById(id: string): Promise<any> {
-  console.warn("⚠️ getInterviewById is deprecated. Use getFarmerSessionById for farmer data.");
+  console.warn("⚠️ getInterviewById is deprecated. Use getFarmerSessionById instead.");
   if (!id) return null;
   try {
     const interview = await db.collection("interviews").doc(id).get();
@@ -308,9 +379,8 @@ export async function getInterviewById(id: string): Promise<any> {
   }
 }
 
-/** @deprecated Use getFarmerSessionsByUserId instead */
 export async function getInterviewsByUserId(userId: string): Promise<any[]> {
-  console.warn("⚠️ getInterviewsByUserId is deprecated. Use getFarmerSessionsByUserId for farmer data.");
+  console.warn("⚠️ getInterviewsByUserId is deprecated. Use getFarmerSessionsByUserId instead.");
   if (!userId) return [];
   try {
     const interviews = await db.collection("interviews").where("userId", "==", userId).orderBy("createdAt", "desc").get();
@@ -320,9 +390,8 @@ export async function getInterviewsByUserId(userId: string): Promise<any[]> {
   }
 }
 
-// 🌾 KEEP THESE IF NEEDED FOR BACKWARD COMPATIBILITY
 export async function getFeedbackByInterviewId(params: any): Promise<any> {
-  return null; // Deprecated
+  return null;
 }
 
 export async function createFeedback(params: any): Promise<any> {

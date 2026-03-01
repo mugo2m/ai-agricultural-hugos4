@@ -95,6 +95,16 @@ export default async function AskPage({ params }: { params: { id: string } }) {
       hasRecommendations: sessionData?.recommendations?.length || 0
     });
 
+    // 🔥 FIX: Remove duplicate recommendations
+    let recommendations = sessionData?.recommendations || [];
+
+    // Remove duplicates by converting to Set and back
+    if (recommendations.length > 0) {
+      const uniqueSet = new Set(recommendations);
+      recommendations = Array.from(uniqueSet);
+      console.log(`✅ Deduplicated recommendations: ${recommendations.length} unique items (was ${sessionData?.recommendations?.length})`);
+    }
+
     // Fetch user data if needed
     let userName = 'Farmer';
     const userId_field = sessionData?.user_id || sessionData?.userId;
@@ -118,7 +128,7 @@ export default async function AskPage({ params }: { params: { id: string } }) {
           userId={userId_field}
           sessionId={sessionId}
           sessionData={sessionData?.session_data || sessionData}
-          recommendations={sessionData?.recommendations || []}
+          recommendations={recommendations}  // 🔥 NOW USING DEDUPLICATED ARRAY
         />
       </div>
     );
