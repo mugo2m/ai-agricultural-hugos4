@@ -1,4 +1,4 @@
-const API_KEY = "AIzaSyCBA9L7VhWNA1KJyvMX-Z_DLE4oEIw6Xp0"; // ⬅️ Keep your actual key here
+const API_KEY = "AIzaSyDXkNKnIRUNKwJKoHwI669OX_PvWYefQ84"; // ⬅️ Keep your actual key here
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 

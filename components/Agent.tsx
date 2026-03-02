@@ -1,4 +1,4 @@
-// components/Agent.tsx - RECOMMENDATIONS ACCUMULATE (NO DUPLICATES)
+// components/Agent.tsx - UPDATED VERSION WITH BETTER FILTERING
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -17,7 +17,33 @@ import {
   MapPin,
   ArrowLeft,
   MessageCircle,
-  ArrowRight
+  ArrowRight,
+  DollarSign,
+  TrendingUp,
+  Package,
+  Tractor,
+  Droplets,
+  Sun,
+  Leaf,
+  Flower2,
+  Wheat,
+  Coffee,
+  Apple,
+  Heart,
+  BarChart3,
+  Table,
+  Calculator,
+  Wallet,
+  ChevronRight,
+  Download,
+  Share2,
+  Beaker,
+  FlaskConical,
+  AlertCircle,
+  CheckCircle2,
+  VolumeX,
+  Pause,
+  Play
 } from "lucide-react";
 
 interface AgentProps {
@@ -42,6 +68,8 @@ const Agent = ({
   const [isLoading, setIsLoading] = useState(false);
   const [welcomeSpoken, setWelcomeSpoken] = useState(false);
   const [recommendationsSpoken, setRecommendationsSpoken] = useState(false);
+  const [showFinancials, setShowFinancials] = useState(false);
+  const [filteredRecommendations, setFilteredRecommendations] = useState<any[]>([]);
 
   // Track which recommendations have been read
   const [readRecommendations, setReadRecommendations] = useState<Set<number>>(new Set());
@@ -55,6 +83,47 @@ const Agent = ({
   const voiceServiceRef = useRef<VoiceService | null>(null);
   const mountedRef = useRef(true);
   const voiceServiceInitializedRef = useRef(false);
+
+  // Soil test data
+  const soilTest = sessionData?.soilTest;
+  const hasSoilTest = soilTest && soilTest.testDate;
+  const interventions = soilTest?.interventions || [];
+  const fertilizerPlan = soilTest?.fertilizerPlan;
+
+  // ============ FILTER RECOMMENDATIONS ON MOUNT - IMPROVED VERSION ============
+  useEffect(() => {
+    if (sessionData?.recommendations) {
+      console.log("Raw recommendations:", sessionData.recommendations);
+
+      // Filter out JSON artifacts and get only real recommendations
+      const filtered = sessionData.recommendations.filter((rec: any) => {
+        if (typeof rec !== 'string') return false;
+        const text = rec.trim();
+
+        // Log each recommendation for debugging
+        console.log(`Checking rec: "${text.substring(0, 50)}..."`);
+
+        // Keep recommendations that:
+        // 1. Are long enough (more than 20 chars)
+        if (text.length < 20) return false;
+
+        // 2. Don't contain JSON artifacts
+        if (text.includes('"recommendations"')) return false;
+        if (text.match(/^\[\s*$/)) return false;
+
+        // 3. Actually look like recommendations (contain words and punctuation)
+        if (!/[A-Za-z]/.test(text)) return false;
+
+        // 4. Should have some structure - either starts with ** or has a colon
+        if (!text.includes('**') && !text.includes(':')) return false;
+
+        return true;
+      });
+
+      console.log("Filtered recommendations:", filtered);
+      setFilteredRecommendations(filtered);
+    }
+  }, [sessionData]);
 
   // ============ PAYMENT CHECK ============
   useEffect(() => {
@@ -97,7 +166,7 @@ const Agent = ({
         setVoiceInitializing(false);
         console.log("✅ VoiceService created");
 
-        toast.success("🌱 Gen Z Farmer AI is here!");
+        toast.success("🌱 Smart Farmer AI is here!");
       } catch (error: any) {
         console.error("❌ Failed to initialize VoiceService:", error);
         toast.error("Failed to initialize voice service");
@@ -172,7 +241,6 @@ const Agent = ({
     };
 
     utterance.onend = () => {
-      // Mark as read and keep full text
       setRecommendationStreams(prev => ({ ...prev, [index]: recommendation }));
       setReadRecommendations(prev => new Set(prev).add(index));
       setActiveStreamingRec(null);
@@ -189,21 +257,31 @@ const Agent = ({
 
   // ============ AUTO-STREAM ALL RECOMMENDATIONS ============
   const streamAllRecommendations = async () => {
-    if (!sessionData?.recommendations || sessionData.recommendations.length === 0 || recommendationsSpoken) return;
+    if (filteredRecommendations.length === 0 || recommendationsSpoken) return;
 
     setRecommendationsSpoken(true);
     setRecommendationStreams({});
     setReadRecommendations(new Set());
 
-    await speakStreaming("I've got some fire recommendations for your farm. Let me drop them for you.");
+    let introMessage = "I've prepared your personalized recommendations. ";
+    if (hasSoilTest) {
+      introMessage += "Based on your soil test, I've calculated precision fertilizer recommendations. ";
+    }
+
+    await speakStreaming(introMessage);
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    for (let i = 0; i < sessionData.recommendations.length; i++) {
-      await streamRecommendationKaraoke(sessionData.recommendations[i], i);
+    for (let i = 0; i < filteredRecommendations.length; i++) {
+      await streamRecommendationKaraoke(filteredRecommendations[i], i);
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    await speakStreaming("Now you can ask me anything about your farm.");
+    if (sessionData.financialAdvice) {
+      await speakStreaming("I've also prepared detailed financial analysis for your farm.");
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+
+    await speakStreaming("You can now view your financial analysis or ask me questions about your farm.");
   };
 
   // ============ START VOICE INTERVIEW ============
@@ -256,7 +334,7 @@ const Agent = ({
         setWelcomeSpoken(true);
 
         try {
-          const welcomeUtterance = new SpeechSynthesisUtterance("I'm ready to help you level up your farm.");
+          const welcomeUtterance = new SpeechSynthesisUtterance("I'm ready to help you with your farm plan.");
           welcomeUtterance.rate = 0.9;
           window.speechSynthesis.speak(welcomeUtterance);
 
@@ -285,6 +363,16 @@ const Agent = ({
     }
   };
 
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
   // ============ UI RENDER ============
   const isStartButtonDisabled = isLoading || !voiceEnabled || !hasPaid || voiceInitializing;
 
@@ -292,7 +380,7 @@ const Agent = ({
     if (isLoading) return "Starting...";
     if (voiceInitializing) return "Initializing...";
     if (!hasPaid) return "Pay KES 3 to Start";
-    return "🌱 Start Vibing";
+    return "🌱 Start Voice Session";
   };
 
   return (
@@ -324,10 +412,10 @@ const Agent = ({
               </h4>
               <p className="text-sm text-gray-600 flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-emerald-500" />
-                Farmer AI • Gen Z Edition
+                Smart Farmer • Complete Farm Analysis
               </p>
               {sessionData && (
-                <div className="mt-1 flex gap-2">
+                <div className="mt-1 flex flex-wrap gap-2">
                   <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full flex items-center gap-1">
                     <Sprout className="w-3 h-3" />
                     {sessionData.crops?.join(", ")}
@@ -336,10 +424,22 @@ const Agent = ({
                     <MapPin className="w-3 h-3" />
                     {sessionData.county}
                   </span>
+                  {hasSoilTest && (
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full flex items-center gap-1">
+                      <Beaker className="w-3 h-3" />
+                      Soil Test
+                    </span>
+                  )}
+                  {sessionData.managementLevel && (
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3" />
+                      {sessionData.managementLevel}
+                    </span>
+                  )}
                 </div>
               )}
 
-              {/* PAYMENT UI - KEPT */}
+              {/* PAYMENT UI */}
               {interviewId && userId && (
                 <div className="mt-1">
                   {!paymentChecked ? (
@@ -390,6 +490,15 @@ const Agent = ({
             <Mic className="w-5 h-5 text-purple-500" />
             Voice Assistant
           </h4>
+          {sessionData?.grossMarginAnalysis && (
+            <Link href={`/financial/${interviewId}`}>
+              <button className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm rounded-full flex items-center gap-1 hover:scale-105 transition-all">
+                <BarChart3 className="w-4 h-4" />
+                Financial Analysis
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            </Link>
+          )}
         </div>
 
         <VoiceToggle onVoiceToggle={handleVoiceToggle} initialEnabled={voiceEnabled} />
@@ -402,8 +511,68 @@ const Agent = ({
         )}
       </div>
 
-      {/* ========== KARAOKE RECOMMENDATIONS - ACCUMULATE AFTER READING ========== */}
-      {sessionData && sessionData.recommendations && sessionData.recommendations.length > 0 && (
+      {/* Soil Test Alert */}
+      {hasSoilTest && soilTest && (
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-4 border-2 border-purple-200 shadow-lg">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-purple-100 rounded-full">
+              <Beaker className="w-5 h-5 text-purple-700" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-purple-800">Soil Test Analysis Available</h3>
+              <p className="text-sm text-purple-700">
+                pH: {soilTest.ph} ({soilTest.phRating}) • P: {soilTest.phosphorus} ppm • K: {soilTest.potassium} ppm
+              </p>
+              {fertilizerPlan && (
+                <p className="text-xs text-purple-600 mt-1">
+                  ✓ Precision fertilizer plan calculated - Total investment: {formatCurrency(fertilizerPlan.totalCost)}
+                </p>
+              )}
+            </div>
+            <Link href={`/financial/${interviewId}?tab=soiltest`}>
+              <button className="px-3 py-1 bg-purple-600 text-white text-sm rounded-full hover:bg-purple-700">
+                View Details
+              </button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Financial Snapshot */}
+      {sessionData?.grossMarginAnalysis && (
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-5 border-2 border-emerald-200 shadow-lg">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-bold text-lg flex items-center gap-2 text-emerald-800">
+              <DollarSign className="w-5 h-5" />
+              Financial Snapshot
+            </h3>
+            <Link href={`/financial/${interviewId}`}>
+              <button className="text-sm text-emerald-600 hover:text-emerald-800 flex items-center gap-1">
+                View Full Analysis
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="bg-white/80 rounded-lg p-2">
+              <p className="text-xs text-gray-500">Low</p>
+              <p className="font-bold text-emerald-700">{formatCurrency(sessionData.grossMarginAnalysis.low?.grossMargin || 44190)}</p>
+            </div>
+            <div className="bg-white/80 rounded-lg p-2">
+              <p className="text-xs text-gray-500">Medium</p>
+              <p className="font-bold text-emerald-700">{formatCurrency(sessionData.grossMarginAnalysis.medium?.grossMargin || 217710)}</p>
+            </div>
+            <div className="bg-white/80 rounded-lg p-2">
+              <p className="text-xs text-gray-500">High</p>
+              <p className="font-bold text-emerald-700">{formatCurrency(sessionData.grossMarginAnalysis.high?.grossMargin || 433680)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== KARAOKE RECOMMENDATIONS ========== */}
+      {filteredRecommendations.length > 0 && (
         <div className="bg-white rounded-2xl p-6 border-2 border-purple-200 shadow-xl">
           <h3 className="font-bold text-2xl mb-4 flex items-center gap-2 text-purple-800">
             <Sparkles className="w-6 h-6 text-purple-600" />
@@ -416,13 +585,26 @@ const Agent = ({
             )}
           </h3>
 
+          {/* Fertilizer Investment Summary - Show if available */}
+          {fertilizerPlan?.totalCost > 0 && (
+            <div className="mb-6 p-4 bg-green-100 rounded-xl border-2 border-green-400">
+              <h4 className="font-bold text-green-800 flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Total Fertilizer Investment: {formatCurrency(fertilizerPlan.totalCost)} per acre
+              </h4>
+              <p className="text-sm text-green-700 mt-1">
+                Based on your soil test, this is the exact fertilizer you need to buy.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-4">
-            {sessionData.recommendations.map((rec: string, idx: number) => {
+            {filteredRecommendations.map((rec: string, idx: number) => {
               const streamingText = recommendationStreams[idx];
               const isActive = activeStreamingRec === idx;
               const isRead = readRecommendations.has(idx);
 
-              // Show if currently streaming OR already read
+              // Only show if streaming OR already read
               if (!streamingText && !isRead && !isActive) return null;
 
               const displayText = streamingText || rec;
@@ -450,7 +632,7 @@ const Agent = ({
 
                     <div className="flex-1">
                       <div className="min-h-[60px]">
-                        <p className="text-xl text-gray-800 leading-relaxed">
+                        <p className="text-xl text-gray-800 leading-relaxed whitespace-pre-line">
                           {displayText.split(' ').map((word, wordIdx, arr) => (
                             <span key={wordIdx}>
                               <span className={isActive ? "text-purple-900 font-bold" : "text-gray-700"}>
@@ -468,7 +650,7 @@ const Agent = ({
                             <div
                               className="h-full bg-purple-600 transition-all duration-150"
                               style={{
-                                width: `${(streamingText?.split(' ').length || 0 / recWordsRef.current[idx].length) * 100}%`
+                                width: `${((streamingText?.split(' ').length || 0) / recWordsRef.current[idx].length) * 100}%`
                               }}
                             />
                           </div>
@@ -484,13 +666,88 @@ const Agent = ({
             })}
           </div>
 
-          {/* RETURN BUTTON - Go to Ask Questions Page */}
-          <div className="mt-6 flex justify-center">
+          {/* Fertilizer Plan Details - Show if available */}
+          {interventions.length > 0 && (
+            <div className="mt-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-300">
+              <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+                <Beaker className="w-5 h-5" />
+                Precision Fertilizer Calculations
+              </h4>
+              <div className="space-y-3">
+                {interventions.map((inv: any, idx: number) => (
+                  <div key={idx} className="border-l-4 border-red-500 pl-3 py-1">
+                    <p className="font-semibold text-gray-800">
+                      {inv.nutrient}: {inv.value} {inv.nutrient.includes('pH') ? '' : inv.nutrient.includes('Nitrogen') ? '%' : 'ppm'} ({inv.level})
+                    </p>
+                    <p className="text-sm text-gray-700">{inv.recommendation}</p>
+                    <div className="mt-1 text-xs text-gray-600">
+                      Options: {inv.fertilizerOptions.map((opt: any) =>
+                        `${opt.name} (${opt.amountKg}kg @ ${formatCurrency(opt.cost || 0)})`
+                      ).join(' OR ')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Financial Advice */}
+          {sessionData?.financialAdvice && (
+            <div className="mt-4 p-4 bg-green-50 rounded-xl border-2 border-green-300">
+              <h4 className="font-bold text-green-800 flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                Financial Advice
+              </h4>
+              <p className="text-gray-700 mt-1">{sessionData.financialAdvice}</p>
+            </div>
+          )}
+
+          {/* Farm Summary Stats */}
+          {sessionData && (
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-xl">
+              <div className="text-center">
+                <Sprout className="w-5 h-5 text-emerald-600 mx-auto" />
+                <p className="text-xs text-gray-500">Crops</p>
+                <p className="font-bold">{sessionData.crops?.join(", ") || "N/A"}</p>
+              </div>
+              <div className="text-center">
+                <Tractor className="w-5 h-5 text-blue-600 mx-auto" />
+                <p className="text-xs text-gray-500">Farm Size</p>
+                <p className="font-bold">{sessionData.acres || sessionData.cultivatedAcres || "?"} acres</p>
+              </div>
+              <div className="text-center">
+                <Droplets className="w-5 h-5 text-cyan-600 mx-auto" />
+                <p className="text-xs text-gray-500">Soil Type</p>
+                <p className="font-bold">{sessionData.soilType || "N/A"}</p>
+              </div>
+              <div className="text-center">
+                <Heart className="w-5 h-5 text-red-600 mx-auto" />
+                <p className="text-xs text-gray-500">Experience</p>
+                <p className="font-bold">{sessionData.experience || "?"} yrs</p>
+              </div>
+            </div>
+          )}
+
+          {/* Financial Analysis Button */}
+          {sessionData?.grossMarginAnalysis && (
+            <div className="mt-6 flex justify-center">
+              <Link href={`/financial/${interviewId}`}>
+                <button className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold text-lg hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3">
+                  <BarChart3 className="w-6 h-6" />
+                  View Financial Analysis
+                  <ArrowRight className="w-6 h-6" />
+                </button>
+              </Link>
+            </div>
+          )}
+
+          {/* Buttons */}
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             <Link href={`/ask/${interviewId}`}>
-              <button className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-lg hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3">
-                <MessageCircle className="w-6 h-6" />
-                Continue to Ask Questions
-                <ArrowRight className="w-6 h-6" />
+              <button className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 shadow-lg transition-all duration-300 flex items-center justify-center gap-3">
+                <MessageCircle className="w-5 h-5" />
+                Ask Questions About Your Farm
+                <ArrowRight className="w-5 h-5" />
               </button>
             </Link>
           </div>

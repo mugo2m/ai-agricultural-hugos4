@@ -5,7 +5,7 @@ import Agent from "@/components/Agent";
 import { getRandomInterviewCover } from "@/lib/utils";
 
 import {
-  getFarmerSessionById,  // ✅ NEW: Use farmer session function
+  getFarmerSessionById,
   getFeedbackByInterviewId,
 } from "@/lib/actions/general.action";
 import { getCurrentUser } from "@/lib/actions/auth.action";
@@ -19,7 +19,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
   const user = await getCurrentUser();
   console.log("Current user:", user?.id);
 
-  // ✅ Get farmer session instead of interview
+  // Get farmer session instead of interview
   const session = await getFarmerSessionById(id);
   console.log("Farmer session data:", {
     exists: !!session,
@@ -34,17 +34,30 @@ const InterviewDetails = async ({ params }: RouteParams) => {
     redirect("/");
   }
 
+  // ✅ FIX: Safely handle feedback - don't throw error if function returns null
+  let feedback = null;
+  try {
+    if (user?.id) {
+      const feedbackResult = await getFeedbackByInterviewId({
+        interviewId: id,
+        userId: user.id,
+      });
+      // Check if it's actually a function result (could be null or undefined)
+      if (feedbackResult && typeof feedbackResult === 'object') {
+        feedback = feedbackResult;
+      }
+    }
+  } catch (error) {
+    console.log("⚠️ Feedback fetch skipped or failed (normal for new sessions)");
+    feedback = null;
+  }
+
+  console.log("Feedback exists:", !!feedback);
+
   // Create welcome message from recommendations
   const welcomeMessages = session.recommendations || [
     `Welcome! I see you grow ${session.crops?.join(", ")} in ${session.county}. Ask me anything about your farm!`
   ];
-
-  const feedback = await getFeedbackByInterviewId({
-    interviewId: id,
-    userId: user?.id!,
-  });
-
-  console.log("Feedback exists:", !!feedback);
 
   return (
     <>
@@ -93,7 +106,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
         userName={user?.name || "Farmer"}
         userId={user?.id}
         interviewId={id}
-        sessionData={session}  // ✅ Pass full session data
+        sessionData={session}
         profileImage={user?.profileURL}
       />
     </>

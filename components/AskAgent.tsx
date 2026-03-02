@@ -1,4 +1,4 @@
-// components/AskAgent.tsx - SYNCHRONIZED STREAMING WITH VOICE
+// components/AskAgent.tsx - SYNCHRONIZED STREAMING WITH VOICE & FINANCIAL CONTEXT
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -38,7 +38,18 @@ import {
   Smile,
   ThumbsUp,
   MapPin,
-  Bug
+  Bug,
+  DollarSign,
+  TrendingUp,
+  Package,
+  Tractor,
+  BarChart3,
+  Table,
+  PieChart,
+  CreditCard,
+  Landmark,
+  Calculator,
+  Wallet
 } from "lucide-react";
 
 interface AskAgentProps {
@@ -54,6 +65,7 @@ interface Message {
   content: string;
   timestamp: number;
   isStreaming?: boolean;
+  financial?: boolean;
 }
 
 const AskAgent = ({
@@ -70,9 +82,11 @@ const AskAgent = ({
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
+  const [showFinancial, setShowFinancial] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState<"chat" | "financial" | "summary">("chat");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -106,19 +120,36 @@ const AskAgent = ({
 
     // Get random greeting
     const greetings = [
-      `🌱 Karibu ${userName}! Ready to level up your farm?`,
-      `🌾 Yo ${userName}! Let's make your crops thrive!`,
-      `🍃 Hey ${userName}! I've got answers based on your farm profile.`,
-      `🌸 Welcome back ${userName}! Your crops are calling.`,
-      `🌿 Sup ${userName}! Let's get that harvest poppin'!`,
-      `🍀 ${userName}! Your farming bestie is here to help.`
+      `🌱 Karibu ${userName}! Ready to level up your farm's profitability?`,
+      `🌾 Yo ${userName}! Let's make your farm more profitable!`,
+      `🍃 Hey ${userName}! I've got answers based on your complete farm financial profile.`,
+      `🌸 Welcome back ${userName}! Ready to maximize your returns?`,
+      `🌿 Sup ${userName}! Let's crunch those farm numbers!`,
+      `🍀 ${userName}! Your financial farming bestie is here to help.`
     ];
     const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+
+    // Create enhanced welcome message with financial context
+    let welcomeContent = `${greeting} I'll answer your questions based on your complete farm profile`;
+
+    if (sessionData) {
+      welcomeContent += ` for ${sessionData?.crops?.join(", ") || "your crops"} in ${sessionData?.county || "your area"}`;
+
+      if (sessionData.managementLevel) {
+        welcomeContent += `. You're currently at a ${sessionData.managementLevel} management level`;
+      }
+
+      if (sessionData.grossMarginAnalysis) {
+        welcomeContent += `. I can also help with financial analysis and gross margin calculations!`;
+      }
+    }
+
+    welcomeContent += ` What would you like to know? 🌟`;
 
     // Welcome message
     setMessages([{
       role: "assistant",
-      content: `${greeting} I'll answer your questions based on your personalized recommendations for ${sessionData?.crops?.join(", ") || "your crops"} in ${sessionData?.county || "your area"}. What would you like to know? 🌟`,
+      content: welcomeContent,
       timestamp: Date.now()
     }]);
 
@@ -135,14 +166,25 @@ const AskAgent = ({
     };
   }, [userName, sessionData]);
 
-  // 🔥 NEW: Synchronized streaming function
-  const streamAnswerWithVoice = async (fullText: string) => {
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // 🔥 ENHANCED: Synchronized streaming function with financial indicators
+  const streamAnswerWithVoice = async (fullText: string, isFinancial: boolean = false) => {
     if (!voiceEnabled || !window.speechSynthesis) {
       // Fallback: just show the full text
       setMessages(prev => [...prev, {
         role: "assistant",
         content: fullText,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        financial: isFinancial
       }]);
       return;
     }
@@ -199,7 +241,8 @@ const AskAgent = ({
         setMessages(prev => [...prev, {
           role: "assistant",
           content: fullText,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          financial: isFinancial
         }]);
         setStreamingContent("");
         setIsStreaming(false);
@@ -215,7 +258,8 @@ const AskAgent = ({
       setMessages(prev => [...prev, {
         role: "assistant",
         content: fullText,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        financial: isFinancial
       }]);
       setStreamingContent("");
       setIsStreaming(false);
@@ -227,22 +271,15 @@ const AskAgent = ({
     window.speechSynthesis.speak(utterance);
   };
 
-  const speak = async (text: string) => {
-    if (!voiceEnabled || !window.speechSynthesis) return;
-
-    // This is now handled by streamAnswerWithVoice
-    return Promise.resolve();
-  };
-
   const startListening = () => {
     if (!recognitionRef.current || !voiceEnabled || isAISpeakingRef.current) {
-      if (isAISpeakingRef.current) toast.info("✨ AI is speaking, hold up bestie!");
+      if (isAISpeakingRef.current) toast.info("✨ AI is speaking, hold up!");
       return;
     }
     try {
       recognitionRef.current.start();
       setIsListening(true);
-      toast.success("🎤 Listening... spill the tea!", {
+      toast.success("🎤 Listening... speak your question!", {
         icon: <Mic className="w-4 h-4 text-purple-500" />,
         duration: 2000
       });
@@ -256,15 +293,15 @@ const AskAgent = ({
     setIsListening(false);
   };
 
-  // 🔥 UPDATED: Submit with synchronized streaming
+  // 🔥 ENHANCED: Submit with synchronized streaming and financial context
   const submitQuestion = async () => {
     if (!userTranscript.trim()) {
-      toast.warning("🌱 Type or speak your question bestie");
+      toast.warning("🌱 Type or speak your question");
       return;
     }
 
     if (isAISpeakingRef.current) {
-      toast.info("✨ AI is speaking, gimme a sec!");
+      toast.info("✨ AI is speaking, please wait!");
       return;
     }
 
@@ -281,8 +318,29 @@ const AskAgent = ({
     setUserTranscript("");
     setIsLoading(true);
 
+    // Detect if question is financial
+    const isFinancialQuestion =
+      question.toLowerCase().includes('cost') ||
+      question.toLowerCase().includes('price') ||
+      question.toLowerCase().includes('profit') ||
+      question.toLowerCase().includes('margin') ||
+      question.toLowerCase().includes('revenue') ||
+      question.toLowerCase().includes('income') ||
+      question.toLowerCase().includes('expense') ||
+      question.toLowerCase().includes('budget') ||
+      question.toLowerCase().includes('investment');
+
     try {
       console.log("📡 Sending question:", question);
+
+      // Enhance sessionData with financial context
+      const enhancedSessionData = {
+        ...sessionData,
+        isFinancialQuestion,
+        financialData: sessionData?.grossMarginAnalysis || null,
+        inputCosts: sessionData?.inputCosts || null,
+        labourCosts: sessionData?.labourCosts || null
+      };
 
       const response = await fetch('/api/farmer/query', {
         method: 'POST',
@@ -291,7 +349,7 @@ const AskAgent = ({
           question,
           userId,
           sessionId,
-          sessionData
+          sessionData: enhancedSessionData
         })
       });
 
@@ -316,10 +374,10 @@ const AskAgent = ({
 
       if (data.success && data.answer) {
         // Stream with synchronized voice
-        await streamAnswerWithVoice(data.answer);
+        await streamAnswerWithVoice(data.answer, isFinancialQuestion);
 
         toast.success("✅ Answer ready! 💫", {
-          icon: <Sparkles className="w-4 h-4 text-yellow-500" />
+          icon: isFinancialQuestion ? <DollarSign className="w-4 h-4 text-green-500" /> : <Sparkles className="w-4 h-4 text-yellow-500" />
         });
       } else if (data.error) {
         toast.error(data.error);
@@ -338,7 +396,7 @@ const AskAgent = ({
 
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: "🌧️ Sorry bestie, something went wrong. Try again!",
+        content: "🌧️ Sorry, something went wrong. Try again!",
         timestamp: Date.now()
       }]);
     } finally {
@@ -358,7 +416,7 @@ const AskAgent = ({
       setIsStreaming(false);
       setStreamingContent("");
     } else {
-      toast.success("🎤 Voice mode activated! Let's vibe!", {
+      toast.success("🎤 Voice mode activated! Ask about your farm finances too!", {
         icon: <Volume2 className="w-4 h-4 text-green-500" />
       });
     }
@@ -384,6 +442,14 @@ const AskAgent = ({
     ? `${currentWordIndex}/${wordsRef.current.length} words`
     : '';
 
+  // Financial quick questions
+  const financialQuickQuestions = [
+    { text: 'profit margin', icon: <TrendingUp className="w-4 h-4" />, color: 'from-green-400 to-emerald-400' },
+    { text: 'break-even', icon: <Calculator className="w-4 h-4" />, color: 'from-blue-400 to-indigo-400' },
+    { text: 'cost of production', icon: <Package className="w-4 h-4" />, color: 'from-amber-400 to-orange-400' },
+    { text: 'revenue projection', icon: <DollarSign className="w-4 h-4" />, color: 'from-purple-400 to-pink-400' }
+  ];
+
   return (
     <div className="flex flex-col gap-6 p-4 min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl">
       {/* Header with rainbow gradient */}
@@ -399,25 +465,38 @@ const AskAgent = ({
             <div>
               <h2 className="font-bold text-xl text-white flex items-center gap-2">
                 <Sprout className="w-6 h-6" />
-                Ask Your Farming Bestie
+                Ask Your Farming Assistant
                 <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
               </h2>
               <p className="text-white/90 flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
                 {sessionData?.county} • {sessionData?.crops?.join(", ")}
+                {sessionData?.managementLevel && (
+                  <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                    {sessionData.managementLevel}
+                  </span>
+                )}
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowRecommendations(!showRecommendations)}
-            className="px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-xl flex items-center gap-2 border border-white/40 transition-all duration-300"
-          >
-            <Sparkles className="w-4 h-4" />
-            {showRecommendations ? "✨ Hide Tips" : "🌟 View Tips"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowFinancial(!showFinancial)}
+              className="px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-xl flex items-center gap-2 border border-white/40 transition-all duration-300 text-sm"
+            >
+              <DollarSign className="w-4 h-4" />
+              {showFinancial ? "Hide Finance" : "Show Finance"}
+            </button>
+            <button
+              onClick={() => setShowRecommendations(!showRecommendations)}
+              className="px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-xl flex items-center gap-2 border border-white/40 transition-all duration-300 text-sm"
+            >
+              <Sparkles className="w-4 h-4" />
+              {showRecommendations ? "Hide Tips" : "View Tips"}
+            </button>
+          </div>
         </div>
       </div>
-
 
       {/* Voice Toggle - Cosmic theme */}
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-5 shadow-xl border-2 border-white/30">
@@ -437,6 +516,94 @@ const AskAgent = ({
         )}
       </div>
 
+      {/* Financial Summary Card (if showFinancial) */}
+      {showFinancial && sessionData?.grossMarginAnalysis && (
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-5 shadow-xl border-2 border-white/30">
+          <h3 className="font-bold text-lg text-white flex items-center gap-2 mb-3">
+            <DollarSign className="w-5 h-5" />
+            Your Farm Financial Snapshot
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+              <p className="text-white/80 text-xs">Low Input GM</p>
+              <p className="text-white font-bold text-lg">{formatCurrency(sessionData.grossMarginAnalysis.low?.grossMargin || 44190)}</p>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+              <p className="text-white/80 text-xs">Medium Input GM</p>
+              <p className="text-white font-bold text-lg">{formatCurrency(sessionData.grossMarginAnalysis.medium?.grossMargin || 217710)}</p>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+              <p className="text-white/80 text-xs">High Input GM</p>
+              <p className="text-white font-bold text-lg">{formatCurrency(sessionData.grossMarginAnalysis.high?.grossMargin || 433680)}</p>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
+              <p className="text-white/80 text-xs">Your Level</p>
+              <p className="text-white font-bold text-lg">{sessionData.managementLevel || "Medium"}</p>
+            </div>
+          </div>
+          {sessionData.financialAdvice && (
+            <p className="text-white/90 text-sm mt-3 bg-white/10 p-2 rounded-lg">
+              💡 {sessionData.financialAdvice.substring(0, 100)}...
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Recommendations Panel (if showRecommendations) */}
+      {showRecommendations && recommendations.length > 0 && (
+        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-5 shadow-xl border-2 border-white/30">
+          <h3 className="font-bold text-lg text-white flex items-center gap-2 mb-3">
+            <Sparkles className="w-5 h-5" />
+            Your Personalized Recommendations
+          </h3>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {recommendations.map((rec, idx) => (
+              <div key={idx} className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-white">
+                <span className="font-bold mr-2">{idx + 1}.</span>
+                <span className="text-sm">{rec}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tab Navigation */}
+      <div className="flex gap-2 justify-center">
+        <button
+          onClick={() => setActiveTab("chat")}
+          className={`px-4 py-2 rounded-full font-medium transition-all ${
+            activeTab === "chat"
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+              : 'bg-white/80 text-gray-600 hover:bg-white'
+          }`}
+        >
+          <MessageCircle className="w-4 h-4 inline mr-1" />
+          Chat
+        </button>
+        <button
+          onClick={() => setActiveTab("financial")}
+          className={`px-4 py-2 rounded-full font-medium transition-all ${
+            activeTab === "financial"
+              ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg'
+              : 'bg-white/80 text-gray-600 hover:bg-white'
+          }`}
+        >
+          <DollarSign className="w-4 h-4 inline mr-1" />
+          Financial Q&A
+        </button>
+        <button
+          onClick={() => setActiveTab("summary")}
+          className={`px-4 py-2 rounded-full font-medium transition-all ${
+            activeTab === "summary"
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+              : 'bg-white/80 text-gray-600 hover:bg-white'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 inline mr-1" />
+          Farm Summary
+        </button>
+      </div>
+
       {/* Messages Area - WhatsApp style with colored bubbles */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-xl border-2 border-emerald-200 min-h-[400px] max-h-[500px] overflow-y-auto">
         <div className="space-y-4">
@@ -445,24 +612,26 @@ const AskAgent = ({
               <div className={`max-w-[80%] rounded-2xl p-4 shadow-md ${
                 msg.role === 'user'
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-br-none'
-                  : 'bg-gradient-to-r from-amber-100 to-yellow-100 text-gray-800 border-2 border-yellow-300 rounded-bl-none'
+                  : msg.financial
+                    ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-gray-800 border-2 border-green-300 rounded-bl-none'
+                    : 'bg-gradient-to-r from-amber-100 to-yellow-100 text-gray-800 border-2 border-yellow-300 rounded-bl-none'
               }`}>
                 <div className="flex items-start gap-2">
                   {msg.role === 'assistant' && (
                     <div className="mt-1">
-                      {getRandomIcon()}
+                      {msg.financial ? <DollarSign className="w-4 h-4 text-green-600" /> : getRandomIcon()}
                     </div>
                   )}
                   <div className="flex-1">
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     <p className={`text-xs mt-2 flex items-center gap-1 ${
-                      msg.role === 'user' ? 'text-blue-100' : 'text-amber-700'
+                      msg.role === 'user' ? 'text-blue-100' : msg.financial ? 'text-green-700' : 'text-amber-700'
                     }`}>
                       {new Date(msg.timestamp).toLocaleTimeString()}
-                      {msg.role === 'assistant' && (
+                      {msg.role === 'assistant' && msg.financial && (
                         <span className="flex items-center gap-1">
-                          <Leaf className="w-3 h-3" />
-                          <Smile className="w-3 h-3" />
+                          <DollarSign className="w-3 h-3" />
+                          <TrendingUp className="w-3 h-3" />
                         </span>
                       )}
                     </p>
@@ -512,7 +681,7 @@ const AskAgent = ({
             type="text"
             value={userTranscript}
             onChange={(e) => setUserTranscript(e.target.value)}
-            placeholder="💬 Type your question here..."
+            placeholder={activeTab === "financial" ? "💵 Ask about costs, profits, margins..." : "💬 Type your question here..."}
             className="flex-1 px-5 py-4 bg-white/90 backdrop-blur-sm border-2 border-white rounded-xl focus:border-purple-400 focus:ring-4 focus:ring-purple-200 transition-all text-gray-800 placeholder-gray-500"
             disabled={isAISpeakingRef.current}
           />
@@ -531,7 +700,7 @@ const AskAgent = ({
               <div className="flex items-center gap-2">
                 <Send className="w-5 h-5" />
                 <span>ASK</span>
-                <Sparkles className="w-4 h-4" />
+                {activeTab === "financial" && <DollarSign className="w-4 h-4" />}
               </div>
             )}
           </button>
@@ -556,25 +725,40 @@ const AskAgent = ({
         )}
       </div>
 
-      {/* Quick question chips - Colorful buttons */}
+      {/* Quick question chips - Context-aware */}
       <div className="flex flex-wrap gap-2 justify-center">
-        {[
-          { text: 'fertilizer', icon: <Sprout className="w-4 h-4" />, color: 'from-emerald-400 to-teal-400' },
-          { text: 'pests', icon: <Bug className="w-4 h-4" />, color: 'from-red-400 to-rose-400' },
-          { text: 'watering', icon: <Droplets className="w-4 h-4" />, color: 'from-blue-400 to-cyan-400' },
-          { text: 'harvest', icon: <Wheat className="w-4 h-4" />, color: 'from-amber-400 to-orange-400' },
-          { text: 'soil', icon: <Leaf className="w-4 h-4" />, color: 'from-lime-400 to-green-400' },
-          { text: 'market', icon: <Award className="w-4 h-4" />, color: 'from-purple-400 to-pink-400' }
-        ].map((item) => (
-          <button
-            key={item.text}
-            onClick={() => setUserTranscript(`Tell me about ${item.text} for my ${sessionData?.crops?.[0] || 'crops'}`)}
-            className={`px-4 py-2 bg-gradient-to-r ${item.color} text-white rounded-full text-sm hover:scale-105 transition-all duration-300 shadow-md flex items-center gap-1 border border-white/50`}
-          >
-            {item.icon}
-            {item.text} 🌱
-          </button>
-        ))}
+        {activeTab === "financial" ? (
+          // Financial quick questions
+          financialQuickQuestions.map((item) => (
+            <button
+              key={item.text}
+              onClick={() => setUserTranscript(`What is my ${item.text} for ${sessionData?.crops?.[0] || 'maize'}?`)}
+              className={`px-4 py-2 bg-gradient-to-r ${item.color} text-white rounded-full text-sm hover:scale-105 transition-all duration-300 shadow-md flex items-center gap-1 border border-white/50`}
+            >
+              {item.icon}
+              {item.text} 💰
+            </button>
+          ))
+        ) : (
+          // General quick questions
+          [
+            { text: 'fertilizer', icon: <Sprout className="w-4 h-4" />, color: 'from-emerald-400 to-teal-400' },
+            { text: 'pests', icon: <Bug className="w-4 h-4" />, color: 'from-red-400 to-rose-400' },
+            { text: 'watering', icon: <Droplets className="w-4 h-4" />, color: 'from-blue-400 to-cyan-400' },
+            { text: 'harvest', icon: <Wheat className="w-4 h-4" />, color: 'from-amber-400 to-orange-400' },
+            { text: 'soil', icon: <Leaf className="w-4 h-4" />, color: 'from-lime-400 to-green-400' },
+            { text: 'market', icon: <Award className="w-4 h-4" />, color: 'from-purple-400 to-pink-400' }
+          ].map((item) => (
+            <button
+              key={item.text}
+              onClick={() => setUserTranscript(`Tell me about ${item.text} for my ${sessionData?.crops?.[0] || 'crops'}`)}
+              className={`px-4 py-2 bg-gradient-to-r ${item.color} text-white rounded-full text-sm hover:scale-105 transition-all duration-300 shadow-md flex items-center gap-1 border border-white/50`}
+            >
+              {item.icon}
+              {item.text} 🌱
+            </button>
+          ))
+        )}
       </div>
 
       {/* Farm stats footer */}
@@ -592,6 +776,12 @@ const AskAgent = ({
             <Rocket className="w-4 h-4" />
             <span>{recommendations.length} tips</span>
           </div>
+          {sessionData?.grossMarginAnalysis && (
+            <div className="flex items-center gap-1">
+              <DollarSign className="w-4 h-4" />
+              <span>GM Available</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

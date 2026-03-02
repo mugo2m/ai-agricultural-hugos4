@@ -4,15 +4,44 @@ import { createHash } from "crypto";
 import { supabase } from "@/lib/supabase/client";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
-const embeddingModel = genAI.getGenerativeModel({ model: "models/text-embedding-001" });
 
-// Cache for embeddings to avoid redundant API calls
+// Force 768 dimensions for database consistency
+const TARGET_DIMENSION = 768;
+
 const embeddingCache = new Map<string, number[]>();
+
+const EMBEDDING_MODELS = [
+  "models/embedding-001",
+  "models/text-embedding-004",
+  "models/gemini-embedding-exp-03-07"
+];
+
+let workingModel: string | null = null;
+
+async function getWorkingEmbeddingModel() {
+  if (workingModel) return workingModel;
+
+  for (const modelName of EMBEDDING_MODELS) {
+    try {
+      const testModel = genAI.getGenerativeModel({ model: modelName });
+      await testModel.embedContent("test");
+      workingModel = modelName;
+      console.log(`✅ Using embedding model: ${modelName}`);
+      return modelName;
+    } catch (e) {
+      console.log(`⚠️ Model ${modelName} not available, trying next...`);
+    }
+  }
+
+  console.warn("⚠️ No embedding models available, using fallback");
+  return null;
+}
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    // Check memory cache first
     const cacheKey = createHash('sha256').update(text).digest('hex');
+
+    // Check memory cache
     if (embeddingCache.has(cacheKey)) {
       console.log("🎯 Embedding cache HIT (memory)");
       return embeddingCache.get(cacheKey)!;
@@ -31,18 +60,34 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       return cached.embedding;
     }
 
-    // Generate new embedding
-    console.log("🔄 Generating new embedding...");
-    const result = await embeddingModel.embedContent(text);
-    const embedding = result.embedding.values;
+    const modelName = await getWorkingEmbeddingModel();
 
-    // Store in caches
+    if (!modelName) {
+      console.warn("⚠️ No embedding model, using zero vector");
+      return new Array(TARGET_DIMENSION).fill(0);
+    }
+
+    console.log("🔄 Generating new embedding...");
+    const model = genAI.getGenerativeModel({ model: modelName });
+
+    // Try with dimension control if model supports it
+    try {
+      const result = await model.embedContent({
+        content: { parts: [{ text }] },
+        outputDimensionality: TARGET_DIMENSION
+      });
+      var embedding = result.embedding.values;
+    } catch {
+      // Fallback to standard embedContent
+      const result = await model.embedContent(text);
+      var embedding = result.embedding.values.slice(0, TARGET_DIMENSION);
+    }
+
     embeddingCache.set(cacheKey, embedding);
 
-    // Store in Supabase (async, don't await)
     supabase.from('embedding_cache').insert({
       text_hash: cacheKey,
-      text: text.substring(0, 1000), // Store preview
+      text: text.substring(0, 1000),
       embedding: embedding,
       created_at: new Date().toISOString()
     }).then().catch(console.error);
@@ -50,23 +95,20 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     return embedding;
   } catch (error) {
     console.error("❌ Embedding generation failed:", error);
-    // Fallback to zero vector
-    return new Array(768).fill(0);
+    return new Array(TARGET_DIMENSION).fill(0);
   }
 }
 
 export async function generateBatchEmbeddings(texts: string[]): Promise<number[][]> {
   const embeddings: number[][] = [];
-
   for (const text of texts) {
     try {
       const embedding = await generateEmbedding(text);
       embeddings.push(embedding);
     } catch (error) {
-      console.error("Failed to generate embedding for chunk:", error);
-      embeddings.push(new Array(768).fill(0));
+      console.error("Failed to generate embedding:", error);
+      embeddings.push(new Array(TARGET_DIMENSION).fill(0));
     }
   }
-
   return embeddings;
 }

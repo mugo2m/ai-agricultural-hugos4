@@ -6,7 +6,8 @@ import { processImage } from "./multimodal";
 import { CacheManager } from "./cacheManager";
 
 // PDF parsing
-import pdf from 'pdf-parse';
+//import pdf from 'pdf-parse';
+import * as pdf from 'pdf-parse';
 // Excel parsing
 import * as XLSX from 'xlsx';
 // PPT parsing
