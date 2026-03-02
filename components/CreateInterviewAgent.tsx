@@ -68,7 +68,7 @@ const CreateInterviewAgent = ({
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const questionWordsRef = useRef<string[]>([]);
 
-  // 🌱 COMPREHENSIVE Farmer details state - ALL 89+ QUESTIONS
+  // 🌱 COMPREHENSIVE Farmer details state - ALL 100+ QUESTIONS
   const [farmerDetails, setFarmerDetails] = useState({
     // SECTION 1: Personal & Location Information
     farmerName: "",
@@ -158,7 +158,7 @@ const CreateInterviewAgent = ({
     // SECTION 9: Management Level
     managementLevel: "",
 
-    // ========== NEW SOIL TEST SECTION ==========
+    // ========== SOIL TEST SECTION ==========
     hasDoneSoilTest: "",
     soilTestDate: "",
 
@@ -368,7 +368,7 @@ const CreateInterviewAgent = ({
     { id: "contourFarming", question: "Do you use contour farming? Say yes or no.", type: "dropdown", options: ["yes", "no"], section: "Conservation" },
     { id: "managementLevel", question: "How would you describe your current farming practices? Low input (minimal fertilizer), Medium input (some fertilizer), or High input (full recommendations)?", type: "dropdown", options: ["Low input", "Medium input", "High input"], section: "Management" },
 
-    // ========== SECTION 10: SOIL TEST SECTION (NEW) ==========
+    // ========== SECTION 10: SOIL TEST SECTION ==========
     { id: "hasDoneSoilTest", question: "Have you done a comprehensive soil test?", type: "dropdown", options: ["Yes", "No"], section: "Soil Test" },
     { id: "soilTestDate", question: "When was your soil test done? Please select the date from the calendar.", type: "date", placeholder: "Click to select date", minDate: "2020-01-01", maxDate: new Date().toISOString().split('T')[0], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
 
@@ -442,7 +442,7 @@ const CreateInterviewAgent = ({
     }
   ];
 
-  // Initialize voice (keep your existing initialization code)
+  // Initialize voice
   useEffect(() => {
     const checkVoiceSupport = () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -648,32 +648,156 @@ const CreateInterviewAgent = ({
     }
   };
 
+  // ============ ENHANCED PROCESS ANSWER WITH CLEANING ============
   const processAnswer = async (answer: string) => {
     console.log("Processing answer:", answer);
 
     if (currentStep === "configuring") {
       const currentConfig = configQuestions[configStep];
 
-      // Clean number fields
-      let processedAnswer = answer;
+      // Clean the answer - remove any question text that might be included
+      let cleanAnswer = answer;
+
+      // If the answer contains a question mark, split and take the last part
+      if (answer.includes('?')) {
+        const parts = answer.split('?');
+        cleanAnswer = parts[parts.length - 1].trim();
+      }
+
+      // List of common question phrases to remove
+      const questionPhrases = [
+        "what county are you in",
+        "which sub county or district",
+        "which ward do you belong to",
+        "which village",
+        "what crops do you grow",
+        "which varieties of your main crop",
+        "how many acres of your main crop",
+        "which season are you planting for",
+        "when do you typically plant",
+        "when do you typically harvest",
+        "what was your previous crop",
+        "which crop are you most interested in",
+        "where do you get your seeds from",
+        "what spacing do you use",
+        "what seed rate do you use",
+        "do you use certified seed",
+        "if no certified seed why not",
+        "do you use planting fertilizer",
+        "if yes what type",
+        "how many kilograms per acre",
+        "if no fertilizer what's the main reason",
+        "do you use topdressing fertilizer",
+        "what are the most common pests",
+        "what pest control methods do you use",
+        "what are the most common diseases",
+        "what disease control methods do you use",
+        "what is your average harvest",
+        "what unit do you use",
+        "what was your actual yield",
+        "unit for actual yield",
+        "how do you store your harvested crop",
+        "do you use organic manure",
+        "how much do you pay for a 50kg bag of dap",
+        "how much do you pay for a 50kg bag of can",
+        "how much do you pay for a 50kg bag of npk",
+        "what is the daily wage rate",
+        "how much do you pay for ploughing",
+        "how much do you pay for planting labour",
+        "how much do you pay for weeding",
+        "how much do you pay for harvesting",
+        "what price do you get per 90kg bag of maize",
+        "what price do you get per 90kg bag of beans",
+        "who do you sell your produce to",
+        "how much does it cost to transport",
+        "how much do you pay for empty gunny bags",
+        "how would you describe your road access",
+        "what is the distance to your nearest market",
+        "do you have access to agricultural credit",
+        "are you part of any agricultural support programs",
+        "can you access a smartphone",
+        "which livestock do you keep",
+        "how many cattle do you have",
+        "if you have cattle are they friesian",
+        "cattle type hybrid local or mixed",
+        "average milk yield per cow per day",
+        "total milk production per day",
+        "how many calves per cow per year",
+        "what feeding system do you use",
+        "what type of poultry do you keep",
+        "how many birds do you have",
+        "average eggs per bird per year",
+        "what is your typical poultry mortality rate",
+        "do you have other livestock",
+        "what post harvest practices do you use",
+        "what percentage of your harvest is lost",
+        "do you add value to your produce",
+        "do you have access to storage facilities",
+        "what are your main production challenges",
+        "what are your main marketing challenges",
+        "how many years of farming experience",
+        "what is your biggest farming challenge",
+        "do you use terracing",
+        "do you use mulching",
+        "do you use cover crops",
+        "do you practice rainwater harvesting",
+        "do you use contour farming",
+        "how would you describe your current farming practices",
+        "have you done a comprehensive soil test",
+        "when was your soil test done",
+        "what is your soil ph value",
+        "based on your soil test report is your ph level",
+        "what is your soil phosphorus value",
+        "based on your soil test report is your phosphorus level",
+        "what is your soil potassium value",
+        "based on your soil test report is your potassium level",
+        "what is your soil calcium value",
+        "based on your soil test report is your calcium level",
+        "what is your soil magnesium value",
+        "based on your soil test report is your magnesium level",
+        "what is your soil sodium value",
+        "based on your soil test report is your sodium level",
+        "what is your soil total nitrogen value",
+        "based on your soil test report is your total nitrogen level",
+        "what is your soil organic carbon value",
+        "based on your soil test report is your organic carbon level",
+        "what is your soil organic matter value",
+        "based on your soil test report is your organic matter level",
+        "what is your soil cec value",
+        "based on your soil test report is your cec level",
+        "what is your target yield per acre",
+        "which planting fertilizers are available",
+        "which top dressing fertilizers are available"
+      ];
+
+      // Remove any question phrases from the answer
+      for (const phrase of questionPhrases) {
+        const regex = new RegExp(phrase, 'gi');
+        cleanAnswer = cleanAnswer.replace(regex, '').trim();
+      }
+
+      // Remove any leading punctuation or spaces
+      cleanAnswer = cleanAnswer.replace(/^[?:,\s]+/, '').replace(/[?:,\s]+$/, '');
+
+      // Handle number fields
       if (currentConfig.type === "number") {
-        const numbers = answer.match(/\d+/g);
+        const numbers = cleanAnswer.match(/\d+/g);
         if (numbers) {
-          processedAnswer = numbers.join('');
+          cleanAnswer = numbers.join('');
         } else {
-          processedAnswer = "0";
+          cleanAnswer = "0";
         }
       }
 
       setFarmerDetails(prev => ({
         ...prev,
-        [currentConfig.id]: processedAnswer
+        [currentConfig.id]: cleanAnswer
       }));
 
-      toast.success(`✅ ${currentConfig.id}: ${processedAnswer}`);
+      toast.success(`✅ ${currentConfig.id}: ${cleanAnswer}`);
 
       // Voice acknowledgment before next question
-      await speakAcknowledgment(processedAnswer, currentConfig.id);
+      await speakAcknowledgment(cleanAnswer, currentConfig.id);
 
       if (configStep < configQuestions.length - 1) {
         setConfigStep(prev => prev + 1);
@@ -799,10 +923,8 @@ const CreateInterviewAgent = ({
       totalQuestions: configQuestions.length
     }));
 
-    // Educational intro about extension services
     await voiceAssistantRef.current.speak(
-      "Welcome farmer! Lately agricultural extension services are facing many challenges. " +
-      "I'll help you set up your complete farm profile by asking you a series of questions about your farm. " +
+      "Welcome farmer! I'll help you set up your complete farm profile by asking you a series of questions about your farm. " +
       "This will help me give you personalized farming advice and financial analysis. " +
       "Please speak clearly after each question. Let's get started!"
     );
@@ -1033,6 +1155,26 @@ const CreateInterviewAgent = ({
     }
   };
 
+  const handleSelectChange = (fieldId: string, value: string) => {
+    processAnswer(value);
+  };
+
+  const handleInputChange = (fieldId: string, value: string) => {
+    setFarmerDetails(prev => ({
+      ...prev,
+      [fieldId]: value
+    }));
+  };
+
+  const handleInputSubmit = (fieldId: string) => {
+    const value = farmerDetails[fieldId as keyof typeof farmerDetails];
+    if (value && value.toString().trim()) {
+      processAnswer(value.toString());
+    } else {
+      toast.error("Please enter a value");
+    }
+  };
+
   const displayName = userName || farmerDetails.farmerName || "Farmer";
   const userAltText = `${displayName}'s profile picture`;
   const aiAltText = "AI Agricultural Assistant";
@@ -1057,7 +1199,7 @@ const CreateInterviewAgent = ({
   // Get section name for current question
   const currentSection = configQuestions[configStep]?.section || "";
 
-  // Add date input type to render function
+  // Render input based on type
   const renderInputByType = () => {
     const question = configQuestions[configStep];
 
