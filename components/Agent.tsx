@@ -1,4 +1,4 @@
-// components/Agent.tsx - UPDATED WITH VERCELL FIXES
+// components/Agent.tsx - FIXED VERSION FOR VERCELL
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -74,6 +74,8 @@ const Agent = ({
   // ============ VERCELL SPEECH FIXES ============
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // Track which recommendations have been read
   const [readRecommendations, setReadRecommendations] = useState<Set<number>>(new Set());
@@ -102,7 +104,7 @@ const Agent = ({
       console.log("Speech synthesis supported in Vercel:", supported);
 
       if (supported) {
-        // Force voices to load (needed for Chrome/Vercel)
+        // Force voices to load
         const loadVoices = () => {
           const voices = window.speechSynthesis.getVoices();
           if (voices.length > 0) {
@@ -113,7 +115,6 @@ const Agent = ({
 
         loadVoices();
 
-        // Chrome loads voices asynchronously
         if (window.speechSynthesis.onvoiceschanged !== undefined) {
           window.speechSynthesis.onvoiceschanged = loadVoices;
         }
@@ -227,16 +228,17 @@ const Agent = ({
 
   // ============ KARAOKE STREAMING WITH VERCELL FIXES ============
   const streamRecommendationKaraoke = async (recommendation: string, index: number) => {
-    // Check if speech is supported and voices are loaded
     if (!voiceEnabled || !window.speechSynthesis || !voicesLoaded) {
-      // Fallback: just show the text without streaming
       setRecommendationStreams(prev => ({ ...prev, [index]: recommendation }));
       setReadRecommendations(prev => new Set(prev).add(index));
       return;
     }
 
     // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
 
     setActiveStreamingRec(index);
     const words = recommendation.split(' ');
@@ -248,21 +250,24 @@ const Agent = ({
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
 
-    // Get voices (they should be loaded now)
+    // Get voices
     const voices = window.speechSynthesis.getVoices();
 
-    // Prefer Google voices for better quality
+    // Prefer natural sounding voices
     const preferredVoice = voices.find(v =>
       v.name.includes('Google UK') ||
       v.name.includes('Google') ||
       v.name.includes('Samantha') ||
-      v.name.includes('Microsoft')
+      v.name.includes('Microsoft Zira') // Better than David
     );
 
     if (preferredVoice) {
       utterance.voice = preferredVoice;
       console.log(`Using voice: ${preferredVoice.name}`);
     }
+
+    // Store reference to current utterance
+    currentUtteranceRef.current = utterance;
 
     let wordIndex = 0;
     let currentText = '';
@@ -279,14 +284,16 @@ const Agent = ({
       setRecommendationStreams(prev => ({ ...prev, [index]: recommendation }));
       setReadRecommendations(prev => new Set(prev).add(index));
       setActiveStreamingRec(null);
+      currentUtteranceRef.current = null;
     };
 
     utterance.onerror = (event) => {
       console.error("Speech error in Vercel:", event);
-      // Fallback to showing full text
+      // Instead of failing, mark as read and show full text
       setRecommendationStreams(prev => ({ ...prev, [index]: recommendation }));
       setReadRecommendations(prev => new Set(prev).add(index));
       setActiveStreamingRec(null);
+      currentUtteranceRef.current = null;
     };
 
     window.speechSynthesis.speak(utterance);
@@ -308,9 +315,17 @@ const Agent = ({
     await speakStreaming(introMessage);
     await new Promise(resolve => setTimeout(resolve, 1500));
 
+    // Stream recommendations one by one with error recovery
     for (let i = 0; i < filteredRecommendations.length; i++) {
       await streamRecommendationKaraoke(filteredRecommendations[i], i);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Wait longer between recommendations to prevent overlap
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // If current utterance is still active, wait for it
+      while (currentUtteranceRef.current !== null) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
 
     if (sessionData?.financialAdvice) {
@@ -379,8 +394,7 @@ const Agent = ({
           await streamAllRecommendations();
         } catch (speechError) {
           console.error("Speech error:", speechError);
-          // Still show recommendations even if speech fails
-          setRecommendationStreams({});
+          // Fallback: show all recommendations without streaming
           filteredRecommendations.forEach((rec, i) => {
             setRecommendationStreams(prev => ({ ...prev, [i]: rec }));
             setReadRecommendations(prev => new Set(prev).add(i));
@@ -535,7 +549,7 @@ const Agent = ({
           </h4>
           {!speechSupported && (
             <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
-              ⚠️ Voice limited in this browser
+              ⚠️ Voice limited
             </span>
           )}
           {sessionData?.grossMarginAnalysis && (
