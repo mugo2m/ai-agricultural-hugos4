@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Upload to Supabase Storage
-    const fileName = ${Date.now()}-;
-    const filePath = uploads/;
+    const fileName = `${Date.now()}-${file.name}`;
+    const filePath = `uploads/${fileName}`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("farming-documents")
