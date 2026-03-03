@@ -1,9 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/client";
-import { ingestDocument } from "@/lib/rag/ingestion";
+﻿import { NextRequest, NextResponse } from "next/server";
+
 export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
+    // Dynamically import supabase and ingestion
+    const { supabase } = await import('@/lib/supabase/client');
+    const { ingestDocument } = await import('@/lib/rag/ingestion');
+    
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
@@ -23,8 +27,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Upload to Supabase Storage
-    const fileName = `${Date.now()}-${file.name}`;
-    const filePath = `uploads/${fileName}`;
+    const fileName = ${Date.now()}-;
+    const filePath = uploads/;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("farming-documents")
