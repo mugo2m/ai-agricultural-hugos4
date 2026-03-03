@@ -1,4 +1,4 @@
-// components/Agent.tsx - UPDATED VERSION WITH BETTER FILTERING
+// components/Agent.tsx - UPDATED WITH VERCELL FIXES
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -71,6 +71,10 @@ const Agent = ({
   const [showFinancials, setShowFinancials] = useState(false);
   const [filteredRecommendations, setFilteredRecommendations] = useState<any[]>([]);
 
+  // ============ VERCELL SPEECH FIXES ============
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+
   // Track which recommendations have been read
   const [readRecommendations, setReadRecommendations] = useState<Set<number>>(new Set());
 
@@ -90,33 +94,46 @@ const Agent = ({
   const interventions = soilTest?.interventions || [];
   const fertilizerPlan = soilTest?.fertilizerPlan;
 
-  // ============ FILTER RECOMMENDATIONS ON MOUNT - IMPROVED VERSION ============
+  // ============ CHECK SPEECH SUPPORT FOR VERCELL ============
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const supported = 'speechSynthesis' in window;
+      setSpeechSupported(supported);
+      console.log("Speech synthesis supported in Vercel:", supported);
+
+      if (supported) {
+        // Force voices to load (needed for Chrome/Vercel)
+        const loadVoices = () => {
+          const voices = window.speechSynthesis.getVoices();
+          if (voices.length > 0) {
+            setVoicesLoaded(true);
+            console.log(`✅ ${voices.length} voices loaded in Vercel`);
+          }
+        };
+
+        loadVoices();
+
+        // Chrome loads voices asynchronously
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+          window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+      }
+    }
+  }, []);
+
+  // ============ FILTER RECOMMENDATIONS ON MOUNT ============
   useEffect(() => {
     if (sessionData?.recommendations) {
       console.log("Raw recommendations:", sessionData.recommendations);
 
-      // Filter out JSON artifacts and get only real recommendations
       const filtered = sessionData.recommendations.filter((rec: any) => {
         if (typeof rec !== 'string') return false;
         const text = rec.trim();
-
-        // Log each recommendation for debugging
-        console.log(`Checking rec: "${text.substring(0, 50)}..."`);
-
-        // Keep recommendations that:
-        // 1. Are long enough (more than 20 chars)
         if (text.length < 20) return false;
-
-        // 2. Don't contain JSON artifacts
         if (text.includes('"recommendations"')) return false;
         if (text.match(/^\[\s*$/)) return false;
-
-        // 3. Actually look like recommendations (contain words and punctuation)
         if (!/[A-Za-z]/.test(text)) return false;
-
-        // 4. Should have some structure - either starts with ** or has a colon
         if (!text.includes('**') && !text.includes(':')) return false;
-
         return true;
       });
 
@@ -208,13 +225,18 @@ const Agent = ({
     }
   };
 
-  // ============ KARAOKE STREAMING ============
+  // ============ KARAOKE STREAMING WITH VERCELL FIXES ============
   const streamRecommendationKaraoke = async (recommendation: string, index: number) => {
-    if (!voiceEnabled || !window.speechSynthesis) {
+    // Check if speech is supported and voices are loaded
+    if (!voiceEnabled || !window.speechSynthesis || !voicesLoaded) {
+      // Fallback: just show the text without streaming
       setRecommendationStreams(prev => ({ ...prev, [index]: recommendation }));
       setReadRecommendations(prev => new Set(prev).add(index));
       return;
     }
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
 
     setActiveStreamingRec(index);
     const words = recommendation.split(' ');
@@ -224,10 +246,23 @@ const Agent = ({
     const utterance = new SpeechSynthesisUtterance(recommendation);
     utterance.rate = 0.9;
     utterance.pitch = 1.1;
+    utterance.volume = 1.0;
 
+    // Get voices (they should be loaded now)
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.name.includes('Google UK') || v.name.includes('Samantha'));
-    if (preferredVoice) utterance.voice = preferredVoice;
+
+    // Prefer Google voices for better quality
+    const preferredVoice = voices.find(v =>
+      v.name.includes('Google UK') ||
+      v.name.includes('Google') ||
+      v.name.includes('Samantha') ||
+      v.name.includes('Microsoft')
+    );
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+      console.log(`Using voice: ${preferredVoice.name}`);
+    }
 
     let wordIndex = 0;
     let currentText = '';
@@ -246,7 +281,9 @@ const Agent = ({
       setActiveStreamingRec(null);
     };
 
-    utterance.onerror = () => {
+    utterance.onerror = (event) => {
+      console.error("Speech error in Vercel:", event);
+      // Fallback to showing full text
       setRecommendationStreams(prev => ({ ...prev, [index]: recommendation }));
       setReadRecommendations(prev => new Set(prev).add(index));
       setActiveStreamingRec(null);
@@ -276,7 +313,7 @@ const Agent = ({
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    if (sessionData.financialAdvice) {
+    if (sessionData?.financialAdvice) {
       await speakStreaming("I've also prepared detailed financial analysis for your farm.");
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
@@ -342,6 +379,12 @@ const Agent = ({
           await streamAllRecommendations();
         } catch (speechError) {
           console.error("Speech error:", speechError);
+          // Still show recommendations even if speech fails
+          setRecommendationStreams({});
+          filteredRecommendations.forEach((rec, i) => {
+            setRecommendationStreams(prev => ({ ...prev, [i]: rec }));
+            setReadRecommendations(prev => new Set(prev).add(i));
+          });
         }
       }
 
@@ -490,6 +533,11 @@ const Agent = ({
             <Mic className="w-5 h-5 text-purple-500" />
             Voice Assistant
           </h4>
+          {!speechSupported && (
+            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
+              ⚠️ Voice limited in this browser
+            </span>
+          )}
           {sessionData?.grossMarginAnalysis && (
             <Link href={`/financial/${interviewId}`}>
               <button className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm rounded-full flex items-center gap-1 hover:scale-105 transition-all">
