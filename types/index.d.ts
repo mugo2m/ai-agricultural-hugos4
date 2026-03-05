@@ -1,167 +1,139 @@
-/* ===========================
-   FEEDBACK
-=========================== */
-export interface Feedback {
-  id: string;
-  interviewId: string;
-  userId: string;
-  totalScore: number;
-  categoryScores: Array<{
-    name: string;
-    score: number;
-    comment: string;
-  }>;
-  strengths: string[];
-  areasForImprovement: string[];
-  finalAssessment: string;
-  createdAt: string;
-}
+// types/index.ts
 
-/* ===========================
-   INTERVIEW (UPDATED)
-   Matches Firestore + Zod schema
-=========================== */
-export interface Interview {
-  id: string;
+export interface InterviewConfig {
+  type: string;
   role: string;
   level: string;
-  type: string;
-  techstack: string[];
-  questions: string[];
-  userId: string;
-  finalized: boolean;
-  createdAt: string;
-
-  // ✅ NEW FIELDS (AI interviews)
-  coverImage: string;        // /covers/reddit.png
-  isRealInterview: boolean;  // true
-  questionCount: number;     // questions.length
-  source: string;            // "gemini"
-}
-
-/* ===========================
-   CREATE FEEDBACK PARAMS
-=========================== */
-export interface CreateFeedbackParams {
-  interviewId: string;
-  userId: string;
-  transcript: { role: string; content: string }[];
-  feedbackId?: string;
-}
-
-/* ===========================
-   USERS
-=========================== */
-export interface User {
-  name: string;
-  email: string;
-  id: string;
-}
-
-/* ===========================
-   INTERVIEW CARD PROPS
-=========================== */
-export interface InterviewCardProps {
-  id?: string;
-  userId?: string;
-  role: string;
-  type: string;
-  techstack: string[];
-  createdAt?: string;
-  coverImage?: string;
-}
-
-/* ===========================
-   AGENT PROPS
-=========================== */
-export interface AgentProps {
-  userName: string;
-  userId?: string;
-  interviewId?: string;
-  feedbackId?: string;
-  type: "generate" | "interview";
-  questions?: string[];
-}
-
-/* ===========================
-   APP ROUTER PARAMS
-=========================== */
-export interface RouteParams {
-  params: { id: string };
-  searchParams?: Record<string, string>;
-}
-
-/* ===========================
-   QUERY PARAMS
-=========================== */
-export interface GetFeedbackByInterviewIdParams {
-  interviewId: string;
-  userId: string;
-}
-
-export interface GetLatestInterviewsParams {
-  userId: string;
-  limit?: number;
-}
-
-/* ===========================
-   AUTH PARAMS
-=========================== */
-export interface SignInParams {
-  email: string;
-  idToken: string;
-}
-
-export interface SignUpParams {
-  uid: string;
-  name: string;
-  email: string;
-  password: string;
-}
-
-export type FormType = "sign-in" | "sign-up";
-
-/* ===========================
-   INTERVIEW FORM PROPS
-=========================== */
-export interface InterviewFormProps {
-  interviewId: string;
-  role: string;
-  level: string;
-  type: string;
-  techstack: string[];
-  amount: number;
-}
-
-/* ===========================
-   TECH ICON PROPS
-=========================== */
-export interface TechIconProps {
+  questionsCount: number;
   techStack: string[];
+  companyType: string;
+  timeLimit: number;
+  includeBehavioral: boolean;
+  includeTechnical: boolean;
+  includeCoding: boolean;
+  difficulty: string;
+  voiceEnabled: boolean;
+  videoEnabled: boolean;
 }
 
-/* ===========================
-   VOICE TRANSCRIPT
-=========================== */
-export interface VoiceTranscriptEntry {
-  role: "user" | "ai";
-  content: string;
-  timestamp: Date;
+export interface InterviewQuestion {
+  id: string;
+  question: string;
+  category: string;
+  difficulty: string;
+  type: string;
+  description?: string;
+  hints?: string[];
 }
 
-/* ===========================
-   VOICE CONFIG
-=========================== */
-export interface VoiceServiceConfig {
-  useWebSpeechAPI: boolean;
-  language?: string;
-  voiceName?: string;
+export interface UserAnswer {
+  questionId: string;
+  answer: string;
+  timestamp: string;
+  score: number;
+  feedback: string;
 }
 
-/* ===========================
-   GEMINI RESPONSE
-=========================== */
-export interface GeminiResponse {
-  text: string;
-  audioUrl?: string;
+export interface ResumeInterviewData {
+  interviewId: string;
+  sessionId: string;
+  interviewType: string;
+  difficulty: string;
+  role: string;
+  questions: InterviewQuestion[];
+  currentQuestion?: number;
+  userAnswers?: UserAnswer[];
+  startTime?: string;
+  timeElapsed: number;
+  config?: InterviewConfig;
+}
+
+// User type for Firebase
+export interface User {
+  id: string;
+  uid: string;
+  email?: string;
+  displayName?: string;
+}
+
+// User preferences
+export interface UserPreferences {
+  userId: string;
+  preferredRoles: string[];
+  preferredTechStack: string[];
+  defaultLevel: "Junior" | "Mid-level" | "Senior";
+  defaultType: string;
+  defaultQuestionCount: number;
+  voiceSettings: {
+    enabled: boolean;
+    rate: number;
+    volume: number;
+    language: string;
+  };
+  updatedAt: string;
+}
+
+// Crop types
+export interface Crop {
+  name: string;
+  category: "grains" | "pulses" | "cash" | "tubers" | "vegetables" | "fruits" | "cover";
+  varieties: string[];
+  seedRatePerAcre: number;
+  spacing: string;
+  plantingMonths: string[];
+  maturityMonths: number;
+  yieldPerAcre: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+  pricePerUnit: number;
+  grossMargin: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+}
+
+// Gross margin analysis
+export interface GrossMarginAnalysis {
+  crop: string;
+  low: {
+    bags: number;
+    pricePerBag: number;
+    grossOutput: number;
+    seedCost: number;
+    fertilizerCost: number;
+    labourCost: number;
+    transportCost: number;
+    bagCost: number;
+    totalCost: number;
+    grossMargin: number;
+  };
+  medium: {
+    bags: number;
+    pricePerBag: number;
+    grossOutput: number;
+    seedCost: number;
+    fertilizerCost: number;
+    labourCost: number;
+    transportCost: number;
+    bagCost: number;
+    totalCost: number;
+    grossMargin: number;
+  };
+  high: {
+    bags: number;
+    pricePerBag: number;
+    grossOutput: number;
+    seedCost: number;
+    fertilizerCost: number;
+    labourCost: number;
+    transportCost: number;
+    bagCost: number;
+    totalCost: number;
+    grossMargin: number;
+  };
+  farmerLevel: string;
+  recommendation: string;
 }

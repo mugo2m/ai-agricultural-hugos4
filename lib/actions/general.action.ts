@@ -9,7 +9,6 @@ import { generateEmbedding } from "@/lib/rag/embeddings";
 import { FieldValue } from "firebase-admin/firestore";
 import { soilTestInterpreter } from "@/lib/soilTestInterpreter";
 import { fertilizerCalculator } from "@/lib/fertilizerCalculator";
-// 👇 IMPORT from the new utility file
 import { calculateRankedCropProfits } from "@/lib/utils/cropCalculations";
 
 let genAI: GoogleGenerativeAI | null = null;
@@ -71,64 +70,70 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-// 🌾 Calculate gross margin based on farmer data
+// 🌾 Calculate gross margin based on Bungoma Farm Management Guidelines
 function calculateGrossMargin(session: any) {
   if (!session) return null;
 
-  const defaults = {
+  const crop = session.crops?.[0] || 'maize';
+  const lowerCrop = crop.toLowerCase();
+
+  // Default values from Bungoma guidelines
+  const defaults: Record<string, any> = {
     maize: {
-      low: { bags: 10, pricePerBag: 6750, seedCost: 5625, fertilizerCost: 0, labourCost: 13300, totalCost: 23310, grossMargin: 44190 },
-      medium: { bags: 40, pricePerBag: 6750, seedCost: 5625, fertilizerCost: 13250, labourCost: 24200, totalCost: 52290, grossMargin: 217710 },
-      high: { bags: 75, pricePerBag: 6750, seedCost: 5625, fertilizerCost: 20700, labourCost: 33650, totalCost: 72570, grossMargin: 433680 }
+      low: { bags: 10, pricePerBag: 6750, seedCost: 5625, fertilizerCost: 0, labourCost: 13300, transportCost: 500, bagCost: 400 },
+      medium: { bags: 40, pricePerBag: 6750, seedCost: 5625, fertilizerCost: 13250, labourCost: 24200, transportCost: 2000, bagCost: 1600 },
+      high: { bags: 75, pricePerBag: 6750, seedCost: 5625, fertilizerCost: 20700, labourCost: 33650, transportCost: 3750, bagCost: 3000 }
+    },
+    beans: {
+      low: { bags: 5, pricePerBag: 10350, seedCost: 3000, fertilizerCost: 0, labourCost: 5200, transportCost: 500, bagCost: 200 },
+      medium: { bags: 10, pricePerBag: 10350, seedCost: 3000, fertilizerCost: 3300, labourCost: 5200, transportCost: 1000, bagCost: 400 },
+      high: { bags: 15, pricePerBag: 10350, seedCost: 3000, fertilizerCost: 4950, labourCost: 5200, transportCost: 1500, bagCost: 600 }
     }
   };
 
-  const crop = session.crops?.[0] || 'maize';
+  const data = defaults[lowerCrop] || defaults.maize;
   const pricePerBag = session.maizePrice || session.beansPrice || 6750;
-  const dapCost = session.dapCost || 3300;
-  const canCost = session.canCost || 2500;
-  const labourRate = session.dailyWageRate || 200;
 
   let low, medium, high;
 
   // Low input
   low = {
-    bags: 10,
+    bags: data.low.bags,
     pricePerBag,
-    grossOutput: 10 * pricePerBag,
-    seedCost: session.seedCost || 5625,
-    fertilizerCost: 0,
-    labourCost: (session.ploughingCost || 7000) + (session.plantingLabourCost || 2000) + (session.weedingCost || 2500) + (session.harvestingCost || 500),
-    transportCost: (session.transportCostPerBag || 50) * 10,
-    bagCost: (session.bagCost || 40) * 10,
+    grossOutput: data.low.bags * pricePerBag,
+    seedCost: data.low.seedCost,
+    fertilizerCost: data.low.fertilizerCost,
+    labourCost: data.low.labourCost,
+    transportCost: data.low.transportCost,
+    bagCost: data.low.bagCost,
     totalCost: 0,
     grossMargin: 0
   };
 
   // Medium input
   medium = {
-    bags: 40,
+    bags: data.medium.bags,
     pricePerBag,
-    grossOutput: 40 * pricePerBag,
-    seedCost: session.seedCost || 5625,
-    fertilizerCost: (dapCost * 2.5) + (canCost * 2),
-    labourCost: (session.ploughingCost || 7000) + 5000 + (session.plantingLabourCost || 2000) + (session.weedingCost || 4500) + (session.harvestingCost || 1500) + 1000,
-    transportCost: (session.transportCostPerBag || 50) * 40,
-    bagCost: (session.bagCost || 40) * 40,
+    grossOutput: data.medium.bags * pricePerBag,
+    seedCost: data.medium.seedCost,
+    fertilizerCost: data.medium.fertilizerCost,
+    labourCost: data.medium.labourCost,
+    transportCost: data.medium.transportCost,
+    bagCost: data.medium.bagCost,
     totalCost: 0,
     grossMargin: 0
   };
 
   // High input
   high = {
-    bags: 75,
+    bags: data.high.bags,
     pricePerBag,
-    grossOutput: 75 * pricePerBag,
-    seedCost: session.seedCost || 5625,
-    fertilizerCost: (dapCost * 4) + (canCost * 3),
-    labourCost: (session.ploughingCost || 7000) + 5000 + 2000 + (session.plantingLabourCost || 2000) + (session.weedingCost || 4500) + 2000 + (session.harvestingCost || 3000) + 3750 + 3000,
-    transportCost: (session.transportCostPerBag || 50) * 75,
-    bagCost: (session.bagCost || 40) * 75,
+    grossOutput: data.high.bags * pricePerBag,
+    seedCost: data.high.seedCost,
+    fertilizerCost: data.high.fertilizerCost,
+    labourCost: data.high.labourCost,
+    transportCost: data.high.transportCost,
+    bagCost: data.high.bagCost,
     totalCost: 0,
     grossMargin: 0
   };
@@ -152,15 +157,15 @@ function calculateGrossMargin(session: any) {
 // 🌾 Generate financial recommendation
 function getFinancialRecommendation(level: string, low: any, medium: any, high: any): string {
   if (level?.toLowerCase().includes('low')) {
-    return `Based on your low-input farming, you're currently earning ${formatCurrency(low.grossMargin)} per hectare. By adopting medium-input practices, you could increase your profit to ${formatCurrency(medium.grossMargin)}.`;
+    return `Based on your low-input farming, you're currently earning ${formatCurrency(low.grossMargin)} per hectare. By adopting medium-input practices, you could increase your profit to ${formatCurrency(medium.grossMargin)}. Remember: Every Ksh 1 invested returns Ksh 3-5 profit!`;
   } else if (level?.toLowerCase().includes('high')) {
-    return `Excellent! Your high-input farming is generating ${formatCurrency(high.grossMargin)} per hectare.`;
+    return `Excellent! Your high-input farming is generating ${formatCurrency(high.grossMargin)} per hectare. You're maximizing your profits!`;
   } else {
-    return `At your current medium-input level, you're earning ${formatCurrency(medium.grossMargin)} per hectare. Upgrading to high-input practices could increase profit to ${formatCurrency(high.grossMargin)}.`;
+    return `At your current medium-input level, you're earning ${formatCurrency(medium.grossMargin)} per hectare. Upgrading to high-input practices could increase profit to ${formatCurrency(high.grossMargin)}. Farming is still in exponential phase - more inputs = more profits!`;
   }
 }
 
-// 🌾 ENHANCED: Generate farmer session summary with soil test analysis
+// 🌾 ENHANCED: Generate farmer session summary
 export async function generateFarmerSessionSummary(params: {
   sessionId: string;
   userId: string;
@@ -227,7 +232,7 @@ export async function generateFarmerSessionSummary(params: {
         const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
 
         const financialContext = grossMargin ? `
-GROSS MARGIN ANALYSIS:
+GROSS MARGIN ANALYSIS (Bungoma Guidelines):
 - Low input: ${formatCurrency(grossMargin.low.grossMargin)}
 - Medium input: ${formatCurrency(grossMargin.medium.grossMargin)}
 - High input: ${formatCurrency(grossMargin.high.grossMargin)}
@@ -268,6 +273,7 @@ INSTRUCTIONS:
 2. Provide 3 follow-up recommendations
 3. Include financial advice based on their questions
 4. If soil test data exists, highlight key findings
+5. Emphasize farming as a BUSINESS - every input should maximize profit
 
 Return as JSON:
 {
@@ -297,16 +303,16 @@ Return as JSON:
 
     if (!summary) {
       summary = {
-        summary: `You asked ${qaPairs.length} questions about your farm.`,
+        summary: `You asked ${qaPairs.length} questions about your farm. Based on Bungoma Farm Management Guidelines, focus on optimizing your inputs for maximum profit.`,
         recommendations: [
-          `Learn more about pest management for your crops`,
+          `Learn more about pest management for your crops using integrated methods`,
           `Ask about optimal planting times for your location`,
-          `Explore soil testing options in your area`
+          `Explore soil testing options in your area for precision fertilizer recommendations`
         ],
-        financialAdvice: grossMargin?.recommendation || "Track your input costs and yields.",
-        soilTestAdvice: soilTestSummary ? `Your soil test from ${soilTestSummary.testDate} shows ${soilTestSummary.phRating} pH and ${soilTestSummary.phosphorusRating} phosphorus.` : "Consider doing a soil test for precise fertilizer recommendations.",
+        financialAdvice: grossMargin?.recommendation || "Track all input costs (seeds, fertilizer, labour) to calculate your actual profit margins. Farming is a BUSINESS!",
+        soilTestAdvice: soilTestSummary ? `Your soil test from ${soilTestSummary.testDate} shows ${soilTestSummary.phRating} pH and ${soilTestSummary.phosphorusRating} phosphorus.` : "Consider doing a soil test for precise fertilizer recommendations - it can save you up to 30% on fertilizer costs!",
         topics: session?.crops || ["general farming"],
-        nextSteps: "Continue asking questions about your specific crops."
+        nextSteps: "Continue asking questions about your specific crops to maximize profitability."
       };
     }
 
@@ -481,7 +487,7 @@ export async function saveFarmerQuery(params: {
   }
 }
 
-// 🌾 NEW: Get fertilizer recommendations from soil test
+// 🌾 Get fertilizer recommendations from soil test
 export async function getFertilizerRecommendations(params: {
   sessionId: string;
   userId: string;
@@ -503,7 +509,7 @@ export async function getFertilizerRecommendations(params: {
   }
 }
 
-// 🌾 Keep existing functions
+// Keep existing functions for backward compatibility
 export async function getInterviewById(id: string): Promise<any> {
   console.warn("⚠️ getInterviewById is deprecated. Use getFarmerSessionById instead.");
   if (!id) return null;

@@ -47,6 +47,54 @@ export interface SoilTestResults {
   // CEC
   cec: number; // meq/100g
   cecRating: NutrientRating;
+
+  // Micronutrients
+  zinc?: number;
+  zincRating?: NutrientRating;
+  copper?: number;
+  copperRating?: NutrientRating;
+  boron?: number;
+  boronRating?: NutrientRating;
+  manganese?: number;
+  manganeseRating?: NutrientRating;
+  iron?: number;
+  ironRating?: NutrientRating;
+  molybdenum?: number;
+  molybdenumRating?: NutrientRating;
+
+  // ========== SOIL TEST RECOMMENDATIONS ==========
+  targetYield?: number; // e.g., 27 bags/acre
+
+  // Planting fertilizer recommendation
+  recPlantingFertilizer?: string; // e.g., "NPK 12.24.12+5S"
+  recPlantingQuantity?: number; // e.g., 100 kg
+
+  // Topdressing fertilizer recommendation
+  recTopdressingFertilizer?: string; // e.g., "UREA 46-0-0"
+  recTopdressingQuantity?: number; // e.g., 90 kg
+
+  // Potassium fertilizer recommendation
+  recPotassiumFertilizer?: string; // e.g., "MOP 0-0-60"
+  recPotassiumQuantity?: number; // e.g., 30 kg
+}
+
+// ========== Interface for soil test recommendations input ==========
+export interface SoilTestRecommendations {
+  targetYield: number;
+  plantingFertilizer: string;  // e.g., "NPK 12.24.12+5S"
+  plantingQuantity: number;     // e.g., 100kg
+  topdressingFertilizer: string; // e.g., "UREA 46-0-0"
+  topdressingQuantity: number;   // e.g., 90kg
+  potassiumFertilizer: string;   // e.g., "MOP 0-0-60"
+  potassiumQuantity: number;     // e.g., 30kg
+}
+
+// ========== Interface for parsed nutrient values from recommendations ==========
+export interface ParsedNutrients {
+  n: number;
+  p: number;
+  k: number;
+  s?: number;
 }
 
 export interface NutrientRequirement {
@@ -58,6 +106,9 @@ export interface NutrientRequirement {
   mg: number; // kg Mg per acre needed
   zn: number; // kg Zn per acre needed
   b: number; // kg B per acre needed
+  cu?: number; // kg Cu per acre needed
+  mn?: number; // kg Mn per acre needed
+  fe?: number; // kg Fe per acre needed
 }
 
 export interface FertilizerRecommendation {
@@ -66,6 +117,8 @@ export interface FertilizerRecommendation {
   company: string;
   npk: string;
   amountKg: number; // kg per acre
+  packageSizes: string[];
+  pricePer50kg: number;
   provides: {
     n: number;
     p: number;

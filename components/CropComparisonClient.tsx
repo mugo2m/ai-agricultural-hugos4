@@ -1,3 +1,4 @@
+// components/CropComparisonClient.tsx (FIXED)
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -14,7 +15,7 @@ import {
   Tractor,
   Droplets,
   Leaf,
-  Wheat, // Changed from Corn to Wheat
+  Wheat,
   Loader2,
   ArrowRight,
   Heart,
@@ -42,7 +43,9 @@ import {
   Carrot,
   Flower2,
   Trophy,
-  Flag
+  Flag,
+  Citrus
+
 } from "lucide-react";
 
 interface CropComparisonClientProps {
@@ -98,33 +101,50 @@ export default function CropComparisonClient({
       setRankedCrops(sessionData.rankedProfits);
       setIsLoading(false);
     } else if (sessionData?.crops) {
-      // Fallback: calculate on client side
+      // Fallback: calculate on client side using Bungoma data
       const crops = sessionData.crops;
-      const baseProfit = 217710; // Default medium input profit
 
-      const variationFactors: Record<string, number> = {
-        maize: 1.0,
-        beans: 0.85,
-        coffee: 1.8,
-        vegetables: 2.2,
-        wheat: 0.9,
-        sorghum: 0.75,
-        millet: 0.7,
-        groundnuts: 1.3,
-        cassava: 1.1,
-        "sweet potatoes": 1.4,
-        "irish potatoes": 1.5,
-        bananas: 1.6,
-        tomatoes: 2.5,
-        onions: 2.3,
-        cabbage: 1.9,
-        kale: 2.0
+      // Base profits from Bungoma Farm Management Guidelines (medium management)
+      const profitData: Record<string, number> = {
+        maize: 217710,
+        beans: 71520,
+        "finger millet": 109090,
+        sorghum: 90360,
+        "soya beans": 171934,
+        cowpeas: 20397,
+        "green grams": 140350,
+        "bambara nuts": 94920,
+        groundnuts: 118200,
+        sunflower: 1060,
+        simsim: 58320,
+        coffee: 53445,
+        cotton: 24060,
+        sugarcane: 199318,
+        tobacco: 42050,
+        cassava: 253524,
+        "sweet potatoes": 117600,
+        "irish potatoes": 188360,
+        tomatoes: 1775549,
+        kales: 639060,
+        cabbages: 106210,
+        onions: 752120,
+        carrots: 161300,
+        capsicums: 167100,
+        chillies: 133780,
+        brinjals: 120930,
+        "french beans": 84985,
+        "garden peas": 35650,
+        bananas: 67650,
+        oranges: 44388,
+        pineapples: 11040,
+        avocados: 230602,
+        pawpaws: 316844,
+        "passion fruit": 386444
       };
 
       // Calculate profits
-      const profits = crops.map((crop: string, index: number) => {
-        const factor = variationFactors[crop.toLowerCase()] || 0.9 + (index * 0.1);
-        const profit = Math.round(baseProfit * factor);
+      const profits = crops.map((crop: string) => {
+        const profit = profitData[crop.toLowerCase()] || 100000;
         return { crop, profit };
       });
 
@@ -166,10 +186,10 @@ export default function CropComparisonClient({
     }
   };
 
-  // Get crop icon - FIXED: Removed Corn, using Wheat instead
+  // Get crop icon
   const getCropIcon = (crop: string) => {
     const iconMap: Record<string, any> = {
-      maize: <Wheat className="w-5 h-5" />, // Changed from Corn to Wheat
+      maize: <Wheat className="w-5 h-5" />,
       beans: <Leaf className="w-5 h-5" />,
       coffee: <Coffee className="w-5 h-5" />,
       vegetables: <Carrot className="w-5 h-5" />,
@@ -177,7 +197,13 @@ export default function CropComparisonClient({
       tomatoes: <Apple className="w-5 h-5" />,
       onions: <Sprout className="w-5 h-5" />,
       cabbage: <Sprout className="w-5 h-5" />,
-      kale: <Leaf className="w-5 h-5" />
+      kale: <Leaf className="w-5 h-5" />,
+      groundnuts: <Sprout className="w-5 h-5" />,
+      cassava: <Sprout className="w-5 h-5" />,
+      potatoes: <Sprout className="w-5 h-5" />,
+      oranges: <Citrus className="w-5 h-5" />,
+      pineapples: <Sprout className="w-5 h-5" />,
+      avocado: <Apple className="w-5 h-5" />
     };
     return iconMap[crop.toLowerCase()] || <Sprout className="w-5 h-5" />;
   };
@@ -259,7 +285,7 @@ export default function CropComparisonClient({
     const worstCrop = rankedCrops[rankedCrops.length - 1];
     const avgProfit = rankedCrops.reduce((sum, c) => sum + c.profit, 0) / rankedCrops.length;
 
-    const text = `Here's your crop profitability ranking.
+    const text = `Here's your crop profitability ranking based on Bungoma Farm Management Guidelines.
       Rank 1: ${bestCrop.crop} with profit of ${formatCurrency(bestCrop.profit)} per hectare.
       Rank 2: ${rankedCrops[1]?.crop} with ${formatCurrency(rankedCrops[1]?.profit)}.
       Rank 3: ${rankedCrops[2]?.crop} with ${formatCurrency(rankedCrops[2]?.profit)}.
@@ -670,3 +696,6 @@ export default function CropComparisonClient({
     </div>
   );
 }
+
+// ❌ REMOVE THIS DUPLICATE EXPORT - IT WAS CAUSING THE ERROR
+// export default CropComparisonClient;

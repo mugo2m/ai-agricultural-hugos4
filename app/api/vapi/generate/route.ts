@@ -6,12 +6,15 @@ import { soilTestInterpreter } from "@/lib/soilTestInterpreter";
 import { fertilizerCalculator } from "@/lib/fertilizerCalculator";
 import { calculateRankedCropProfits } from "@/lib/utils/cropCalculations";
 import { generateRecommendations } from "@/lib/recommendationEngine";
+import { calculateGrossMarginFromFarmerData } from "@/lib/utils";
 
 console.log("🌾 Farmer Session Generation Route Loaded (100% Logic-Based)");
 
 export async function POST(request: NextRequest) {
   try {
-    // 🌾 ALL FARMER DETAILS
+    // 🌾 ALL FARMER DETAILS - COMPLETE WITH ALL FIELDS
+    const body = await request.json();
+
     const {
       farmerName,
       phoneNumber,
@@ -51,7 +54,6 @@ export async function POST(request: NextRequest) {
       dapCost,
       canCost,
       npkCost,
-      dailyWageRate,
       ploughingCost,
       plantingLabourCost,
       weedingCost,
@@ -84,6 +86,8 @@ export async function POST(request: NextRequest) {
       mainChallenge,
       managementLevel,
       hasDoneSoilTest,
+
+      // SOIL TEST RAW VALUES
       soilTestDate,
       soilTestPH,
       soilTestPHRating,
@@ -91,12 +95,6 @@ export async function POST(request: NextRequest) {
       soilTestPRating,
       soilTestK,
       soilTestKRating,
-      soilTestCa,
-      soilTestCaRating,
-      soilTestMg,
-      soilTestMgRating,
-      soilTestNa,
-      soilTestNaRating,
       soilTestNPercent,
       soilTestNPercentRating,
       soilTestOC,
@@ -105,7 +103,39 @@ export async function POST(request: NextRequest) {
       soilTestOMRating,
       soilTestCEC,
       soilTestCECRating,
+      soilTestCa,
+      soilTestCaRating,
+      soilTestMg,
+      soilTestMgRating,
+      soilTestNa,
+      soilTestNaRating,
+
+      // SOIL TEST RECOMMENDATIONS
       targetYield,
+      recPlantingFertilizer,
+      recPlantingQuantity,
+      recTopdressingFertilizer,
+      recTopdressingQuantity,
+      recPotassiumFertilizer,
+      recPotassiumQuantity,
+
+      // FERTILIZER SELECTION - WHAT FARMER WILL ACTUALLY BUY
+      plantingFertilizerToUse,
+      plantingFertilizerCost,
+      topdressingFertilizerToUse,
+      topdressingFertilizerCost,
+      potassiumFertilizerToUse,
+      potassiumFertilizerCost,
+
+      // RENAMED FERTILIZER QUANTITIES TO AVOID DUPLICATION
+      plantingFertilizerQuantity: plantingFertilizerQuantityKg,
+      topdressingFertilizerQuantity: topdressingFertilizerQuantityKg,
+      potassiumFertilizerQuantity: potassiumFertilizerQuantityKg,
+
+      // SEED COST AND PRICE PER UNIT
+      seedCost,
+      pricePerUnit,
+
       availablePlantingFertilizers,
       availableTopDressingFertilizers,
       season,
@@ -130,7 +160,7 @@ export async function POST(request: NextRequest) {
       otherLivestock,
       smartphone,
       userid
-    } = await request.json();
+    } = body;
 
     if (!crops || !county || !userid) {
       return NextResponse.json(
@@ -159,17 +189,54 @@ export async function POST(request: NextRequest) {
           totalNitrogen: parseFloat(soilTestNPercent) || 0,
           organicCarbon: parseFloat(soilTestOC) || 0,
           organicMatter: parseFloat(soilTestOM) || 0,
-          cec: parseFloat(soilTestCEC) || 0
+          cec: parseFloat(soilTestCEC) || 0,
+
+          // SOIL TEST RECOMMENDATIONS
+          targetYield: targetYield ? parseFloat(targetYield) : null,
+          recPlantingFertilizer: recPlantingFertilizer || null,
+          recPlantingQuantity: recPlantingQuantity ? parseFloat(recPlantingQuantity) : null,
+          recTopdressingFertilizer: recTopdressingFertilizer || null,
+          recTopdressingQuantity: recTopdressingQuantity ? parseFloat(recTopdressingQuantity) : null,
+          recPotassiumFertilizer: recPotassiumFertilizer || null,
+          recPotassiumQuantity: recPotassiumQuantity ? parseFloat(recPotassiumQuantity) : null
         };
 
         soilAnalysis = soilTestInterpreter.interpretSoilTest(soilTestData);
 
-        fertilizerPlan = soilTestInterpreter.generateCompleteFertilizerPlan(
-          soilAnalysis,
-          primaryCrop,
-          availablePlantingFertilizers ? availablePlantingFertilizers.split(',') : []
-        );
-        console.log(`📊 Generated fertilizer plan with ${fertilizerPlan.interventions.length} interventions`);
+        // If farmer has recommendations and has selected fertilizers to buy, calculate precision plan
+        if (soilTestData.recPlantingFertilizer && plantingFertilizerToUse) {
+          fertilizerPlan = fertilizerCalculator.calculateFromRecommendations(
+            {
+              targetYield: soilTestData.targetYield || 27,
+              plantingFertilizer: soilTestData.recPlantingFertilizer,
+              plantingQuantity: soilTestData.recPlantingQuantity || 100,
+              topdressingFertilizer: soilTestData.recTopdressingFertilizer || "",
+              topdressingQuantity: soilTestData.recTopdressingQuantity || 0,
+              potassiumFertilizer: soilTestData.recPotassiumFertilizer || "",
+              potassiumQuantity: soilTestData.recPotassiumQuantity || 0
+            },
+            {
+              planting: plantingFertilizerToUse ? [plantingFertilizerToUse] : [],
+              topdressing: topdressingFertilizerToUse ? [topdressingFertilizerToUse] : [],
+              potassium: potassiumFertilizerToUse ? [potassiumFertilizerToUse] : []
+            },
+            {
+              plantingCost: plantingFertilizerCost ? parseFloat(plantingFertilizerCost) : 0,
+              topdressingCost: topdressingFertilizerCost ? parseFloat(topdressingFertilizerCost) : 0,
+              potassiumCost: potassiumFertilizerCost ? parseFloat(potassiumFertilizerCost) : 0
+            }
+          );
+        } else {
+          // Fallback to standard calculation
+          fertilizerPlan = soilTestInterpreter.generateCompleteFertilizerPlan(
+            soilAnalysis,
+            primaryCrop,
+            availablePlantingFertilizers ? availablePlantingFertilizers.split(',') : []
+          );
+        }
+
+        console.log(`📊 Generated fertilizer plan with ${fertilizerPlan?.interventions?.length || 0} interventions`);
+        console.log(`💰 Total investment: Ksh ${fertilizerPlan?.totalCost || 0}`);
       } catch (error) {
         console.error("Error processing soil test:", error);
       }
@@ -199,20 +266,59 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // ========== CALCULATE GROSS MARGIN ==========
-    const grossMargin = calculateGrossMargin(primaryCrop, {
-      maizePrice: parseFloat(maizePrice) || 6750,
-      beansPrice: parseFloat(beansPrice) || 10350,
-      dapCost: parseFloat(dapCost) || 3300,
-      canCost: parseFloat(canCost) || 2500,
-      dailyWageRate: parseFloat(dailyWageRate) || 200,
-      ploughingCost: parseFloat(ploughingCost) || 7000,
-      plantingLabourCost: parseFloat(plantingLabourCost) || 2000,
-      weedingCost: parseFloat(weedingCost) || 2500,
-      harvestingCost: parseFloat(harvestingCost) || 2000,
-      transportCostPerBag: parseFloat(transportCostPerBag) || 50,
-      bagCost: parseFloat(bagCost) || 40
-    });
+    // ========== CALCULATE GROSS MARGIN USING FARMER'S ACTUAL DATA ==========
+    let grossMargin = null;
+    try {
+      const grossMarginInput = {
+        crop: primaryCrop,
+        cropAcres: parseFloat(cropAcres) || parseFloat(acres) || 1,
+        actualYield: parseFloat(actualYield) || parseFloat(averageHarvest) || 0,
+        yieldUnit: yieldUnit || harvestUnit || "90kg bags",
+        pricePerUnit: parseFloat(pricePerUnit) || (primaryCrop === "maize" ? 6750 : 10350),
+        seedRate: parseFloat(seedRate) || parseFloat(seedQuantity) || 0,
+        seedCost: parseFloat(seedCost) || 180,
+
+        // USING RENAMED VARIABLES
+        plantingFertilizerCost: plantingFertilizerCost ? parseFloat(plantingFertilizerCost) : parseFloat(dapCost) || 3500,
+        plantingFertilizerQuantity: parseFloat(plantingFertilizerQuantityKg) || 0,
+
+        topdressingFertilizerCost: topdressingFertilizerCost ? parseFloat(topdressingFertilizerCost) : parseFloat(canCost) || 2500,
+        topdressingFertilizerQuantity: parseFloat(topdressingFertilizerQuantityKg) || 0,
+
+        potassiumFertilizerCost: potassiumFertilizerCost ? parseFloat(potassiumFertilizerCost) : 0,
+        potassiumFertilizerQuantity: parseFloat(potassiumFertilizerQuantityKg) || 0,
+
+        ploughingCost: parseFloat(ploughingCost) || 0,
+        plantingLabourCost: parseFloat(plantingLabourCost) || 0,
+        weedingCost: parseFloat(weedingCost) || 0,
+        harvestingCost: parseFloat(harvestingCost) || 0,
+        transportCostPerBag: parseFloat(transportCostPerBag) || 0,
+        bagCost: parseFloat(bagCost) || 40
+      };
+
+      console.log("📊 Gross Margin Input:", grossMarginInput);
+
+      grossMargin = calculateGrossMarginFromFarmerData(grossMarginInput);
+      console.log("💰 Gross Margin Result:", grossMargin);
+    } catch (error) {
+      console.error("Error calculating gross margin:", error);
+      // Provide a fallback gross margin
+      grossMargin = {
+        crop: primaryCrop,
+        bags: 0,
+        pricePerBag: 0,
+        revenue: 0,
+        seedCost: 0,
+        fertilizerCost: 0,
+        labourCost: 0,
+        transportCost: 0,
+        bagCost: 0,
+        totalCosts: 0,
+        grossMargin: 0,
+        roi: 0,
+        costPerBag: 0
+      };
+    }
 
     // ========== SAVE TO FIREBASE ==========
     const sessionRef = db.collection("farmer_sessions").doc();
@@ -242,24 +348,37 @@ export async function POST(request: NextRequest) {
       seedSource,
       spacing,
       seedRate: seedRate ? parseFloat(seedRate) : (seedQuantity ? parseFloat(seedQuantity) : null),
+      seedCost: seedCost ? parseFloat(seedCost) : null,
+
+      // USING RENAMED VARIABLES FOR FERTILIZER QUANTITIES
       plantingFertilizer: {
         used: usePlantingFertilizer === "yes",
         type: plantingFertilizerType || null,
-        quantity: plantingFertilizerQuantity ? parseFloat(plantingFertilizerQuantity) : null,
+        quantity: plantingFertilizerQuantityKg ? parseFloat(plantingFertilizerQuantityKg) : null,
+        cost: plantingFertilizerCost ? parseFloat(plantingFertilizerCost) : null,
         reason: noPlantingFertilizerReason || null
       },
       topdressingFertilizer: {
         used: useTopdressingFertilizer === "yes",
         type: topdressingFertilizerType || null,
-        quantity: topdressingFertilizerQuantity ? parseFloat(topdressingFertilizerQuantity) : null,
+        quantity: topdressingFertilizerQuantityKg ? parseFloat(topdressingFertilizerQuantityKg) : null,
+        cost: topdressingFertilizerCost ? parseFloat(topdressingFertilizerCost) : null,
         reason: noTopdressingFertilizerReason || null
       },
+      potassiumFertilizer: {
+        used: potassiumFertilizerToUse ? true : false,
+        type: potassiumFertilizerToUse || null,
+        quantity: potassiumFertilizerQuantityKg ? parseFloat(potassiumFertilizerQuantityKg) : null,
+        cost: potassiumFertilizerCost ? parseFloat(potassiumFertilizerCost) : null,
+      },
+
       commonPests,
       pestControlMethod,
       commonDiseases,
       diseaseControlMethod,
       actualYield: actualYield ? parseFloat(actualYield) : (averageHarvest ? parseFloat(averageHarvest) : null),
       yieldUnit: yieldUnit || harvestUnit || "bags",
+      pricePerUnit: pricePerUnit ? parseFloat(pricePerUnit) : null,
       storageMethod,
       inputCosts: {
         dap: dapCost ? parseFloat(dapCost) : null,
@@ -268,7 +387,6 @@ export async function POST(request: NextRequest) {
         bag: bagCost ? parseFloat(bagCost) : 40
       },
       labourCosts: {
-        dailyWage: dailyWageRate ? parseFloat(dailyWageRate) : 100,
         ploughing: ploughingCost ? parseFloat(ploughingCost) : null,
         planting: plantingLabourCost ? parseFloat(plantingLabourCost) : null,
         weeding: weedingCost ? parseFloat(weedingCost) : null,
@@ -276,7 +394,8 @@ export async function POST(request: NextRequest) {
       },
       prices: {
         maize: maizePrice ? parseFloat(maizePrice) : 6750,
-        beans: beansPrice ? parseFloat(beansPrice) : 10350
+        beans: beansPrice ? parseFloat(beansPrice) : 10350,
+        perUnit: pricePerUnit ? parseFloat(pricePerUnit) : null
       },
       buyerType,
       transportCostPerBag: transportCostPerBag ? parseFloat(transportCostPerBag) : null,
@@ -330,6 +449,18 @@ export async function POST(request: NextRequest) {
         cec: soilTestCEC ? parseFloat(soilTestCEC) : null,
         cecRating: soilTestCECRating,
         targetYield: targetYield ? parseFloat(targetYield) : null,
+        recPlantingFertilizer: recPlantingFertilizer || null,
+        recPlantingQuantity: recPlantingQuantity ? parseFloat(recPlantingQuantity) : null,
+        recTopdressingFertilizer: recTopdressingFertilizer || null,
+        recTopdressingQuantity: recTopdressingQuantity ? parseFloat(recTopdressingQuantity) : null,
+        recPotassiumFertilizer: recPotassiumFertilizer || null,
+        recPotassiumQuantity: recPotassiumQuantity ? parseFloat(recPotassiumQuantity) : null,
+        plantingFertilizerToUse: plantingFertilizerToUse || null,
+        plantingFertilizerCost: plantingFertilizerCost ? parseFloat(plantingFertilizerCost) : null,
+        topdressingFertilizerToUse: topdressingFertilizerToUse || null,
+        topdressingFertilizerCost: topdressingFertilizerCost ? parseFloat(topdressingFertilizerCost) : null,
+        potassiumFertilizerToUse: potassiumFertilizerToUse || null,
+        potassiumFertilizerCost: potassiumFertilizerCost ? parseFloat(potassiumFertilizerCost) : null,
         analysis: soilAnalysis,
         interventions: fertilizerPlan?.interventions || [],
         fertilizerPlan: fertilizerPlan ? {
@@ -356,6 +487,7 @@ export async function POST(request: NextRequest) {
       smartphone: smartphone === "yes",
       recommendations: recommendations.list,
       financialAdvice: recommendations.financialAdvice,
+      grossMarginAnalysis: grossMargin,
       createdAt: new Date().toISOString(),
       queryCount: 0,
       source: "logic-based"
@@ -386,37 +518,6 @@ export async function POST(request: NextRequest) {
       error: error.message || "Unknown error occurred"
     }, { status: 500 });
   }
-}
-
-function calculateGrossMargin(crop: string, costs: any) {
-  const defaults = {
-    maize: {
-      low: { bags: 10, pricePerBag: 6750, seedCost: 5625, fertilizerCost: 0, labourCost: 13300, transportCost: 500, bagCost: 400 },
-      medium: { bags: 40, pricePerBag: 6750, seedCost: 5625, fertilizerCost: 13250, labourCost: 24200, transportCost: 2000, bagCost: 1600 },
-      high: { bags: 75, pricePerBag: 6750, seedCost: 5625, fertilizerCost: 20700, labourCost: 33650, transportCost: 3750, bagCost: 3000 }
-    }
-  };
-
-  const data = defaults[crop as keyof typeof defaults] || defaults.maize;
-
-  const calculate = (level: any) => {
-    const grossOutput = level.bags * level.pricePerBag;
-    const totalCost = level.seedCost + level.fertilizerCost + level.labourCost +
-                      level.transportCost + level.bagCost;
-    return {
-      ...level,
-      grossOutput,
-      totalCost,
-      grossMargin: grossOutput - totalCost
-    };
-  };
-
-  return {
-    crop,
-    low: calculate(data.low),
-    medium: calculate(data.medium),
-    high: calculate(data.high)
-  };
 }
 
 export async function GET() {

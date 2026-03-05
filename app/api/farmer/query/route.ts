@@ -66,7 +66,8 @@ export async function GET() {
     features: [
       "Template-based answers",
       "No AI costs",
-      "Instant responses"
+      "Instant responses",
+      "57 crops supported"
     ]
   });
 }
