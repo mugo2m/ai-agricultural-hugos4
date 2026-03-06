@@ -103,7 +103,88 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
-// ========== Gross Margin Calculator Using Farmer's Actual Data ==========
+// ========== SPACING AND PLANT POPULATION HELPERS ==========
+
+export interface SpacingInput {
+  rowCm: number;
+  plantCm: number;
+  seedsPerHole: number;
+}
+
+/**
+ * Calculate number of plants per acre based on spacing
+ * 1 acre = 4046.86 square meters
+ */
+export function calculatePlantsPerAcre(spacing: SpacingInput): number {
+  const rowM = spacing.rowCm / 100;
+  const plantM = spacing.plantCm / 100;
+  const areaPerPlant = rowM * plantM;
+  return Math.floor(4046.86 / areaPerPlant) * spacing.seedsPerHole;
+}
+
+/**
+ * Calculate total plants for a given farm size
+ */
+export function calculateTotalPlants(plantsPerAcre: number, acres: number): number {
+  return Math.floor(plantsPerAcre * acres);
+}
+
+// ========== FERTILIZER PER PLANT HELPERS ==========
+
+export interface FertilizerPerPlant {
+  dapGrams: number;
+  ureaGrams: number;
+  mopGrams: number;
+  totalGrams: number;
+}
+
+/**
+ * Calculate grams of fertilizer per plant based on total kg and plant count
+ */
+export function calculateFertilizerPerPlant(
+  dapKg: number,
+  ureaKg: number,
+  mopKg: number,
+  totalPlants: number
+): FertilizerPerPlant {
+  if (totalPlants === 0) {
+    return {
+      dapGrams: 0,
+      ureaGrams: 0,
+      mopGrams: 0,
+      totalGrams: 0
+    };
+  }
+
+  const dapGrams = (dapKg * 1000) / totalPlants;
+  const ureaGrams = (ureaKg * 1000) / totalPlants;
+  const mopGrams = (mopKg * 1000) / totalPlants;
+
+  return {
+    dapGrams: Math.round(dapGrams * 10) / 10,
+    ureaGrams: Math.round(ureaGrams * 10) / 10,
+    mopGrams: Math.round(mopGrams * 10) / 10,
+    totalGrams: Math.round((dapGrams + ureaGrams + mopGrams) * 10) / 10
+  };
+}
+
+// ========== MEASUREMENT GUIDE ==========
+
+/**
+ * Get a human-readable measurement guide based on grams
+ */
+export function getMeasurementGuide(grams: number): string {
+  if (grams < 1) return "👌 Tiny pinch (less than 1g)";
+  if (grams < 3) return "👌 Pinch (size of a peanut)";
+  if (grams < 6) return "🥄 1 level teaspoon";
+  if (grams < 12) return "🥄 1 level tablespoon";
+  if (grams < 25) return "🥄 2 tablespoons";
+  if (grams < 50) return "🥄 ¼ cup (4 tablespoons)";
+  return "📦 More than ¼ cup - use a measuring cup";
+}
+
+// ========== GROSS MARGIN CALCULATOR Using Farmer's Actual Data ==========
+
 export interface GrossMarginInput {
   crop: string;
   cropAcres: number;
@@ -144,25 +225,25 @@ export interface GrossMarginOutput {
 
 export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): GrossMarginOutput {
   // Convert yield to 90kg bags (standard for grains)
-  let totalBags = input.actualYield;
+  let totalBags = input.actualYield * input.cropAcres;
 
-  if (input.yieldUnit === "kg" && input.actualYield) {
-    totalBags = input.actualYield / 90; // Convert kg to 90kg bags
+  if (input.yieldUnit === "kg") {
+    totalBags = (input.actualYield * input.cropAcres) / 90;
   } else if (input.yieldUnit === "tonnes") {
-    totalBags = input.actualYield * 11.11; // 1 tonne = 11.11 bags of 90kg
+    totalBags = (input.actualYield * input.cropAcres) * 11.11;
   } else if (input.yieldUnit === "50kg bags") {
-    totalBags = input.actualYield; // Keep as is
+    totalBags = input.actualYield * input.cropAcres;
   } else if (input.yieldUnit === "90kg bags") {
-    totalBags = input.actualYield; // Keep as is
+    totalBags = input.actualYield * input.cropAcres;
   }
 
   // Calculate revenue
   const revenue = totalBags * input.pricePerUnit;
 
   // Calculate seed cost
-  const seedCostTotal = input.seedRate * input.seedCost;
+  const seedCostTotal = input.seedRate * input.cropAcres * input.seedCost;
 
-  // Calculate fertilizer costs (convert kg to bags)
+  // Calculate fertilizer costs
   const plantingFertBags = input.plantingFertilizerQuantity / 50;
   const plantingFertTotal = plantingFertBags * input.plantingFertilizerCost;
 
@@ -175,8 +256,8 @@ export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): Gro
   const fertilizerTotal = plantingFertTotal + topdressingFertTotal + potassiumFertTotal;
 
   // Calculate labour costs
-  const labourTotal = input.ploughingCost + input.plantingLabourCost +
-                     input.weedingCost + input.harvestingCost;
+  const labourTotal = (input.ploughingCost + input.plantingLabourCost +
+                      input.weedingCost + input.harvestingCost) * input.cropAcres;
 
   // Calculate transport and bag costs
   const transportTotal = totalBags * input.transportCostPerBag;
@@ -188,7 +269,7 @@ export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): Gro
   // Gross margin
   const grossMargin = revenue - totalCosts;
 
-  // ROI (Return on Investment) as percentage
+  // ROI
   const roi = totalCosts > 0 ? (grossMargin / totalCosts) * 100 : 0;
 
   // Cost per bag
@@ -211,7 +292,7 @@ export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): Gro
   };
 }
 
-// Legacy function (keep for backward compatibility)
+// Legacy function
 export const calculateGrossMargin = (
   crop: string,
   managementLevel: 'low' | 'medium' | 'high',

@@ -1,7 +1,105 @@
 // lib/qaEngine.ts
-// 100% LOGIC-BASED Q&A ENGINE with Bungoma Farm Management Guidelines
+// 100% LOGIC-BASED Q&A ENGINE - CLEAN VERSION
 
 const qaTemplates: Record<string, (data: any, question: string) => string> = {
+  // ========== VARIETIES QUESTIONS ==========
+  varieties: (data, question) => {
+    const crop = data?.crops?.[0] || 'your crops';
+    const lowerCrop = crop.toLowerCase();
+    const county = data?.county || 'your area';
+
+    const varietyMap: Record<string, string> = {
+      maize: `MAIZE VARIETIES FOR ${county.toUpperCase()}:
+
+• H614: High yielding, 4-6 months, resistant to lodging
+• H629: Drought tolerant, 3-4 months, good for medium altitudes
+• H6213: High protein, 4-5 months, excellent for milling
+• PHB 3253: Hybrid, 3-4 months, very high yield potential
+• WH505: White grain, 4-5 months, resistant to MSV
+• DK 777: Drought tolerant, 3-4 months, consistent performance
+
+Local varieties also available at your agrovet.`,
+
+      beans: `BEANS VARIETIES FOR ${county.toUpperCase()}:
+
+• Rosecoco: Popular, good taste, 3-4 months
+• Canadian Wonder: High yielding, 3 months
+• KK15: Drought tolerant, 2-3 months
+• Nyota: Disease resistant, 3 months
+• Mwitemania: Early maturity, 2-3 months
+• Chelalang: High protein, 3 months`,
+
+      sorghum: `SORGHUM VARIETIES FOR ${county.toUpperCase()}:
+
+• Seredo: High yielding, 3-4 months
+• Serena: Drought tolerant, 3 months
+• Gadam: Bird resistant, 4 months`,
+
+      "finger millet": `FINGER MILLET VARIETIES:
+
+• Local varieties: Traditional, well-adapted
+• Serere: Improved, high yield
+• Gulu: Early maturing`,
+
+      coffee: `COFFEE VARIETIES FOR ${county.toUpperCase()}:
+
+• SL 28: High quality, drought resistant
+• SL 34: Good cup quality, high yield
+• Ruiru 11: Disease resistant, compact
+• Batian: High yield, CBD resistant
+• K7: Rust resistant, good for lower altitudes`,
+
+      tomatoes: `TOMATO VARIETIES:
+
+• Fortune Maker: Large fruits, disease resistant
+• Money Maker: Continuous cropping, reliable
+• Rio Grande: Oval shape, good for processing
+• Anna F1: Hybrid, very high yield
+• Onyx: Firm fruits, good for transport`,
+
+      potatoes: `POTATO VARIETIES:
+
+• Shangi: Popular, early maturity (3 months)
+• Unica: Drought tolerant, disease resistant
+• Tigoni: High yielding, good quality
+• Desiree: Red skin, good for crisps
+• Kenya Baraka: Late blight resistant`,
+
+      onions: `ONION VARIETIES:
+
+• Red Creole: Red bulbs, good storage
+• Bombay Red: Dark red, pungent flavor
+• Texas Grano: Large bulbs, mild flavor
+• Tropicana: Heat tolerant, high yield`,
+
+      cabbages: `CABBAGE VARIETIES:
+
+• Copenhagen Market: Early maturing, round heads
+• Gloria F1: Hybrid, disease resistant
+• Pruktor: Large heads, good storage
+• Sugarloaf: Pointed heads, sweet flavor`,
+
+      bananas: `BANANA VARIETIES:
+
+• Giant Cavendish: Commercial variety
+• Williams: Sweet, good for dessert
+• FHIA 17: Disease resistant, cooking banana
+• Local varieties: Well adapted to your area`,
+
+      groundnuts: `GROUNDNUT VARIETIES:
+
+• Homa Bay: Spreader type, high yield
+• Uganda Red: Bunch type, early maturity
+• Local varieties: Well adapted`,
+    };
+
+    if (varietyMap[lowerCrop]) {
+      return varietyMap[lowerCrop];
+    }
+
+    return `For ${crop}, recommended varieties include improved hybrids and local landraces adapted to ${county}. Visit your local agrovet for seeds suitable for your specific area.`;
+  },
+
   // Fertilizer questions
   fertilizer: (data, question) => {
     const crop = data?.crops?.[0] || 'your crops';
@@ -9,49 +107,58 @@ const qaTemplates: Record<string, (data: any, question: string) => string> = {
 
     if (data?.soilTest?.fertilizerPlan) {
       const plan = data.soilTest.fertilizerPlan;
-      let answer = `**🌱 YOUR PRECISION FERTILIZER PLAN (Based on Soil Test):**\n\n`;
+      let answer = `PRECISION FERTILIZER PLAN (Based on Your Soil Test):\n\n`;
 
       if (plan.planting?.length > 0) {
-        answer += `**PLANTING FERTILIZERS:**\n`;
+        answer += `PLANTING FERTILIZERS:\n`;
         plan.planting.forEach((p: any) => {
           const bagsNeeded = Math.ceil(p.selected.amountKg / 50);
           answer += `• ${p.selected.name}: ${p.selected.amountKg}kg per acre\n`;
           answer += `  Buy: ${bagsNeeded} bag(s) of 50kg\n`;
-          answer += `  Package options: ${p.selected.packageSizes?.join(", ") || "50kg bag"}\n`;
           answer += `  Cost: Ksh ${p.selected.cost?.toLocaleString()}\n`;
           answer += `  Provides: ${Object.entries(p.selected.provides).map(([k, v]) => `${v}kg ${k}`).join(', ')}\n\n`;
         });
       }
 
       if (plan.topdressing?.length > 0) {
-        answer += `**TOPDRESSING FERTILIZERS (apply 3-4 weeks after planting):**\n`;
+        answer += `TOPDRESSING FERTILIZERS (apply 3-4 weeks after planting):\n`;
         plan.topdressing.forEach((t: any) => {
           const bagsNeeded = Math.ceil(t.selected.amountKg / 50);
           answer += `• ${t.selected.name}: ${t.selected.amountKg}kg per acre\n`;
           answer += `  Buy: ${bagsNeeded} bag(s) of 50kg\n`;
-          answer += `  Package options: ${t.selected.packageSizes?.join(", ") || "50kg bag"}\n`;
           answer += `  Cost: Ksh ${t.selected.cost?.toLocaleString()}\n\n`;
         });
       }
 
-      answer += `**TOTAL INVESTMENT: Ksh ${plan.totalCost?.toLocaleString()} per acre**\n`;
-      answer += `**EXPECTED RETURN: 40 bags × Ksh 6,750 = Ksh 270,000**\n`;
-      answer += `**GROSS MARGIN: Ksh ${(270000 - (plan.totalCost || 0)).toLocaleString()}**\n`;
-      answer += `**📊 BUSINESS SUMMARY: Every Ksh 1 invested returns Ksh ${((270000 / (plan.totalCost || 1)) - 1).toFixed(1)} profit! Farming is a BUSINESS - invest wisely!**\n`;
+      answer += `TOTAL INVESTMENT: Ksh ${plan.totalCost?.toLocaleString()} per acre`;
       return answer;
     }
 
-    // General fertilizer advice based on Bungoma guidelines
     const fertAdvice: Record<string, string> = {
-      maize: "**🌽 MAIZE FERTILIZER RECOMMENDATION (Bungoma Guidelines):**\n\n**Planting:** Apply 150kg DAP per hectare (3 bags of 50kg) at planting. Cost: Ksh 9,900\n\n**Topdressing:** Apply 300kg CAN per hectare (6 bags of 50kg) 3-4 weeks after planting. Cost: Ksh 15,000\n\n**Total Investment:** Ksh 24,900/hectare (Ksh 10,000/acre)\n\n**Expected Yield:** 40 bags × Ksh 6,750 = Ksh 270,000\n\n**Gross Margin:** Ksh 245,100\n\n**ROI:** Every Ksh 1 invested returns Ksh 10 profit!\n\n**Package sizes:** DAP 50kg bag (Ksh 3,300), CAN 50kg bag (Ksh 2,500). Buy larger packs to save more!",
+      maize: `MAIZE FERTILIZER RECOMMENDATION:
 
-      beans: "**BEANS FERTILIZER RECOMMENDATION:**\n\n**Planting only:** Apply 250kg DAP per hectare (5 bags of 50kg). Cost: Ksh 16,500\n\n**Expected Yield:** 15 bags × Ksh 10,350 = Ksh 155,250\n\n**Gross Margin:** Ksh 138,750\n\n**Package sizes:** DAP 50kg bag (Ksh 3,300). Buy 5 bags and save with bulk discount!",
+Planting: Apply 50kg DAP per acre at planting (1 bag of 50kg)
+Topdressing: Apply 50kg CAN or 25kg UREA per acre 3-4 weeks after planting
+Add 2.5 tons manure per acre for best results
 
-      tomatoes: "**🍅 TOMATOES FERTILIZER RECOMMENDATION:**\n\n**Planting:** Apply 200kg DAP per hectare (4 bags of 50kg). Cost: Ksh 13,200\n\n**Topdressing:** Apply 100kg CAN at transplanting + 200kg CAN at flowering (6 bags total). Cost: Ksh 15,000\n\n**Total Investment:** Ksh 28,200/hectare\n\n**Expected Yield:** 26,000kg × Ksh 120/kg = Ksh 3,120,000\n\n**Gross Margin:** Ksh 3,091,800\n\n**Package sizes:** DAP 50kg (Ksh 3,300), CAN 50kg (Ksh 2,500). Buy in bulk to maximize profit!"
+Expected yield: 25-40 bags per acre with good management`,
+
+      beans: `BEANS FERTILIZER RECOMMENDATION:
+
+Planting only: Apply 50kg DAP per acre at planting
+No topdressing needed - beans fix their own nitrogen
+Add manure for better yields`,
+
+      tomatoes: `TOMATOES FERTILIZER RECOMMENDATION:
+
+Planting: Apply 100kg DAP per acre at planting
+Topdressing 1: 50kg CAN at transplanting
+Topdressing 2: 100kg CAN at flowering
+Use foliar feeds for micronutrients`
     };
 
     return fertAdvice[lowerCrop] ||
-      `For ${crop}, a general recommendation is to apply 150kg DAP at planting and topdress with 200kg CAN 3-4 weeks later. For precision, consider doing a soil test - it can save you up to 30% on fertilizer costs!`;
+      `For ${crop}, general recommendation is to apply 50kg DAP at planting and topdress with 50kg CAN 3-4 weeks later. Consider a soil test for precision recommendations.`;
   },
 
   // Seed rate questions
@@ -60,68 +167,88 @@ const qaTemplates: Record<string, (data: any, question: string) => string> = {
     const lowerCrop = crop.toLowerCase();
 
     const seedRates: Record<string, string> = {
-      maize: "**🌽 MAIZE SEED RATE:** 10kg per acre (25kg per hectare). Buy certified seed from agrodealers. Cost: Ksh 180-200/kg. Package sizes: 2kg (Ksh 360), 10kg (Ksh 1,800), 25kg (Ksh 4,500). Buying 25kg bag saves 10%!",
+      maize: `MAIZE SEED RATE:
 
-      beans: "**BEANS SEED RATE:** 20-24kg per acre (50-60kg per hectare). Package sizes: 2kg (Ksh 300), 10kg (Ksh 1,400), 50kg (Ksh 6,500). Buy in bulk with neighbors!",
+10kg per acre (25kg per hectare)
+Buy certified seed from agrodealers
+Cost: Ksh 180-200 per kg`,
 
-      "finger millet": "**FINGER MILLET SEED RATE:** 1.6kg per acre (4kg per hectare). Package: 2kg pack (Ksh 500).",
+      beans: `BEANS SEED RATE:
 
-      sorghum: "**SORGHUM SEED RATE:** 2.8kg per acre (7kg per hectare). Package: 5kg pack (Ksh 900).",
+20-24kg per acre (50-60kg per hectare)
+Certified seed recommended`,
 
-      "soya beans": "**SOYA BEANS SEED RATE:** 16-24kg per acre (40-60kg per hectare). Package: 10kg (Ksh 800), 25kg (Ksh 1,900).",
+      "finger millet": `FINGER MILLET SEED RATE:
 
-      groundnuts: "**GROUNDNUTS SEED RATE:** 18-20kg per acre (45-50kg per hectare). Package: 10kg (Ksh 900), 25kg (Ksh 2,200).",
+1.6kg per acre (4kg per hectare)`,
 
-      tomatoes: "**🍅 TOMATOES SEED RATE:** 60-80g per acre (150-200g per hectare). Package: 10g (Ksh 500), 50g (Ksh 2,200), 100g (Ksh 4,000).",
+      sorghum: `SORGHUM SEED RATE:
 
-      onions: "**ONIONS SEED RATE:** 0.7-0.8kg per acre (1.75-2kg per hectare). Package: 100g (Ksh 600), 500g (Ksh 2,800), 1kg (Ksh 5,200).",
+2.8kg per acre (7kg per hectare)`,
 
-      cabbages: "**CABBAGES SEED RATE:** 200g per acre (500g per hectare). Package: 100g (Ksh 800), 500g (Ksh 3,500)."
+      tomatoes: `TOMATOES SEED RATE:
+
+60-80g per acre (150-200g per hectare) for nursery`,
+
+      onions: `ONIONS SEED RATE:
+
+0.7-0.8kg per acre (1.75-2kg per hectare) for nursery`
     };
 
     return seedRates[lowerCrop] ||
-      `For ${crop}, use certified seed at recommended rates. Buy from certified agrodealers for quality assurance.`;
+      `For ${crop}, use certified seed at recommended rates from your local agrovet.`;
   },
 
   // Spacing questions
   spacing: (data, question) => {
     const crop = data?.crops?.[0] || 'crops';
     const spacingMap: Record<string, string> = {
-      maize: "**🌽 MAIZE SPACING:** 75cm between rows x 25cm within rows (1 seed per hole) OR 75cm x 50cm (2 seeds per hole). Plant 5cm deep. This gives about 53,000 plants per hectare.",
+      maize: `MAIZE SPACING:
 
-      beans: "**BEANS SPACING:** 50cm x 10cm for pure stand (2 seeds per hole). For intercropping with maize, use 50cm x 15cm between maize rows.",
+75cm between rows x 25cm within rows (1 seed per hole)
+OR 75cm x 50cm (2 seeds per hole)
+Plant 5cm deep
+This gives about 53,000 plants per hectare`,
 
-      "finger millet": "**FINGER MILLET SPACING:** 30cm x 15cm (drilled and thinned).",
+      beans: `BEANS SPACING:
 
-      sorghum: "**SORGHUM SPACING:** 60cm x 15cm (drilled then thinned to 15cm intra-row).",
+50cm x 10cm for pure stand (2 seeds per hole)
+For intercropping with maize, use 50cm x 15cm between maize rows`,
 
-      "soya beans": "**SOYA BEANS SPACING:** 45cm x 10cm (3 seeds per hole, thin to 1 plant).",
+      sorghum: `SORGHUM SPACING:
 
-      sunflower: "**SUNFLOWER SPACING:** 75cm x 30cm (2 seeds per hole, thin to 1).",
+60cm x 15cm (drilled then thinned to 15cm intra-row)`,
 
-      tomatoes: "**🍅 TOMATOES SPACING:** 60-70cm x 40cm (processing), 90cm x 30cm (fresh market), or 60cm x 60cm (2 bearing stems).",
+      tomatoes: `TOMATOES SPACING:
 
-      kales: "**KALES SPACING:** 60cm x 60cm. Transplant at 4-6 leaf stage.",
+60-70cm x 40cm (processing)
+90cm x 30cm (fresh market)
+60cm x 60cm (2 bearing stems)`,
 
-      cabbages: "**CABBAGES SPACING:** 60cm x 45cm for medium heads, 75cm x 60cm for large heads.",
+      cabbages: `CABBAGES SPACING:
 
-      onions: "**ONIONS SPACING:** 15cm x 7.5cm. Transplant when pencil-thick.",
+60cm x 45cm for medium heads
+75cm x 60cm for large heads`,
 
-      carrots: "**CARROTS SPACING:** Rows 25-30cm apart, thin to 3-5cm within row.",
+      onions: `ONIONS SPACING:
 
-      bananas: "**BANANAS SPACING:** 3m x 3m (short varieties), 3m x 4m (medium), 4m x 4m (tall). Hole size: 60cm x 60cm x 60cm.",
+15cm x 7.5cm. Transplant when pencil-thick`,
 
-      coffee: "**COFFEE SPACING:** 2.75m x 2.75m for SL28/SL34 (1,300 trees/acre), 2m x 2m for Ruiru 11 (2,500 trees/acre).",
+      bananas: `BANANAS SPACING:
 
-      cassava: "**CASSAVA SPACING:** 1m x 1m (10,000 cuttings per hectare).",
+3m x 3m (short varieties)
+3m x 4m (medium)
+4m x 4m (tall)
+Hole size: 60cm x 60cm x 60cm`,
 
-      "sweet potatoes": "**SWEET POTATOES SPACING:** 90cm x 30cm on ridges. Plant cuttings at 45° angle.",
+      coffee: `COFFEE SPACING:
 
-      "irish potatoes": "**IRISH POTATOES SPACING:** 75cm x 30cm. Plant on ridges for better tuber development."
+2.75m x 2.75m for SL28/SL34 (1,300 trees/acre)
+2m x 2m for Ruiru 11 (2,500 trees/acre)`
     };
 
     return spacingMap[crop.toLowerCase()] ||
-      `For ${crop}, follow the recommended spacing for your specific variety. Generally, allow enough space for plants to grow without competing for light, water, and nutrients.`;
+      `For ${crop}, follow the recommended spacing for your specific variety. Check with your local agrovet for guidance.`;
   },
 
   // Pest control questions
@@ -130,135 +257,159 @@ const qaTemplates: Record<string, (data: any, question: string) => string> = {
     const lowerCrop = crop.toLowerCase();
 
     const pestAdvice: Record<string, string> = {
-      maize: `**🌽 MAIZE PEST CONTROL (Integrated Pest Management):**
+      maize: `MAIZE PEST CONTROL:
 
-**Fall Armyworm:**
-• Cultural: Scout fields twice weekly, practice push-pull technology, conserve natural enemies
-• Chemical:
-  - Rocket 44EC (40ml/20L water): 100ml (Ksh 350) covers 0.5 acre, 250ml (Ksh 800) covers 1.25 acres, 500ml (Ksh 1,500) covers 2.5 acres
-  - Emacot 5WG (4g/20L water): 10g (Ksh 250) covers 0.5 acre, 20g (Ksh 480) covers 1 acre
-• Business: Early detection saves Ksh 5,000+ per acre!
+Fall Armyworm:
+• Cultural: Scout fields weekly, practice push-pull technology
+• Chemical: Rocket 44EC (40ml/20L water) or Emacot 5WG (4g/20L water)
 
-**Stalk Borer:**
-• Cultural: Apply ash in funnel (FREE!), rotate with legumes, push-pull technology
-• Chemical: Bulldock granules (3.5g/plant): 500g (Ksh 600) covers 1 acre
+Stalk Borer:
+• Cultural: Apply ash in funnel (FREE!), rotate with legumes
+• Chemical: Bulldock granules (3.5g per plant)
 
-**Larger Grain Borer (Osama):**
+Larger Grain Borer (Storage):
 • Cultural: Dry to 13% moisture, use hermetic bags
-• Chemical: Actellic Gold Dust (50g/90kg bag): 100g (Ksh 150) treats 2 bags
-• Hermetic bags: Ksh 250 each (protects Ksh 6,750 grain = 2,600% ROI!)`,
+• Chemical: Actellic Gold Dust (50g per 90kg bag)`,
 
-      tomatoes: `**🍅 TOMATOES PEST CONTROL:**
+      tomatoes: `TOMATO PEST CONTROL:
 
-**Whiteflies:**
-• Cultural: Yellow sticky traps (Ksh 50 each)
-• Chemical:
-  - Decis 2.5EC (10ml/20L): 100ml (Ksh 400) covers 1 acre
-  - Confidor 200SL (10ml/20L): 100ml (Ksh 450) covers 1 acre
+Whiteflies:
+• Cultural: Yellow sticky traps
+• Chemical: Decis 2.5EC (10ml/20L) or Confidor 200SL (10ml/20L)
 
-**American Bollworm:**
-• Chemical: Karate 5EC (5ml/20L): 100ml (Ksh 400) covers 2 acres
-
-**BUSINESS TIP:** Combine methods = fewer sprays = more profit!`
+American Bollworm:
+• Chemical: Karate 5EC (5ml/20L)`
     };
 
     return pestAdvice[lowerCrop] ||
-      `For ${crop}, practice integrated pest management: monitor regularly, use resistant varieties, conserve natural enemies, and apply recommended pesticides only when pest levels reach economic thresholds. Always check package sizes - buying 500ml saves 20% compared to 100ml!`;
+      `For ${crop}, practice integrated pest management: monitor regularly, use resistant varieties, conserve natural enemies, and apply pesticides only when pest levels reach economic thresholds.`;
   },
 
-  // Gross margin questions
-  margin: (data, question) => {
-    const crop = data?.crops?.[0] || 'maize';
+  // Disease control questions
+  disease: (data, question) => {
+    const crop = data?.crops?.[0] || 'crops';
     const lowerCrop = crop.toLowerCase();
 
-    const margins: Record<string, string> = {
-      maize: `**🌽 MAIZE GROSS MARGIN ANALYSIS (per hectare - Bungoma Guidelines):**
+    const diseaseAdvice: Record<string, string> = {
+      maize: `MAIZE DISEASE CONTROL:
 
-**LOW MANAGEMENT:**
-• Yield: 10 bags × Ksh 6,750 = Ksh 67,500
-• Costs: Ksh 23,310
-• GROSS MARGIN: Ksh 44,190
+Maize Lethal Necrosis Disease (MLND):
+• Use certified seed, keep field weed-free
+• Control vectors with yellow sticky traps
+• Uproot and destroy infected plants
 
-**MEDIUM MANAGEMENT:**
-• Yield: 40 bags × Ksh 6,750 = Ksh 270,000
-• Costs: Ksh 52,290
-• GROSS MARGIN: Ksh 217,710
+Maize streak virus:
+• Use resistant varieties, control leaf hoppers
 
-**HIGH MANAGEMENT:**
-• Yield: 75 bags × Ksh 6,750 = Ksh 506,250
-• Costs: Ksh 72,570
-• GROSS MARGIN: Ksh 433,680
+Head smut:
+• Use tolerant varieties, improve soil fertility
+• Remove and burn infected plants`,
 
-**📊 BUSINESS SUMMARY:**
-• Moving from Low to Medium: +Ksh 173,520 profit (393% increase!)
-• Moving from Medium to High: +Ksh 215,970 profit (99% increase!)
-• Every Ksh 1 invested at Medium level returns Ksh 4.16 profit!
+      tomatoes: `TOMATO DISEASE CONTROL:
 
-**Your current level: ${data?.managementLevel || "Medium"}**`,
+Late Blight:
+• Spray Ridomil or Mancozeb preventatively
+• Ensure good air circulation
 
-      beans: `**BEANS GROSS MARGIN ANALYSIS (per hectare):**
-
-**LOW MANAGEMENT:**
-• Yield: 5 bags × Ksh 10,350 = Ksh 51,750
-• Costs: Ksh 24,840
-• GROSS MARGIN: Ksh 26,910
-
-**MEDIUM MANAGEMENT:**
-• Yield: 10 bags × Ksh 10,350 = Ksh 103,500
-• Costs: Ksh 31,980
-• GROSS MARGIN: Ksh 71,520
-
-**HIGH MANAGEMENT:**
-• Yield: 15 bags × Ksh 10,350 = Ksh 155,250
-• Costs: Ksh 35,100
-• GROSS MARGIN: Ksh 120,150`
+Early Blight:
+• Use resistant varieties, spray Mancozeb`
     };
 
-    return margins[lowerCrop] ||
-      `For ${crop}, track all your costs (seeds, fertilizer, labour, transport, bags) and revenue to calculate your gross margin. Farming is a BUSINESS - know your numbers!`;
+    return diseaseAdvice[lowerCrop] ||
+      `For ${crop}, use resistant varieties, ensure good air circulation, remove infected plants, and apply fungicides preventatively during wet conditions.`;
+  },
+
+  // Harvest questions
+  harvest: (data, question) => {
+    const crop = data?.crops?.[0] || 'crops';
+    const lowerCrop = crop.toLowerCase();
+
+    const harvestAdvice: Record<string, string> = {
+      maize: `MAIZE HARVEST:
+
+Harvest timing: 3-6 months after planting (when husks are brown)
+Expected yield: 25-40 (90kg) bags per acre with good management
+
+Drying: Spread on tarpaulin, dry to 13% moisture
+Storage: Hermetic bags or metallic silos on raised surfaces`,
+
+      beans: `BEANS HARVEST:
+
+Harvest when pods are dry and rattling
+Sun-dry thoroughly before storage
+Store in hermetic bags or clean containers`,
+
+      tomatoes: `TOMATOES HARVEST:
+
+Pick at color break (green to pink) for distant markets
+Fully ripe for local markets
+Handle carefully to avoid bruising`
+    };
+
+    return harvestAdvice[lowerCrop] ||
+      `Harvest ${crop} at the right maturity for best quality. Handle carefully to reduce losses.`;
+  },
+
+  // Water management
+  water: (data, question) => {
+    return `WATER MANAGEMENT TIPS:
+
+• Water early morning or late evening to reduce evaporation
+• Use drip irrigation where possible to save water
+• Mulch around plants to retain soil moisture
+• During dry spells, water deeply but less frequently
+• For rainfed farming, plant with the first rains
+• Consider rainwater harvesting structures`;
+  },
+
+  // Gross margin
+  margin: (data, question) => {
+    const crop = data?.crops?.[0] || 'maize';
+
+    if (data?.grossMarginAnalysis) {
+      const gm = data.grossMarginAnalysis;
+      return `YOUR GROSS MARGIN FOR ${crop.toUpperCase()}:
+
+Revenue: Ksh ${(gm.revenue || 0).toLocaleString()}
+Total Costs: Ksh ${(gm.totalCosts || 0).toLocaleString()}
+GROSS MARGIN: Ksh ${(gm.grossMargin || 0).toLocaleString()}
+ROI: ${((gm.grossMargin || 0) / (gm.totalCosts || 1) * 100).toFixed(1)}%`;
+    }
+
+    return `GROSS MARGIN CALCULATION:
+
+Gross Margin = (Yield × Price) - (Seed + Fertilizer + Labour + Transport + Bags)
+
+Track ALL your costs to know your true profit!`;
   },
 
   // Business advice
   business: (data, question) => {
-    return `**📊 FARMING AS A BUSINESS - KEY PRINCIPLES:**
+    return `FARMING AS A BUSINESS:
 
-**1. KNOW YOUR COSTS:**
-• Track EVERY input: seeds, fertilizer, labour, transport, bags
-• Example maize: Total costs Ksh 52,290/hectare at medium management
+1. KNOW YOUR COSTS: Track EVERY input
+2. BUY IN BULK: Save 20-30% with larger packs
+3. FORM FARMER GROUPS: Bulk purchases, shared transport
+4. EXPONENTIAL PHASE: Every Ksh 1 invested returns Ksh 3-5 profit!
 
-**2. KNOW YOUR RETURNS:**
-• Maize: 40 bags × Ksh 6,750 = Ksh 270,000
-• Gross Margin: Ksh 217,710
-
-**3. ROI CALCULATION:**
-• Every Ksh 1 invested returns Ksh 4.16 profit!
-• That's 416% return on investment!
-
-**4. OPTIMIZE INPUTS:**
-• Buy in bulk: 500ml pesticide pack saves 20% vs 100ml
-• Share transport with neighbors - save Ksh 500/acre
-• Form farmer groups for bulk discounts
-
-**5. WE'RE STILL IN EXPONENTIAL PHASE:**
-• Every additional Ksh 1 input still returns Ksh 3-5 profit
-• We haven't reached diminishing returns yet!
-• Keep investing - more inputs = more profits!
-
-**👉 BOTTOM LINE: Farming is a BUSINESS. Make every shilling work for you!**`;
+BOTTOM LINE: Farming is a BUSINESS. Make every shilling work for you!`;
   },
 
   // Default handler
   default: (data, question) => {
-    return `Thank you for your question about "${question}". Based on Bungoma Farm Management Guidelines for ${data?.crops?.[0] || 'your crops'} in ${data?.county || 'your area'}, I recommend:
+    const crop = data?.crops?.[0] || 'your crops';
+    const county = data?.county || 'your area';
 
-• Follow good agricultural practices for your specific crop
-• Maintain soil fertility with manure and appropriate fertilizers
-• Monitor regularly for pests and diseases using IPM
+    return `Thank you for your question about "${question}".
+
+Based on your farm data for ${crop} in ${county}:
+
+• Follow good agricultural practices for your crop
+• Maintain soil fertility with manure and fertilizers
+• Monitor regularly for pests and diseases
 • Track ALL costs to know your true profit margin
 
-**Remember: Farming is a BUSINESS. Every input should maximize your PROFIT while minimizing COSTS. We're here to help you PRODUCE MORE with LESS, putting MORE MONEY in your pocket!**
-
-For more specific information, please ask about a particular topic (fertilizer, pests, spacing, harvest, seed rate, gross margins, etc.).`;
+For more specific information, ask about: fertilizer, pests, spacing, harvest, seed rate, varieties, or gross margins.`;
   }
 };
 
@@ -266,28 +417,52 @@ For more specific information, please ask about a particular topic (fertilizer, 
 function detectCategory(question: string): string {
   const q = question.toLowerCase();
 
-  if (q.includes('fertilizer') || q.includes('dap') || q.includes('can') || q.includes('npk') || q.includes('manure') || q.includes('topdress')) {
+  // Variety detection
+  if (q.includes('variet') || q.includes('varity') ||
+      q.includes('which type') || q.includes('what type of seed') ||
+      q.includes('what seed') || q.includes('which seed') ||
+      q.includes('recommended variety') || q.includes('best variety') ||
+      q.includes('whar') || q.includes('wat varieties')) {
+    return 'varieties';
+  }
+
+  if (q.includes('fertilizer') || q.includes('dap') || q.includes('can') ||
+      q.includes('npk') || q.includes('manure') || q.includes('topdress')) {
     return 'fertilizer';
   }
-  if (q.includes('seed rate') || q.includes('how many kg') || q.includes('planting material')) {
+
+  if (q.includes('seed rate') || q.includes('how many kg') || q.includes('seed per acre')) {
     return 'seed';
   }
-  if (q.includes('spacing') || q.includes('distance') || q.includes('how far') || q.includes('planting distance')) {
+
+  if (q.includes('spacing') || q.includes('distance') || q.includes('how far')) {
     return 'spacing';
   }
-  if (q.includes('pest') || q.includes('insect') || q.includes('worm') || q.includes('armyworm') || q.includes('borer') || q.includes('osama')) {
+
+  if (q.includes('pest') || q.includes('insect') || q.includes('worm') ||
+      q.includes('borer') || q.includes('armyworm')) {
     return 'pest';
   }
-  if (q.includes('disease') || q.includes('blight') || q.includes('rust') || q.includes('virus') || q.includes('mlnd') || q.includes('smut')) {
+
+  if (q.includes('disease') || q.includes('blight') || q.includes('rust') ||
+      q.includes('virus') || q.includes('smut')) {
     return 'disease';
   }
-  if (q.includes('harvest') || q.includes('when to pick') || q.includes('maturity')) {
+
+  if (q.includes('harvest') || q.includes('when to pick') || q.includes('storage')) {
     return 'harvest';
   }
-  if (q.includes('gross margin') || q.includes('profit') || q.includes('revenue') || q.includes('cost') || q.includes('roi')) {
+
+  if (q.includes('water') || q.includes('irrigation') || q.includes('drought')) {
+    return 'water';
+  }
+
+  if (q.includes('gross margin') || q.includes('profit') || q.includes('revenue') ||
+      q.includes('cost') || q.includes('roi')) {
     return 'margin';
   }
-  if (q.includes('business') || q.includes('money') || q.includes('invest') || q.includes('return')) {
+
+  if (q.includes('business') || q.includes('money') || q.includes('invest')) {
     return 'business';
   }
 

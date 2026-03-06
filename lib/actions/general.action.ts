@@ -70,7 +70,7 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-// 🌾 Calculate gross margin based on Bungoma Farm Management Guidelines
+// 🌾 Calculate gross margin based on Bungoma Farm Management Guidelines (FALLBACK ONLY)
 function calculateGrossMargin(session: any) {
   if (!session) return null;
 
@@ -344,7 +344,7 @@ Return as JSON:
   }
 }
 
-// 🌾 ENHANCED: Get farmer session by ID with caching
+// 🌾 FIXED: Get farmer session by ID with caching - PRESERVES real gross margin data
 export async function getFarmerSessionById(id: string): Promise<any> {
   if (!id || typeof id !== 'string' || id.trim() === '') {
     console.error("Invalid session ID provided:", id);
@@ -358,8 +358,13 @@ export async function getFarmerSessionById(id: string): Promise<any> {
         const sessionDoc = await db.collection("farmer_sessions").doc(id).get();
         const data = sessionDoc.data();
 
-        if (data && data.crops && data.crops.length > 0) {
+        // ✅ IMPORTANT: Don't overwrite existing grossMarginAnalysis
+        // Only add Bungoma defaults if grossMarginAnalysis is missing AND it's an old session
+        if (data && !data.grossMarginAnalysis && data.crops && data.crops.length > 0) {
+          console.log("📊 Adding Bungoma default gross margin for old session (no real data)");
           data.grossMarginAnalysis = calculateGrossMargin(data);
+        } else if (data && data.grossMarginAnalysis) {
+          console.log("✅ Using existing gross margin data from farmer's actual inputs");
         }
 
         return data || null;

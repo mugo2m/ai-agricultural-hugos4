@@ -21,6 +21,8 @@ interface RecommendationInput {
     mainChallenge?: string;
     experience?: string;
     managementLevel?: string;
+    // NEW: Combined conservation practices
+    conservationPractices?: string;
   };
 }
 
@@ -37,7 +39,13 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
   // ========== RECOMMENDATION 1: SOIL TEST / FERTILIZER ==========
   if (hasSoilTest && fertilizerPlan) {
     let fertilizerText = `🌱 PRECISION FERTILIZER PLAN Based on Your Soil Test:\n\n`;
-    fertilizerText += `Total investment: Ksh ${fertilizerPlan.totalCost?.toLocaleString() || 0} per acre.\n\n`;
+
+    // Show farm size if available
+    if (fertilizerPlan.farmSize) {
+      fertilizerText += `Your farm size: ${fertilizerPlan.farmSize} acre(s)\n`;
+    }
+
+    fertilizerText += `Total investment: Ksh ${fertilizerPlan.totalCost?.toLocaleString() || 0} for your entire farm.\n\n`;
 
     // Check for plantingRecommendations and topDressingRecommendations from the new structure
     if (fertilizerPlan.plantingRecommendations?.length > 0 || fertilizerPlan.topDressingRecommendations?.length > 0) {
@@ -65,7 +73,7 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
           fertilizerText += `  This is ${bagText}\n`;
           fertilizerText += `  Package options: ${rec.packageSizes?.join(", ") || "50kg bag"}\n`;
           fertilizerText += `  Cost: Ksh ${Math.round(totalCost).toLocaleString()}\n`;
-          fertilizerText += `  Provides: ${rec.provides.n.toFixed(1)} kg N, ${rec.provides.p.toFixed(1)} kg P, ${rec.provides.k.toFixed(1)} kg K\n\n`;
+          fertilizerText += `  Provides: ${(rec.provides.n * (fertilizerPlan.farmSize || 1)).toFixed(1)} kg N, ${(rec.provides.p * (fertilizerPlan.farmSize || 1)).toFixed(1)} kg P, ${(rec.provides.k * (fertilizerPlan.farmSize || 1)).toFixed(1)} kg K\n\n`;
         });
       }
 
@@ -94,50 +102,45 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
           fertilizerText += `  Cost: Ksh ${Math.round(totalCost).toLocaleString()}\n`;
 
           if (rec.npk.includes("0-0-60") || rec.npk.includes("MOP") || rec.brand.includes("MOP")) {
-            fertilizerText += `  Provides: ${rec.provides.k.toFixed(1)} kg K\n\n`;
+            fertilizerText += `  Provides: ${(rec.provides.k * (fertilizerPlan.farmSize || 1)).toFixed(1)} kg K\n\n`;
           } else {
-            fertilizerText += `  Provides: ${rec.provides.n.toFixed(1)} kg N\n\n`;
+            fertilizerText += `  Provides: ${(rec.provides.n * (fertilizerPlan.farmSize || 1)).toFixed(1)} kg N\n\n`;
           }
         });
       }
 
-      // Don't add business summary here - it will be handled by the gross margin calculation elsewhere
-      fertilizerText += `\n*Gross margin will be calculated based on your actual yield and costs.*\n`;
-    } else if (fertilizerPlan.interventions?.length > 0) {
-      // Fallback to old structure
-      fertilizerText += `Deficient nutrients identified:\n`;
-      fertilizerPlan.interventions.forEach((inv: any) => {
-        fertilizerText += `• ${inv.nutrient}: ${inv.value} (${inv.level})\n`;
-      });
+      // Add per-plant calculation if available
+      if (fertilizerPlan.perPlant) {
+        const pp = fertilizerPlan.perPlant;
+        fertilizerText += `\n---\n\n`;
+        fertilizerText += `### PLANT POPULATION\n`;
+        fertilizerText += `Based on your spacing, you have approximately **${pp.totalPlants.toLocaleString()} plants** on your ${fertilizerPlan.farmSize} acre farm.\n\n`;
 
-      fertilizerText += `\nRecommended fertilizer blend:\n`;
-      if (fertilizerPlan.plantingFertilizers?.length > 0) {
-        fertilizerText += `\nPLANTING FERTILIZERS (apply at planting):\n`;
-        fertilizerPlan.plantingFertilizers.forEach((p: any) => {
-          const bagsNeeded = Math.ceil(p.selected.amountKg / 50);
-          fertilizerText += `• ${p.selected.name}: ${p.selected.amountKg}kg per acre\n`;
-          fertilizerText += `  Buy: ${bagsNeeded} bag(s) of 50kg\n`;
-          fertilizerText += `  Package options: ${p.selected.packageSizes?.join(", ") || "50kg bag"}\n`;
-          fertilizerText += `  Cost: Ksh ${p.selected.cost?.toLocaleString()}\n`;
-        });
+        fertilizerText += `### FERTILIZER PER PLANT (CONSTANT for any farm size)\n`;
+        fertilizerText += `| Fertilizer | Per Plant |\n`;
+        fertilizerText += `|------------|-----------|\n`;
+        fertilizerText += `| DAP | **${pp.dapGrams} grams** |\n`;
+        fertilizerText += `| UREA | **${pp.ureaGrams} grams** |\n`;
+        fertilizerText += `| MOP | **${pp.mopGrams} grams** |\n`;
+        fertilizerText += `| **TOTAL** | **${pp.totalGrams} grams** |\n\n`;
+
+        fertilizerText += `### 📏 MEASUREMENT GUIDE\n`;
+        fertilizerText += `| Amount | Visual Guide |\n`;
+        fertilizerText += `|--------|--------------|\n`;
+        fertilizerText += `| **${pp.dapGrams} g** | ${pp.dapGuide} |\n`;
+        fertilizerText += `| **${pp.ureaGrams} g** | ${pp.ureaGuide} |\n`;
+        fertilizerText += `| **${pp.mopGrams} g** | ${pp.mopGuide} |\n`;
+        fertilizerText += `| **${pp.totalGrams} g** | ${pp.totalGuide} |\n\n`;
       }
-      if (fertilizerPlan.topdressingFertilizers?.length > 0) {
-        fertilizerText += `\nTOPDRESSING FERTILIZERS (apply 3-4 weeks after planting):\n`;
-        fertilizerPlan.topdressingFertilizers.forEach((t: any) => {
-          const bagsNeeded = Math.ceil(t.selected.amountKg / 50);
-          fertilizerText += `• ${t.selected.name}: ${t.selected.amountKg}kg per acre\n`;
-          fertilizerText += `  Buy: ${bagsNeeded} bag(s) of 50kg\n`;
-          fertilizerText += `  Package options: ${t.selected.packageSizes?.join(", ") || "50kg bag"}\n`;
-          fertilizerText += `  Cost: Ksh ${t.selected.cost?.toLocaleString()}\n`;
-        });
-      }
+
+      fertilizerText += `\n*Gross margin will be calculated based on your actual yield and costs.*\n`;
     }
     recommendations.push(fertilizerText);
   } else {
+    // ... existing general fertilizer recommendations (keep as is)
     let generalFertilizer = `🌱 GENERAL FERTILIZER RECOMMENDATION FOR ${crop.toUpperCase()}:\n\n`;
     generalFertilizer += `Based on Bungoma Farm Management Guidelines:\n\n`;
 
-    // Crop-specific fertilizer recommendations
     const fertRecs: Record<string, string> = {
       maize: `MAIZE:
 • Planting: Apply 150kg DAP per hectare (3 bags of 50kg) @ Ksh 3,300/bag = Ksh 9,900
@@ -179,9 +182,9 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
   }
 
   // ========== RECOMMENDATION 2: GOOD AGRICULTURAL PRACTICES ==========
+  // ... (keep existing GAP section)
   let gapText = `🌾 GOOD AGRICULTURAL PRACTICES FOR ${crop.toUpperCase()}:\n\n`;
 
-  // Crop-specific GAP
   const gapRecs: Record<string, string> = {
     maize: `• Seed: Use 10kg certified maize seed per acre (Ksh 1,800). Varieties: H614, H629, PHB 3253
 • Land prep: Prepare before rains. Plough twice for fine seedbed
@@ -225,6 +228,7 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
   recommendations.push(gapText);
 
   // ========== RECOMMENDATION 3: INTEGRATED PEST MANAGEMENT ==========
+  // ... (keep existing IPM section)
   let pestText = `🐛 INTEGRATED PEST MANAGEMENT (IPM):\n\n`;
 
   if (farmerData.commonPests) {
@@ -277,7 +281,8 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
 
   recommendations.push(pestText);
 
-  // ========== RECOMMENDATION 4: GROSS MARGIN ANALYSIS - UPDATED TO USE FARMER'S ACTUAL DATA ==========
+  // ========== RECOMMENDATION 4: GROSS MARGIN ANALYSIS ==========
+  // ... (keep existing gross margin section)
   let marginText = `💰 GROSS MARGIN ANALYSIS FOR ${crop.toUpperCase()} (per acre):\n\n`;
   marginText += `*Note: Your actual gross margin will be calculated based on the yield and cost figures you provided during the interview.*\n\n`;
   marginText += `LOW MANAGEMENT (Reference):\n`;
@@ -303,28 +308,43 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
 
   recommendations.push(marginText);
 
-  // ========== RECOMMENDATION 5: SOIL & WATER CONSERVATION ==========
+  // ========== RECOMMENDATION 5: SOIL & WATER CONSERVATION (UPDATED) ==========
   let conservationText = `💧 SOIL & WATER CONSERVATION:\n\n`;
 
-  const practices = [];
-  if (farmerData.terracing === "yes") practices.push("terracing");
-  if (farmerData.mulching === "yes") practices.push("mulching");
-  if (farmerData.coverCrops === "yes") practices.push("cover crops");
-  if (farmerData.rainwaterHarvesting === "yes") practices.push("rainwater harvesting");
-  if (farmerData.contourFarming === "yes") practices.push("contour farming");
+  // Parse the combined conservation practices from the new field
+  const conservationPractices = farmerData.conservationPractices ?
+    farmerData.conservationPractices.split(',').map(p => p.trim()) : [];
 
-  if (practices.length > 0) {
-    conservationText += `✅ You're already using: ${practices.join(', ')}. Great job!\n\n`;
+  if (conservationPractices.length > 0 && !conservationPractices.includes("None")) {
+    conservationText += `✅ You're already using: ${conservationPractices.join(', ')}. Great job!\n\n`;
   }
 
-  conservationText += `RECOMMENDED PRACTICES:\n`;
-  conservationText += `• Mulching: Retains moisture, reduces weeding - use crop residues (FREE!)\n`;
-  conservationText += `• Cover crops: Plant mucuna or dolichos between maize rows - fixes nitrogen, suppresses weeds\n`;
-  conservationText += `  - Mucuna seed: 5kg/acre (Ksh 1,500) provides FREE fertilizer!\n`;
-  conservationText += `• Contour farming: On slopes >5% - reduces erosion by 50%\n`;
-  conservationText += `• Rainwater harvesting: Build water pans - 1,000m3 pan costs Ksh 50,000, lasts 10 years\n\n`;
+  conservationText += `RECOMMENDED PRACTICES BASED ON YOUR SELECTIONS:\n`;
 
-  conservationText += `📊 BUSINESS CASE:\n`;
+  if (conservationPractices.includes("Organic manure")) {
+    conservationText += `• **Organic Manure:** Continue applying 5-10 tons per acre. It improves soil structure and water holding capacity.\n`;
+  }
+  if (conservationPractices.includes("Terracing")) {
+    conservationText += `• **Terracing:** Excellent for slopes! Reduces soil erosion by up to 80%.\n`;
+  }
+  if (conservationPractices.includes("Mulching")) {
+    conservationText += `• **Mulching:** Retains moisture, reduces weeding. Use crop residues - it's FREE!\n`;
+  }
+  if (conservationPractices.includes("Cover crops")) {
+    conservationText += `• **Cover crops:** Plant mucuna or dolichos between rows. Fixes 40kg N/acre naturally!\n`;
+  }
+  if (conservationPractices.includes("Rainwater harvesting")) {
+    conservationText += `• **Rainwater harvesting:** Build water pans - 1,000m³ pan costs Ksh 50,000, lasts 10 years.\n`;
+  }
+  if (conservationPractices.includes("Contour farming")) {
+    conservationText += `• **Contour farming:** On slopes >5% - reduces erosion by 50% and retains water.\n`;
+  }
+  if (conservationPractices.includes("None") || conservationPractices.length === 0) {
+    conservationText += `• **Start with mulching:** It's FREE! Use crop residues to retain moisture.\n`;
+    conservationText += `• **Add cover crops:** Mucuna seed: 5kg/acre (Ksh 1,500) provides FREE fertilizer!\n`;
+  }
+
+  conservationText += `\n📊 BUSINESS CASE:\n`;
   conservationText += `• Mulching saves 2 weeding rounds = Ksh 5,000/acre saved!\n`;
   conservationText += `• Cover crops fix 40kg N/acre = saves Ksh 3,500 fertilizer!\n`;
   conservationText += `• Every Ksh 1 invested in conservation returns Ksh 5 in saved inputs and increased yields!`;
@@ -332,6 +352,7 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
   recommendations.push(conservationText);
 
   // ========== RECOMMENDATION 6: FARMING AS BUSINESS ==========
+  // ... (keep existing business section)
   let businessText = `📈 FARMING AS A BUSINESS - MAXIMIZE YOUR PROFIT:\n\n`;
 
   businessText += `1. KNOW YOUR COSTS:\n`;
@@ -357,18 +378,17 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
 
   recommendations.push(businessText);
 
-  // ========== FINANCIAL ADVICE - UPDATED TO USE FARMER'S ACTUAL DATA ==========
+  // ========== FINANCIAL ADVICE ==========
   let financialAdvice = `💰 FINANCIAL MANAGEMENT TIPS:\n\n`;
 
   if (hasSoilTest && fertilizerPlan?.totalCost) {
-    financialAdvice += `Your precision fertilizer investment is Ksh ${fertilizerPlan.totalCost.toLocaleString()} per acre. `;
+    financialAdvice += `Your precision fertilizer investment is Ksh ${fertilizerPlan.totalCost.toLocaleString()} for your entire farm. `;
     financialAdvice += `This targeted approach typically increases yields by 30-50% with an ROI of 200-300%.\n\n`;
   }
 
   financialAdvice += `GROSS MARGIN CALCULATION:\n`;
   financialAdvice += `Gross Margin = (Yield × Price) - (Seed + Fertilizer + Labour + Transport + Bags)\n\n`;
 
-  // Remove the hardcoded maize example and replace with generic guidance
   financialAdvice += `CALCULATE YOUR ACTUAL GROSS MARGIN:\n`;
   financialAdvice += `• Use the yield and price you entered during the interview\n`;
   financialAdvice += `• Add up all your actual costs:\n`;

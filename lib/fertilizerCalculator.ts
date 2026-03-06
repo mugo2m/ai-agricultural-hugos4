@@ -5,6 +5,8 @@ import { SoilTestResults, NutrientRequirement, FertilizerRecommendation, Fertili
 import { plantingFertilizers, getPlantingFertilizerById } from './fertilizers/plantingFertilizers';
 import { topDressingFertilizers, getTopDressingFertilizerById } from './fertilizers/topDressingFertilizers';
 import { soilTestInterpreter } from './soilTestInterpreter';
+// Import spacing and per-plant utilities
+import { calculatePlantsPerAcre, calculateTotalPlants, calculateFertilizerPerPlant, getMeasurementGuide } from './utils';
 
 export class FertilizerCalculator {
 
@@ -35,7 +37,7 @@ export class FertilizerCalculator {
         const fert = pFertilizers[0];
         const pNeeded = remaining.p;
         const pPercent = fert.nutrients.p / 100;
-        // Use Math.round instead of Math.ceil for more accurate calculation
+        // Use Math.round for accurate calculation
         const amountKg = Math.round(pNeeded / pPercent);
 
         if (amountKg > 0) {
@@ -170,7 +172,7 @@ export class FertilizerCalculator {
     };
   }
 
-  // ========== CALCULATE FROM FARMER'S SOIL TEST RECOMMENDATIONS - REARRANGED ==========
+  // ========== CALCULATE FROM FARMER'S SOIL TEST RECOMMENDATIONS ==========
   calculateFromRecommendations(
     recommendations: {
       targetYield: number;
@@ -190,14 +192,24 @@ export class FertilizerCalculator {
       plantingCost: number;
       topdressingCost: number;
       potassiumCost: number;
-    }
-  ): FertilizerBlendResult {
+    },
+    // Add farmSize parameter
+    farmSize: number = 1,
+    // Add spacing parameter for per-plant calculations
+    spacing?: { rowCm: number; plantCm: number; seedsPerHole: number; label: string }
+  ): FertilizerBlendResult & {
+    perAcrePlanting?: FertilizerRecommendation[];
+    perAcreTopdressing?: FertilizerRecommendation[];
+    farmSize?: number;
+    perPlant?: any;
+  } {
 
-    // STEP 1: Extract nutrients from recommendations
-    const nutrients = this.extractNutrientsFromRecommendations(recommendations);
+    // STEP 1: Extract nutrients from recommendations (PER ACRE)
+    const nutrientsPerAcre = this.extractNutrientsFromRecommendations(recommendations);
 
-    console.log("📊 Nutrients needed from recommendations:", nutrients);
+    console.log("📊 Nutrients needed PER ACRE:", nutrientsPerAcre);
     console.log("📊 Target yield:", recommendations.targetYield, "bags/acre");
+    console.log("📊 Farm size:", farmSize, "acres");
 
     // Get fertilizer objects from database
     const plantingFertilizer = plantingFertilizers.find(f => f.id === availableFertilizers.planting[0]);
@@ -210,105 +222,112 @@ export class FertilizerCalculator {
       potassium: potassiumFertilizer?.brand || "none"
     });
 
-    // ========== STEP 1: Calculate PLANTING fertilizer (for phosphorus) ==========
-    let remainingN = nutrients.n;
-    let remainingP = nutrients.p;
-    let remainingK = nutrients.k;
+    // ========== STEP 1: Calculate PLANTING fertilizer PER ACRE ==========
+    let remainingNPerAcre = nutrientsPerAcre.n;
+    let remainingPPerAcre = nutrientsPerAcre.p;
+    let remainingKPerAcre = nutrientsPerAcre.k;
 
-    const plantingRecs: FertilizerRecommendation[] = [];
-    const topdressingRecs: FertilizerRecommendation[] = [];
+    const plantingRecsPerAcre: FertilizerRecommendation[] = [];
+    const topdressingRecsPerAcre: FertilizerRecommendation[] = [];
 
-    // Calculate planting fertilizer for phosphorus needs
-    if (plantingFertilizer && remainingP > 0) {
+    // Calculate planting fertilizer for phosphorus needs (PER ACRE)
+    if (plantingFertilizer && remainingPPerAcre > 0) {
       const pPercent = plantingFertilizer.nutrients.p / 100;
-      // Use Math.round for more accurate calculation
-      const plantingAmount = Math.round(remainingP / pPercent);
+      const plantingAmountPerAcre = Math.round(remainingPPerAcre / pPercent);
 
-      const providesN = plantingAmount * (plantingFertilizer.nutrients.n / 100);
-      const providesP = plantingAmount * pPercent;
+      const providesNPerAcre = plantingAmountPerAcre * (plantingFertilizer.nutrients.n / 100);
+      const providesPPerAcre = plantingAmountPerAcre * pPercent;
 
-      plantingRecs.push({
+      plantingRecsPerAcre.push({
         fertilizerId: plantingFertilizer.id,
         brand: plantingFertilizer.brand,
         company: plantingFertilizer.company,
         npk: plantingFertilizer.npk,
-        amountKg: plantingAmount,
+        amountKg: plantingAmountPerAcre,
         packageSizes: plantingFertilizer.packageSizes || ["50kg bag"],
         pricePer50kg: costs.plantingCost || plantingFertilizer.pricePer50kg || 3500,
         provides: {
-          n: providesN,
-          p: providesP,
+          n: providesNPerAcre,
+          p: providesPPerAcre,
           k: 0
         }
       });
 
-      // Update remaining nutrients - SUBTRACT what planting fertilizer provides
-      remainingN -= providesN;
-      remainingP -= providesP;
+      // ✅ CRITICAL: Subtract planting fertilizer N from total
+      remainingNPerAcre -= providesNPerAcre;
+      remainingPPerAcre -= providesPPerAcre;
 
-      console.log(`📊 PLANTING fertilizer: ${plantingAmount}kg ${plantingFertilizer.brand} provides ${providesN.toFixed(1)}kg N, ${providesP.toFixed(1)}kg P`);
-      console.log(`📊 After planting: Remaining N: ${remainingN.toFixed(1)}kg, P: ${remainingP.toFixed(1)}kg, K: ${remainingK.toFixed(1)}kg`);
+      console.log(`📊 PLANTING fertilizer PER ACRE: ${plantingAmountPerAcre}kg provides ${providesNPerAcre.toFixed(1)}kg N`);
+      console.log(`📊 After planting: Remaining N per acre: ${remainingNPerAcre.toFixed(1)}kg`);
     }
 
-    // ========== STEP 2: Calculate TOPDRESSING fertilizer (for nitrogen) ==========
-    if (remainingN > 0.1 && topdressingFertilizer) {
+    // ========== STEP 2: Calculate TOPDRESSING fertilizer PER ACRE ==========
+    if (remainingNPerAcre > 0.1 && topdressingFertilizer) {
       const nPercent = topdressingFertilizer.nutrients.n / 100;
-      const topdressingAmount = Math.round(remainingN / nPercent);
+      const topdressingAmountPerAcre = Math.round(remainingNPerAcre / nPercent);
 
-      const providesN = topdressingAmount * nPercent;
+      const providesNPerAcre = topdressingAmountPerAcre * nPercent;
 
-      topdressingRecs.push({
+      topdressingRecsPerAcre.push({
         fertilizerId: topdressingFertilizer.id,
         brand: topdressingFertilizer.brand,
         company: topdressingFertilizer.company,
         npk: topdressingFertilizer.npk,
-        amountKg: topdressingAmount,
+        amountKg: topdressingAmountPerAcre,
         packageSizes: topdressingFertilizer.packageSizes || ["50kg bag"],
         pricePer50kg: costs.topdressingCost || topdressingFertilizer.pricePer50kg || 2800,
         provides: {
-          n: providesN,
+          n: providesNPerAcre,
           p: 0,
           k: 0
         }
       });
 
-      remainingN -= providesN;
+      remainingNPerAcre -= providesNPerAcre;
 
-      console.log(`📊 TOPDRESSING fertilizer: ${topdressingAmount}kg ${topdressingFertilizer.brand} provides ${providesN.toFixed(1)}kg N`);
-      console.log(`📊 After topdressing: Remaining N: ${remainingN.toFixed(1)}kg, K: ${remainingK.toFixed(1)}kg`);
+      console.log(`📊 TOPDRESSING fertilizer PER ACRE: ${topdressingAmountPerAcre}kg provides ${providesNPerAcre.toFixed(1)}kg N`);
     }
 
-    // ========== STEP 3: Calculate POTASSIUM fertilizer ==========
-    if (potassiumFertilizer && remainingK > 0 && availableFertilizers.potassium[0] !== "none") {
+    // ========== STEP 3: Calculate POTASSIUM fertilizer PER ACRE ==========
+    if (potassiumFertilizer && remainingKPerAcre > 0 && availableFertilizers.potassium[0] !== "none") {
       const kPercent = potassiumFertilizer.nutrients.k / 100;
-      const potassiumAmount = Math.round(remainingK / kPercent);
+      const potassiumAmountPerAcre = Math.round(remainingKPerAcre / kPercent);
 
-      const providesK = potassiumAmount * kPercent;
+      const providesKPerAcre = potassiumAmountPerAcre * kPercent;
 
-      topdressingRecs.push({
+      topdressingRecsPerAcre.push({
         fertilizerId: potassiumFertilizer.id,
         brand: potassiumFertilizer.brand,
         company: potassiumFertilizer.company,
         npk: potassiumFertilizer.npk,
-        amountKg: potassiumAmount,
+        amountKg: potassiumAmountPerAcre,
         packageSizes: potassiumFertilizer.packageSizes || ["50kg bag"],
         pricePer50kg: costs.potassiumCost || potassiumFertilizer.pricePer50kg || 2800,
         provides: {
           n: 0,
           p: 0,
-          k: providesK
+          k: providesKPerAcre
         }
       });
 
-      remainingK -= providesK;
+      remainingKPerAcre -= providesKPerAcre;
 
-      console.log(`📊 POTASSIUM fertilizer: ${potassiumAmount}kg ${potassiumFertilizer.brand} provides ${providesK.toFixed(1)}kg K`);
+      console.log(`📊 POTASSIUM fertilizer PER ACRE: ${potassiumAmountPerAcre}kg provides ${providesKPerAcre.toFixed(1)}kg K`);
     }
 
-    // Calculate total cost
-    const allRecs = [...plantingRecs, ...topdressingRecs];
+    // ========== STEP 4: Scale to FARM SIZE ==========
+    const plantingRecs = plantingRecsPerAcre.map(rec => ({
+      ...rec,
+      amountKg: Math.round(rec.amountKg * farmSize)
+    }));
 
-    // Calculate cost with proper bag + open kg pricing
+    const topdressingRecs = topdressingRecsPerAcre.map(rec => ({
+      ...rec,
+      amountKg: Math.round(rec.amountKg * farmSize)
+    }));
+
+    // Calculate total cost for entire farm with proper breakdown
+    const allRecs = [...plantingRecs, ...topdressingRecs];
     const totalCost = allRecs.reduce((sum, rec) => {
       const bagsNeeded = Math.floor(rec.amountKg / 50);
       const extraKg = rec.amountKg % 50;
@@ -318,22 +337,70 @@ export class FertilizerCalculator {
     }, 0);
 
     const totalNutrientsProvided = {
-      n: nutrients.n - Math.max(0, remainingN),
-      p: nutrients.p - Math.max(0, remainingP),
-      k: nutrients.k - Math.max(0, remainingK),
+      n: nutrientsPerAcre.n * farmSize - Math.max(0, remainingNPerAcre * farmSize),
+      p: nutrientsPerAcre.p * farmSize - Math.max(0, remainingPPerAcre * farmSize),
+      k: nutrientsPerAcre.k * farmSize - Math.max(0, remainingKPerAcre * farmSize),
       s: 0, ca: 0, mg: 0, zn: 0, b: 0
     };
 
-    console.log(`💰 TOTAL COST: Ksh ${Math.round(totalCost).toLocaleString()}`);
-    console.log(`📊 Planting recommendations: ${plantingRecs.length} items`);
-    console.log(`📊 Topdressing recommendations: ${topdressingRecs.length} items`);
+    // ========== STEP 5: Calculate per-plant information if spacing provided ==========
+    let perPlantInfo = null;
+    if (spacing) {
+      const plantsPerAcre = calculatePlantsPerAcre({
+        rowCm: spacing.rowCm,
+        plantCm: spacing.plantCm,
+        seedsPerHole: spacing.seedsPerHole
+      });
+
+      const totalPlants = calculateTotalPlants(plantsPerAcre, farmSize);
+
+      // Get per-acre amounts for each fertilizer type
+      const dapPerAcre = plantingRecsPerAcre.find(r => r.brand.includes('DAP'))?.amountKg || 0;
+      const ureaPerAcre = topdressingRecsPerAcre.find(r => r.brand.includes('UREA'))?.amountKg || 0;
+      const mopPerAcre = topdressingRecsPerAcre.find(r => r.brand.includes('MOP'))?.amountKg || 0;
+
+      const perPlant = calculateFertilizerPerPlant(
+        dapPerAcre * farmSize,
+        ureaPerAcre * farmSize,
+        mopPerAcre * farmSize,
+        totalPlants
+      );
+
+      perPlantInfo = {
+        plantsPerAcre,
+        totalPlants,
+        dapGrams: perPlant.dapGrams,
+        ureaGrams: perPlant.ureaGrams,
+        mopGrams: perPlant.mopGrams,
+        totalGrams: perPlant.totalGrams,
+        dapGuide: getMeasurementGuide(perPlant.dapGrams),
+        ureaGuide: getMeasurementGuide(perPlant.ureaGrams),
+        mopGuide: getMeasurementGuide(perPlant.mopGrams),
+        totalGuide: getMeasurementGuide(perPlant.totalGrams)
+      };
+
+      console.log(`📊 Plants per acre: ${plantsPerAcre.toLocaleString()}`);
+      console.log(`📊 Total plants: ${totalPlants.toLocaleString()}`);
+      console.log(`📊 Per plant: DAP ${perPlant.dapGrams}g, UREA ${perPlant.ureaGrams}g, MOP ${perPlant.mopGrams}g`);
+    }
+
+    console.log(`💰 TOTAL COST for ${farmSize} acre(s): Ksh ${Math.round(totalCost).toLocaleString()}`);
 
     return {
       plantingRecommendations: plantingRecs,
       topDressingRecommendations: topdressingRecs,
+      perAcrePlanting: plantingRecsPerAcre,
+      perAcreTopdressing: topdressingRecsPerAcre,
       totalNutrientsProvided,
-      remainingNeeds: { n: remainingN, p: remainingP, k: remainingK, s: 0, ca: 0, mg: 0, zn: 0, b: 0 },
+      remainingNeeds: {
+        n: remainingNPerAcre * farmSize,
+        p: remainingPPerAcre * farmSize,
+        k: remainingKPerAcre * farmSize,
+        s: 0, ca: 0, mg: 0, zn: 0, b: 0
+      },
       totalCost: Math.round(totalCost),
+      farmSize,
+      perPlant: perPlantInfo,
       soilTestSummary: null
     };
   }
@@ -448,111 +515,120 @@ export class FertilizerCalculator {
     };
   }
 
-  // ========== GENERATE RECOMMENDATION TEXT - REARRANGED ==========
-  generateRecommendationText(result: FertilizerBlendResult, cropType: string, targetYield?: number): string {
+  // ========== GENERATE RECOMMENDATION TEXT - IMPROVED DISPLAY ==========
+  generateRecommendationText(result: any, cropType: string, targetYield?: number): string {
     let text = `🌱 PRECISION FERTILIZER PLAN Based on Your Soil Test:\n\n`;
 
-    if (result.totalCost) {
-      text += `Total investment: Ksh ${result.totalCost.toLocaleString()} per acre.\n\n`;
+    if (result.farmSize) {
+      text += `Your farm size: ${result.farmSize} acre(s)\n`;
     }
 
-    // Show PLANTING fertilizers first
-    if (result.plantingRecommendations.length > 0) {
+    if (result.totalCost) {
+      text += `Total investment: Ksh ${result.totalCost.toLocaleString()} for your entire farm.\n\n`;
+    }
+
+    // Show PLANTING fertilizers
+    if (result.plantingRecommendations?.length > 0) {
       text += `PLANTING FERTILIZERS (apply at planting):\n`;
       result.plantingRecommendations.forEach((rec: any) => {
         const bagsNeeded = Math.floor(rec.amountKg / 50);
         const extraKg = rec.amountKg % 50;
+        const pricePerKg = rec.pricePer50kg / 50;
 
         const fullBagsCost = bagsNeeded * rec.pricePer50kg;
-        const extraKgCost = extraKg * (rec.pricePer50kg / 50);
+        const extraKgCost = extraKg * pricePerKg;
         const totalCost = fullBagsCost + extraKgCost;
 
         let bagText = '';
+        let costBreakdown = '';
+
         if (bagsNeeded > 0 && extraKg > 0) {
           bagText = `${bagsNeeded} bag(s) of 50kg + ${extraKg}kg open`;
+          costBreakdown = ` (${bagsNeeded} bag × Ksh ${rec.pricePer50kg.toLocaleString()} + ${extraKg}kg × Ksh ${Math.round(pricePerKg).toLocaleString()})`;
         } else if (bagsNeeded > 0) {
           bagText = `${bagsNeeded} bag(s) of 50kg`;
+          costBreakdown = ` (${bagsNeeded} bag × Ksh ${rec.pricePer50kg.toLocaleString()})`;
         } else {
           bagText = `${extraKg}kg open`;
+          costBreakdown = ` (${extraKg}kg × Ksh ${Math.round(pricePerKg).toLocaleString()})`;
         }
 
         text += `• Buy ${rec.amountKg} kg of ${rec.brand} (${rec.npk})\n`;
         text += `  This is ${bagText}\n`;
         text += `  Package options: ${rec.packageSizes?.join(", ") || "50kg bag"}\n`;
-        text += `  Cost: Ksh ${Math.round(totalCost).toLocaleString()}\n`;
-        text += `  Provides: ${rec.provides.n.toFixed(1)} kg N, ${rec.provides.p.toFixed(1)} kg P, ${rec.provides.k.toFixed(1)} kg K\n\n`;
+        text += `  Cost: Ksh ${Math.round(totalCost).toLocaleString()}${costBreakdown}\n`;
+        text += `  Provides: ${(rec.provides.n * (result.farmSize || 1)).toFixed(1)} kg N, ${(rec.provides.p * (result.farmSize || 1)).toFixed(1)} kg P, ${(rec.provides.k * (result.farmSize || 1)).toFixed(1)} kg K\n\n`;
       });
     }
 
-    // Show TOP DRESSING fertilizers second (includes both nitrogen and potassium)
-    if (result.topDressingRecommendations.length > 0) {
+    // Show TOP DRESSING fertilizers
+    if (result.topDressingRecommendations?.length > 0) {
       text += `TOP DRESSING FERTILIZERS (apply 3-4 weeks after planting):\n`;
 
-      // Separate nitrogen and potassium for clarity
-      const nitrogenRecs = result.topDressingRecommendations.filter((rec: any) =>
-        rec.provides.n > 0 && rec.provides.k === 0
-      );
-
-      const potassiumRecs = result.topDressingRecommendations.filter((rec: any) =>
-        rec.provides.k > 0
-      );
-
-      // Show nitrogen topdressing first
-      nitrogenRecs.forEach((rec: any) => {
+      result.topDressingRecommendations.forEach((rec: any) => {
         const bagsNeeded = Math.floor(rec.amountKg / 50);
         const extraKg = rec.amountKg % 50;
+        const pricePerKg = rec.pricePer50kg / 50;
 
         const fullBagsCost = bagsNeeded * rec.pricePer50kg;
-        const extraKgCost = extraKg * (rec.pricePer50kg / 50);
+        const extraKgCost = extraKg * pricePerKg;
         const totalCost = fullBagsCost + extraKgCost;
 
         let bagText = '';
+        let costBreakdown = '';
+
         if (bagsNeeded > 0 && extraKg > 0) {
           bagText = `${bagsNeeded} bag(s) of 50kg + ${extraKg}kg open`;
+          costBreakdown = ` (${bagsNeeded} bag × Ksh ${rec.pricePer50kg.toLocaleString()} + ${extraKg}kg × Ksh ${Math.round(pricePerKg).toLocaleString()})`;
         } else if (bagsNeeded > 0) {
           bagText = `${bagsNeeded} bag(s) of 50kg`;
+          costBreakdown = ` (${bagsNeeded} bag × Ksh ${rec.pricePer50kg.toLocaleString()})`;
         } else {
           bagText = `${extraKg}kg open`;
+          costBreakdown = ` (${extraKg}kg × Ksh ${Math.round(pricePerKg).toLocaleString()})`;
         }
 
         text += `• Buy ${rec.amountKg} kg of ${rec.brand} (${rec.npk})\n`;
         text += `  This is ${bagText}\n`;
         text += `  Package options: ${rec.packageSizes?.join(", ") || "50kg bag"}\n`;
-        text += `  Cost: Ksh ${Math.round(totalCost).toLocaleString()}\n`;
-        text += `  Provides: ${rec.provides.n.toFixed(1)} kg N\n\n`;
-      });
+        text += `  Cost: Ksh ${Math.round(totalCost).toLocaleString()}${costBreakdown}\n`;
 
-      // Show potassium topdressing next
-      potassiumRecs.forEach((rec: any) => {
-        const bagsNeeded = Math.floor(rec.amountKg / 50);
-        const extraKg = rec.amountKg % 50;
-
-        const fullBagsCost = bagsNeeded * rec.pricePer50kg;
-        const extraKgCost = extraKg * (rec.pricePer50kg / 50);
-        const totalCost = fullBagsCost + extraKgCost;
-
-        let bagText = '';
-        if (bagsNeeded > 0 && extraKg > 0) {
-          bagText = `${bagsNeeded} bag(s) of 50kg + ${extraKg}kg open`;
-        } else if (bagsNeeded > 0) {
-          bagText = `${bagsNeeded} bag(s) of 50kg`;
+        if (rec.provides.n > 0) {
+          text += `  Provides: ${(rec.provides.n * (result.farmSize || 1)).toFixed(1)} kg N\n\n`;
         } else {
-          bagText = `${extraKg}kg open`;
+          text += `  Provides: ${(rec.provides.k * (result.farmSize || 1)).toFixed(1)} kg K\n\n`;
         }
-
-        text += `• Buy ${rec.amountKg} kg of ${rec.brand} (${rec.npk})\n`;
-        text += `  This is ${bagText}\n`;
-        text += `  Package options: ${rec.packageSizes?.join(", ") || "50kg bag"}\n`;
-        text += `  Cost: Ksh ${Math.round(totalCost).toLocaleString()}\n`;
-        text += `  Provides: ${rec.provides.k.toFixed(1)} kg K\n\n`;
       });
     }
 
-    // Show TOTAL COST at the end
-    if (result.totalCost) {
-      text += `💰 TOTAL FERTILIZER INVESTMENT: Ksh ${result.totalCost.toLocaleString()} per acre\n`;
-      text += `*Gross margin will be calculated based on your actual yield and costs.*\n`;
+    text += `💰 TOTAL FERTILIZER INVESTMENT: Ksh ${result.totalCost?.toLocaleString()} for your ${result.farmSize || 1} acre farm\n\n`;
+
+    // ========== PER PLANT CALCULATION ==========
+    if (result.perPlant) {
+      const pp = result.perPlant;
+
+      text += `---\n\n`;
+      text += `### PLANT POPULATION\n`;
+      text += `Based on your spacing, you have approximately **${pp.totalPlants.toLocaleString()} plants** on your ${result.farmSize} acre farm.\n\n`;
+
+      text += `### FERTILIZER PER PLANT (CONSTANT for any farm size)\n`;
+      text += `| Fertilizer | Per Plant |\n`;
+      text += `|------------|-----------|\n`;
+      text += `| DAP | **${pp.dapGrams} grams** |\n`;
+      text += `| UREA | **${pp.ureaGrams} grams** |\n`;
+      text += `| MOP | **${pp.mopGrams} grams** |\n`;
+      text += `| **TOTAL** | **${pp.totalGrams} grams** |\n\n`;
+
+      text += `### 📏 MEASUREMENT GUIDE\n`;
+      text += `| Amount | Visual Guide |\n`;
+      text += `|--------|--------------|\n`;
+      text += `| **${pp.dapGrams} g** | ${pp.dapGuide} |\n`;
+      text += `| **${pp.ureaGrams} g** | ${pp.ureaGuide} |\n`;
+      text += `| **${pp.mopGrams} g** | ${pp.mopGuide} |\n`;
+      text += `| **${pp.totalGrams} g** | ${pp.totalGuide} |\n\n`;
     }
+
+    text += `*Gross margin will be calculated based on your actual yield and costs.*\n`;
 
     return text;
   }

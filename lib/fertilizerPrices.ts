@@ -20,9 +20,9 @@ export const fertilizerPrices: Record<string, FertilizerPrice> = {
     brand: "DAP (18-46-0)",
     pricePer50kg: 3500,
     packageSizes: [
-      { size: "50kg bag", price: 3500, retailer: "Agrovet", location: "Bungoma" },
-      { size: "50kg bag", price: 3400, retailer: "NCPB", location: "Bungoma" },
-      { size: "1 ton (20 bags)", price: 65000, retailer: "Wholesale", location: "Bungoma" }
+      { size: "50kg bag", price: 6400, retailer: "Agrovet", location: "Bungoma" },
+      { size: "50kg bag", price: 6400, retailer: "NCPB", location: "Bungoma" },
+      { size: "1 ton (20 bags)", price: 120000, retailer: "Wholesale", location: "Bungoma" }
     ],
     lastUpdated: "2024-01-15"
   },

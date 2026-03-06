@@ -3,6 +3,29 @@
 
 export type NutrientRating = "Very Low" | "Low" | "Optimum" | "High" | "Very High";
 
+// ========== SPACING INTERFACES ==========
+export interface SpacingInfo {
+  rowCm: number;
+  plantCm: number;
+  seedsPerHole: number;
+  label: string;
+  plantsPerAcre: number;
+}
+
+export interface PerPlantInfo {
+  plantsPerAcre: number;
+  totalPlants: number;
+  dapGrams: number;
+  ureaGrams: number;
+  mopGrams: number;
+  totalGrams: number;
+  dapGuide: string;
+  ureaGuide: string;
+  mopGuide: string;
+  totalGuide: string;
+}
+
+// ========== SOIL TEST RESULTS ==========
 export interface SoilTestResults {
   // Date
   testDate: string;
@@ -78,7 +101,7 @@ export interface SoilTestResults {
   recPotassiumQuantity?: number; // e.g., 30 kg
 }
 
-// ========== Interface for soil test recommendations input ==========
+// ========== INTERFACE FOR SOIL TEST RECOMMENDATIONS INPUT ==========
 export interface SoilTestRecommendations {
   targetYield: number;
   plantingFertilizer: string;  // e.g., "NPK 12.24.12+5S"
@@ -89,7 +112,7 @@ export interface SoilTestRecommendations {
   potassiumQuantity: number;     // e.g., 30kg
 }
 
-// ========== Interface for parsed nutrient values from recommendations ==========
+// ========== INTERFACE FOR PARSED NUTRIENT VALUES ==========
 export interface ParsedNutrients {
   n: number;
   p: number;
@@ -97,6 +120,7 @@ export interface ParsedNutrients {
   s?: number;
 }
 
+// ========== NUTRIENT REQUIREMENT INTERFACE ==========
 export interface NutrientRequirement {
   n: number; // kg N per acre needed
   p: number; // kg P per acre needed
@@ -111,30 +135,149 @@ export interface NutrientRequirement {
   fe?: number; // kg Fe per acre needed
 }
 
+// ========== FERTILIZER RECOMMENDATION INTERFACE ==========
 export interface FertilizerRecommendation {
   fertilizerId: string;
   brand: string;
   company: string;
   npk: string;
-  amountKg: number; // kg per acre
+  amountKg: number; // kg for entire farm
   packageSizes: string[];
   pricePer50kg: number;
   provides: {
-    n: number;
-    p: number;
-    k: number;
+    n: number;      // kg N for entire farm
+    p: number;      // kg P for entire farm
+    k: number;      // kg K for entire farm
     s?: number;
     ca?: number;
     mg?: number;
   };
-  cost?: number; // if price provided
+  cost?: number; // total cost for this fertilizer
 }
 
+// ========== FERTILIZER BLEND RESULT (ENHANCED) ==========
 export interface FertilizerBlendResult {
+  // Recommendations scaled to farm size
   plantingRecommendations: FertilizerRecommendation[];
   topDressingRecommendations: FertilizerRecommendation[];
+
+  // Per-acre reference values (for display)
+  perAcrePlanting?: FertilizerRecommendation[];
+  perAcreTopdressing?: FertilizerRecommendation[];
+
+  // Totals for entire farm
   totalNutrientsProvided: NutrientRequirement;
   remainingNeeds: NutrientRequirement;
   totalCost?: number;
-  soilTestSummary: SoilTestResults;
+
+  // Farm information
+  farmSize?: number;
+
+  // Per-plant information (if spacing provided)
+  perPlant?: PerPlantInfo;
+
+  // Original soil test summary
+  soilTestSummary: SoilTestResults | null;
+}
+
+// ========== FARMER SESSION INTERFACE ==========
+export interface FarmerSession {
+  id: string;
+  userId: string;
+  farmerName: string;
+  phoneNumber: string;
+  county: string;
+  subCounty: string;
+  ward: string;
+  village: string;
+  totalFarmSize?: number;
+  cultivatedAcres?: number;
+  waterSources?: string[];
+  crops: string[];
+  cropVarieties?: string;
+  cropAcres?: number;
+  season?: string;
+  plantingDate?: string;
+  spacing?: string; // Selected spacing label
+  spacingInfo?: SpacingInfo; // Parsed spacing data
+  seedRate?: number;
+  seedCost?: number;
+
+  // Fertilizer information
+  plantingFertilizer?: {
+    used: boolean;
+    type?: string;
+    quantity?: number;
+    cost?: number;
+    reason?: string;
+  };
+  topdressingFertilizer?: {
+    used: boolean;
+    type?: string;
+    quantity?: number;
+    cost?: number;
+    reason?: string;
+  };
+  potassiumFertilizer?: {
+    used: boolean;
+    type?: string;
+    quantity?: number;
+    cost?: number;
+  };
+
+  // Pests and diseases
+  commonPests?: string;
+  commonDiseases?: string;
+
+  // Yield and storage
+  actualYield?: number;
+  yieldUnit?: string;
+  pricePerUnit?: number;
+  storageMethod?: string;
+
+  // Costs
+  inputCosts?: {
+    dap?: number;
+    can?: number;
+    npk?: number;
+    bag?: number;
+  };
+  labourCosts?: {
+    ploughing?: number;
+    planting?: number;
+    weeding?: number;
+    harvesting?: number;
+  };
+  transportCostPerBag?: number;
+
+  // Challenges
+  productionChallenges?: string[];
+  marketingChallenges?: string[];
+  climateChallenges?: string[];
+  financialChallenges?: string[];
+
+  // Conservation (combined)
+  conservationPractices?: string;
+
+  // Soil test data
+  soilTest?: SoilTestResults & {
+    plantingFertilizerToUse?: string;
+    plantingFertilizerCost?: number;
+    topdressingFertilizerToUse?: string;
+    topdressingFertilizerCost?: number;
+    potassiumFertilizerToUse?: string;
+    potassiumFertilizerCost?: number;
+    fertilizerPlan?: any;
+    perPlant?: PerPlantInfo;
+  };
+
+  // Recommendations
+  recommendations: string[];
+  financialAdvice: string;
+  grossMarginAnalysis?: any;
+
+  // Metadata
+  createdAt: string;
+  queryCount: number;
+  source: string;
 }

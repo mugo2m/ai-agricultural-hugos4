@@ -1,136 +1,396 @@
 // lib/data/spacing.ts
-// Based on Bungoma Farm Management Guidelines 2017
+// Crop spacing recommendations with display labels for dropdown
 
-export const cropSpacing = {
-  maize: {
-    pure: "75cm x 25cm (1 seed/hole) or 75cm x 50cm (2 seeds/hole)",
-    population: { low: 35000, medium: 45000, high: 53000 }
-  },
-  beans: {
-    pure: "50cm x 10cm (2 seeds/hole)",
-    mixed: "50cm x 15cm (2 seeds/hole, 1 line)",
-    population: { low: 80000, medium: 100000, high: 120000 }
-  },
-  "maize-beans intercrop": {
-    spacing: "Maize: 75cm x 25cm, Beans: 50cm x 15cm between maize rows",
-    population: "Maize 44,000 plants/ha, Beans 66,000 plants/ha"
-  },
-  "finger millet": {
-    pure: "30cm x 15cm (drilled and thinned)",
-    seedRate: "4kg/ha",
-    population: "1.3 tons/ha yield"
-  },
-  sorghum: {
-    pure: "60cm x 15cm (drilled and thinned)",
-    seedRate: "7kg/ha",
-    population: "1.5 tons/ha yield"
-  },
-  "soya beans": {
-    pure: "45cm x 10cm (3 plants/hole, thin to one)",
-    seedRate: "40-60kg/ha",
-    population: "1.8 tons/ha yield"
-  },
-  sunflower: {
-    pure: "75cm x 30cm (2 seeds/hole, thin to one)",
-    seedRate: "5kg/ha",
-    population: "44,000 plants/ha"
-  },
-  cotton: {
-    pure: "90cm x 30cm (5-6 seeds/hole, thin to 2)",
-    seedRate: "20kg/ha",
-    population: "1000kg/ha yield"
-  },
-  groundnuts: {
-    pure: "45cm x 10cm (bunch type) or 60cm x 10cm (spreaders)",
-    seedRate: "45-50kg/ha",
-    population: "1.5 tons/ha yield"
-  },
-  sugarcane: {
-    pure: "1.5m x 0.5m",
-    population: "12,000 setts/ha"
-  },
-  coffee: {
-    spacing: "2.75m x 2.75m (SL28, SL34) or 2m x 2m (Ruiru 11)",
-    population: 1300
-  },
-  tobacco: {
-    spacing: "110cm x 60cm (fire cured) or 120cm x 70cm (flu cured)",
-    population: "15,050 plants/ha (fire cured) or 12,000 plants/ha (flu cured)"
-  },
-  cassava: {
-    spacing: "1m x 1m",
-    population: 10000
-  },
-  "sweet potatoes": {
-    spacing: "90cm x 30cm (on ridges)",
-    population: 16000
-  },
-  "irish potatoes": {
-    spacing: "75cm x 30cm",
-    population: 18000
-  },
-  tomatoes: {
-    spacing: "60-70cm x 40cm (processing) or 90cm x 30cm (fresh market) or 60cm x 60cm (2 bearing stems)",
-    population: 20000
-  },
-  kales: {
-    spacing: "60cm x 60cm",
-    population: 27777
-  },
-  cabbages: {
-    spacing: "60cm x 45cm",
-    population: 16000
-  },
-  onions: {
-    spacing: "15cm x 7.5cm (transplanted)",
-    population: 130000
-  },
-  carrots: {
-    spacing: "25-30cm rows, thinned to 3-5cm within row",
-    population: "4-10 tons/ha"
-  },
-  capsicums: {
-    spacing: "60cm x 45cm",
-    population: 16000
-  },
-  chillies: {
-    spacing: "60cm x 45cm",
-    population: 16000
-  },
-  brinjals: {
-    spacing: "60cm x 45cm",
-    population: 16000
-  },
-  "french beans": {
-    spacing: "45cm x 10cm",
-    population: 220000
-  },
-  "garden peas": {
-    spacing: "50cm x 10cm",
-    population: 200000
-  },
-  bananas: {
-    spacing: "3m x 3m (short), 3m x 4m (medium), 4m x 4m (tall)",
-    population: 450
-  },
-  oranges: {
-    spacing: "4.5m x 4.5m",
-    population: 493
-  },
-  pineapples: {
-    spacing: "90cm x 60cm x 30cm (double rows)",
-    population: 37000
-  },
-  avocados: {
-    spacing: "5m x 5m",
-    population: 400
-  },
-  pawpaws: {
-    spacing: "2.5m x 2.5m",
-    population: 1600
-  },
-  "passion fruit": {
-    spacing: "2m x 3m or 3m x 3m",
-    population: 1666
-  }
+export interface SpacingOption {
+  label: string;           // What farmer sees in dropdown
+  rowCm: number;           // Row spacing in centimeters
+  plantCm: number;         // Plant spacing in centimeters
+  seedsPerHole: number;    // Seeds per planting hole
+  plantsPerAcre: number;   // Calculated plants per acre
+  description?: string;    // Optional additional info
+}
+
+// Helper function to calculate plants per acre
+function calculatePlantsPerAcre(rowCm: number, plantCm: number, seedsPerHole: number): number {
+  const rowM = rowCm / 100;
+  const plantM = plantCm / 100;
+  const areaPerPlant = rowM * plantM;
+  // 1 acre = 4046.86 square meters
+  return Math.floor(4046.86 / areaPerPlant) * seedsPerHole;
+}
+
+// Main spacing database with structured options for dropdown
+export const cropSpacingOptions: Record<string, SpacingOption[]> = {
+  maize: [
+    {
+      label: "75cm x 25cm (1 seed/hole) - High density",
+      rowCm: 75,
+      plantCm: 25,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(75, 25, 1),
+      description: "Recommended for high fertility soils"
+    },
+    {
+      label: "75cm x 30cm (1 seed/hole) - Standard density",
+      rowCm: 75,
+      plantCm: 30,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(75, 30, 1),
+      description: "Most common spacing for maize"
+    },
+    {
+      label: "75cm x 50cm (2 seeds/hole) - Low density",
+      rowCm: 75,
+      plantCm: 50,
+      seedsPerHole: 2,
+      plantsPerAcre: calculatePlantsPerAcre(75, 50, 2),
+      description: "For intercropping or low fertility"
+    },
+    {
+      label: "90cm x 30cm (1 seed/hole) - Wide rows",
+      rowCm: 90,
+      plantCm: 30,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(90, 30, 1),
+      description: "For mechanized farming"
+    }
+  ],
+
+  beans: [
+    {
+      label: "50cm x 10cm (2 seeds/hole) - Pure stand",
+      rowCm: 50,
+      plantCm: 10,
+      seedsPerHole: 2,
+      plantsPerAcre: calculatePlantsPerAcre(50, 10, 2),
+      description: "For pure stand beans"
+    },
+    {
+      label: "50cm x 15cm (2 seeds/hole) - Intercrop with maize",
+      rowCm: 50,
+      plantCm: 15,
+      seedsPerHole: 2,
+      plantsPerAcre: calculatePlantsPerAcre(50, 15, 2),
+      description: "When planting between maize rows"
+    }
+  ],
+
+  "finger millet": [
+    {
+      label: "30cm x 15cm (drilled and thinned)",
+      rowCm: 30,
+      plantCm: 15,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(30, 15, 1),
+      description: "Drill and thin to 15cm spacing"
+    }
+  ],
+
+  sorghum: [
+    {
+      label: "60cm x 15cm (drilled and thinned)",
+      rowCm: 60,
+      plantCm: 15,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(60, 15, 1),
+      description: "Standard spacing for sorghum"
+    }
+  ],
+
+  "soya beans": [
+    {
+      label: "45cm x 10cm (3 seeds/hole, thin to 1)",
+      rowCm: 45,
+      plantCm: 10,
+      seedsPerHole: 3,
+      plantsPerAcre: calculatePlantsPerAcre(45, 10, 3),
+      description: "Plant 3 seeds, thin to 1 plant"
+    }
+  ],
+
+  sunflower: [
+    {
+      label: "75cm x 30cm (2 seeds/hole, thin to 1)",
+      rowCm: 75,
+      plantCm: 30,
+      seedsPerHole: 2,
+      plantsPerAcre: calculatePlantsPerAcre(75, 30, 2),
+      description: "Plant 2 seeds, thin to 1 plant"
+    }
+  ],
+
+  cotton: [
+    {
+      label: "90cm x 30cm (5-6 seeds/hole, thin to 2)",
+      rowCm: 90,
+      plantCm: 30,
+      seedsPerHole: 6,
+      plantsPerAcre: calculatePlantsPerAcre(90, 30, 6),
+      description: "Plant 5-6 seeds, thin to 2 plants"
+    }
+  ],
+
+  groundnuts: [
+    {
+      label: "45cm x 10cm (bunch type)",
+      rowCm: 45,
+      plantCm: 10,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(45, 10, 1),
+      description: "For bunch type varieties"
+    },
+    {
+      label: "60cm x 10cm (spreader type)",
+      rowCm: 60,
+      plantCm: 10,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(60, 10, 1),
+      description: "For spreading type varieties"
+    }
+  ],
+
+  sugarcane: [
+    {
+      label: "1.5m x 0.5m (setts)",
+      rowCm: 150,
+      plantCm: 50,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(150, 50, 1),
+      description: "Plant cane setts at this spacing"
+    }
+  ],
+
+  coffee: [
+    {
+      label: "2.75m x 2.75m (SL28, SL34)",
+      rowCm: 275,
+      plantCm: 275,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(275, 275, 1),
+      description: "For traditional coffee varieties"
+    },
+    {
+      label: "2m x 2m (Ruiru 11)",
+      rowCm: 200,
+      plantCm: 200,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(200, 200, 1),
+      description: "For Ruiru 11 and compact varieties"
+    }
+  ],
+
+  cassava: [
+    {
+      label: "1m x 1m",
+      rowCm: 100,
+      plantCm: 100,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(100, 100, 1),
+      description: "Standard cassava spacing"
+    }
+  ],
+
+  "sweet potatoes": [
+    {
+      label: "90cm x 30cm on ridges",
+      rowCm: 90,
+      plantCm: 30,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(90, 30, 1),
+      description: "Plant vines on ridges"
+    }
+  ],
+
+  "irish potatoes": [
+    {
+      label: "75cm x 30cm",
+      rowCm: 75,
+      plantCm: 30,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(75, 30, 1),
+      description: "Standard potato spacing"
+    }
+  ],
+
+  tomatoes: [
+    {
+      label: "60cm x 45cm (determinate varieties)",
+      rowCm: 60,
+      plantCm: 45,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(60, 45, 1),
+      description: "For bush/determinate tomatoes"
+    },
+    {
+      label: "90cm x 60cm (indeterminate with staking)",
+      rowCm: 90,
+      plantCm: 60,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(90, 60, 1),
+      description: "For staked indeterminate varieties"
+    }
+  ],
+
+  kales: [
+    {
+      label: "60cm x 60cm",
+      rowCm: 60,
+      plantCm: 60,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(60, 60, 1),
+      description: "Standard kale spacing"
+    }
+  ],
+
+  cabbages: [
+    {
+      label: "60cm x 45cm (medium heads)",
+      rowCm: 60,
+      plantCm: 45,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(60, 45, 1),
+      description: "For medium-sized cabbage heads"
+    },
+    {
+      label: "75cm x 60cm (large heads)",
+      rowCm: 75,
+      plantCm: 60,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(75, 60, 1),
+      description: "For large cabbage varieties"
+    }
+  ],
+
+  onions: [
+    {
+      label: "30cm x 10cm (transplanted)",
+      rowCm: 30,
+      plantCm: 10,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(30, 10, 1),
+      description: "Transplant seedlings at this spacing"
+    }
+  ],
+
+  bananas: [
+    {
+      label: "3m x 3m (short varieties)",
+      rowCm: 300,
+      plantCm: 300,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(300, 300, 1),
+      description: "For dwarf and short varieties"
+    },
+    {
+      label: "4m x 4m (tall varieties)",
+      rowCm: 400,
+      plantCm: 400,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(400, 400, 1),
+      description: "For tall banana varieties"
+    }
+  ],
+
+  oranges: [
+    {
+      label: "4.5m x 4.5m",
+      rowCm: 450,
+      plantCm: 450,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(450, 450, 1),
+      description: "Standard citrus spacing"
+    }
+  ],
+
+  avocados: [
+    {
+      label: "5m x 5m",
+      rowCm: 500,
+      plantCm: 500,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(500, 500, 1),
+      description: "Standard avocado spacing"
+    }
+  ],
+
+  pawpaws: [
+    {
+      label: "2.5m x 2.5m",
+      rowCm: 250,
+      plantCm: 250,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(250, 250, 1),
+      description: "Standard pawpaw spacing"
+    }
+  ],
+
+  "passion fruit": [
+    {
+      label: "2m x 3m (trellised)",
+      rowCm: 200,
+      plantCm: 300,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(200, 300, 1),
+      description: "For trellised passion fruit"
+    }
+  ],
+
+  capsicums: [
+    {
+      label: "60cm x 45cm",
+      rowCm: 60,
+      plantCm: 45,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(60, 45, 1),
+      description: "Standard capsicum spacing"
+    }
+  ],
+
+  "french beans": [
+    {
+      label: "45cm x 10cm",
+      rowCm: 45,
+      plantCm: 10,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(45, 10, 1),
+      description: "High density for French beans"
+    }
+  ],
+
+  cowpeas: [
+    {
+      label: "45cm x 15cm",
+      rowCm: 45,
+      plantCm: 15,
+      seedsPerHole: 2,
+      plantsPerAcre: calculatePlantsPerAcre(45, 15, 2),
+      description: "Standard cowpea spacing"
+    }
+  ],
+
+  "green grams": [
+    {
+      label: "45cm x 10cm",
+      rowCm: 45,
+      plantCm: 10,
+      seedsPerHole: 1,
+      plantsPerAcre: calculatePlantsPerAcre(45, 10, 1),
+      description: "Standard green gram spacing"
+    }
+  ]
 };
+
+// Helper function to get spacing options for a crop
+export function getSpacingOptions(crop: string): SpacingOption[] {
+  const normalizedCrop = crop.toLowerCase().trim();
+  return cropSpacingOptions[normalizedCrop] || [];
+}
+
+// Helper function to get crop by label
+export function getSpacingByLabel(crop: string, label: string): SpacingOption | undefined {
+  const options = getSpacingOptions(crop);
+  return options.find(opt => opt.label === label);
+}
+
+// Legacy export for backward compatibility
+export const cropSpacing = cropSpacingOptions;

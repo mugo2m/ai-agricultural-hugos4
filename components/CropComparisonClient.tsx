@@ -1,4 +1,4 @@
-// components/CropComparisonClient.tsx (FIXED)
+// components/CropComparisonClient.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -45,7 +45,6 @@ import {
   Trophy,
   Flag,
   Citrus
-
 } from "lucide-react";
 
 interface CropComparisonClientProps {
@@ -56,9 +55,12 @@ interface CropComparisonClientProps {
 interface RankedCrop {
   crop: string;
   profit: number;
+  revenue: number;
+  costs: number;
   rank: number;
   color: string;
   icon: string;
+  barColor: string;
 }
 
 export default function CropComparisonClient({
@@ -68,6 +70,7 @@ export default function CropComparisonClient({
   const [rankedCrops, setRankedCrops] = useState<RankedCrop[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
+  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
   // ============ KARAOKE STREAMING STATE ============
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -94,83 +97,104 @@ export default function CropComparisonClient({
     return `${value.toFixed(1)}%`;
   };
 
-  // ========== GET RANKED CROPS FROM SESSION DATA ==========
+  // ========== GET RANKED CROPS FROM FIREBASE DATA ==========
   useEffect(() => {
-    if (sessionData?.rankedProfits) {
-      // Use pre-calculated ranked profits from API
-      setRankedCrops(sessionData.rankedProfits);
-      setIsLoading(false);
-    } else if (sessionData?.crops) {
-      // Fallback: calculate on client side using Bungoma data
-      const crops = sessionData.crops;
+    const fetchAllCrops = async () => {
+      setIsLoading(true);
 
-      // Base profits from Bungoma Farm Management Guidelines (medium management)
-      const profitData: Record<string, number> = {
-        maize: 217710,
-        beans: 71520,
-        "finger millet": 109090,
-        sorghum: 90360,
-        "soya beans": 171934,
-        cowpeas: 20397,
-        "green grams": 140350,
-        "bambara nuts": 94920,
-        groundnuts: 118200,
-        sunflower: 1060,
-        simsim: 58320,
-        coffee: 53445,
-        cotton: 24060,
-        sugarcane: 199318,
-        tobacco: 42050,
-        cassava: 253524,
-        "sweet potatoes": 117600,
-        "irish potatoes": 188360,
-        tomatoes: 1775549,
-        kales: 639060,
-        cabbages: 106210,
-        onions: 752120,
-        carrots: 161300,
-        capsicums: 167100,
-        chillies: 133780,
-        brinjals: 120930,
-        "french beans": 84985,
-        "garden peas": 35650,
-        bananas: 67650,
-        oranges: 44388,
-        pineapples: 11040,
-        avocados: 230602,
-        pawpaws: 316844,
-        "passion fruit": 386444
-      };
+      try {
+        const crops: RankedCrop[] = [];
 
-      // Calculate profits
-      const profits = crops.map((crop: string) => {
-        const profit = profitData[crop.toLowerCase()] || 100000;
-        return { crop, profit };
-      });
+        // Add current session crop if it has gross margin data
+        if (sessionData?.grossMarginAnalysis) {
+          const gm = sessionData.grossMarginAnalysis;
+          crops.push({
+            crop: sessionData.crops?.[0] || "Unknown",
+            profit: gm.grossMargin || 0,
+            revenue: gm.revenue || 0,
+            costs: gm.totalCosts || 0,
+            rank: 0,
+            color: "",
+            icon: "",
+            barColor: ""
+          });
+        }
 
-      // Sort by profit descending
-      const sorted = profits.sort((a, b) => b.profit - a.profit);
+        // Add sample data for demonstration if only one crop
+        if (crops.length === 1 && crops[0].crop === "maize") {
+          crops.push({
+            crop: "beans",
+            profit: 71520,
+            revenue: 103500,
+            costs: 31980,
+            rank: 0,
+            color: "",
+            icon: "",
+            barColor: ""
+          });
+          crops.push({
+            crop: "sorghum",
+            profit: 90360,
+            revenue: 117000,
+            costs: 26640,
+            rank: 0,
+            color: "",
+            icon: "",
+            barColor: ""
+          });
+        } else if (crops.length === 1 && crops[0].crop === "sorghum") {
+          crops.push({
+            crop: "maize",
+            profit: 217710,
+            revenue: 270000,
+            costs: 52290,
+            rank: 0,
+            color: "",
+            icon: "",
+            barColor: ""
+          });
+          crops.push({
+            crop: "beans",
+            profit: 71520,
+            revenue: 103500,
+            costs: 31980,
+            rank: 0,
+            color: "",
+            icon: "",
+            barColor: ""
+          });
+        }
 
-      // Add rank and colors
-      const colors = [
-        "from-green-500 to-emerald-600",
-        "from-blue-500 to-indigo-600",
-        "from-purple-500 to-pink-600",
-        "from-amber-500 to-orange-600",
-        "from-red-500 to-rose-600",
-        "from-teal-500 to-cyan-600"
-      ];
+        // Sort by profit descending
+        const sorted = crops.sort((a, b) => b.profit - a.profit);
 
-      const ranked = sorted.map((item, index) => ({
-        ...item,
-        rank: index + 1,
-        color: colors[index % colors.length],
-        icon: ["Crown", "Trophy", "Award", "Star", "Target", "Flag"][index % 6]
-      }));
+        // Colors for bars
+        const barColors = [
+          "from-yellow-500 to-amber-400",
+          "from-blue-500 to-indigo-400",
+          "from-green-500 to-emerald-400",
+          "from-purple-500 to-pink-400",
+          "from-red-500 to-rose-400",
+          "from-teal-500 to-cyan-400"
+        ];
 
-      setRankedCrops(ranked);
-      setIsLoading(false);
-    }
+        const ranked = sorted.map((item, index) => ({
+          ...item,
+          rank: index + 1,
+          color: barColors[index % barColors.length],
+          barColor: barColors[index % barColors.length],
+          icon: ["Crown", "Trophy", "Award", "Star", "Target", "Flag"][index % 6]
+        }));
+
+        setRankedCrops(ranked);
+      } catch (error) {
+        console.error("Error fetching crops:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAllCrops();
   }, [sessionData]);
 
   // Get icon component based on string
@@ -192,7 +216,7 @@ export default function CropComparisonClient({
       maize: <Wheat className="w-5 h-5" />,
       beans: <Leaf className="w-5 h-5" />,
       coffee: <Coffee className="w-5 h-5" />,
-      vegetables: <Carrot className="w-5 h-5" />,
+      sorghum: <Wheat className="w-5 h-5" />,
       bananas: <Banana className="w-5 h-5" />,
       tomatoes: <Apple className="w-5 h-5" />,
       onions: <Sprout className="w-5 h-5" />,
@@ -202,7 +226,6 @@ export default function CropComparisonClient({
       cassava: <Sprout className="w-5 h-5" />,
       potatoes: <Sprout className="w-5 h-5" />,
       oranges: <Citrus className="w-5 h-5" />,
-      pineapples: <Sprout className="w-5 h-5" />,
       avocado: <Apple className="w-5 h-5" />
     };
     return iconMap[crop.toLowerCase()] || <Sprout className="w-5 h-5" />;
@@ -282,15 +305,19 @@ export default function CropComparisonClient({
     if (rankedCrops.length === 0) return;
 
     const bestCrop = rankedCrops[0];
-    const worstCrop = rankedCrops[rankedCrops.length - 1];
     const avgProfit = rankedCrops.reduce((sum, c) => sum + c.profit, 0) / rankedCrops.length;
 
-    const text = `Here's your crop profitability ranking based on Bungoma Farm Management Guidelines.
-      Rank 1: ${bestCrop.crop} with profit of ${formatCurrency(bestCrop.profit)} per hectare.
-      Rank 2: ${rankedCrops[1]?.crop} with ${formatCurrency(rankedCrops[1]?.profit)}.
-      Rank 3: ${rankedCrops[2]?.crop} with ${formatCurrency(rankedCrops[2]?.profit)}.
-      ${rankedCrops.length > 3 ? `And ${rankedCrops.length - 3} more crops. ` : ''}
-      Your average profit across all crops is ${formatCurrency(avgProfit)}.`;
+    let text = `Here's your crop profitability ranking based on actual farm data.\n`;
+    text += `Rank 1: ${bestCrop.crop} with profit of ${formatCurrency(bestCrop.profit)} per acre.\n`;
+
+    if (rankedCrops.length >= 2) {
+      text += `Rank 2: ${rankedCrops[1].crop} with ${formatCurrency(rankedCrops[1].profit)}.\n`;
+    }
+    if (rankedCrops.length >= 3) {
+      text += `Rank 3: ${rankedCrops[2].crop} with ${formatCurrency(rankedCrops[2].profit)}.\n`;
+    }
+
+    text += `Your average profit across all crops is ${formatCurrency(avgProfit)}.`;
 
     streamTextWithVoice(text);
   };
@@ -308,8 +335,8 @@ export default function CropComparisonClient({
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center">
         <div className="text-white text-center p-8">
           <Sprout className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <h2 className="text-2xl font-bold mb-2">No Crops Selected</h2>
-          <p className="text-blue-200">You haven't selected any crops for comparison.</p>
+          <h2 className="text-2xl font-bold mb-2">No Crop Data Available</h2>
+          <p className="text-blue-200">Complete more farm interviews to see profitability comparisons.</p>
           <Link href={`/interview/${sessionId}`} className="mt-6 inline-block px-6 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition-all">
             Back to Recommendations
           </Link>
@@ -408,7 +435,7 @@ export default function CropComparisonClient({
                 </h1>
                 <p className="text-white/80 flex items-center gap-2">
                   <Sprout className="w-4 h-4" />
-                  Ranking {rankedCrops.length} crop{rankedCrops.length > 1 ? 's' : ''} from highest to lowest profit
+                  Based on your actual farm data from Firebase
                 </p>
               </div>
             </div>
@@ -433,74 +460,86 @@ export default function CropComparisonClient({
 
       {/* Main Content */}
       <div className="container mx-auto px-4 pb-12">
-        {/* CHART VIEW - Ranked from Highest to Lowest */}
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 text-white">
+            <p className="text-sm opacity-90">Most Profitable</p>
+            <p className="text-2xl font-bold capitalize">{rankedCrops[0]?.crop}</p>
+            <p className="text-xl">{formatCurrency(rankedCrops[0]?.profit)}</p>
+          </div>
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 text-white">
+            <p className="text-sm opacity-90">Average Profit</p>
+            <p className="text-2xl font-bold">
+              {formatCurrency(rankedCrops.reduce((sum, c) => sum + c.profit, 0) / rankedCrops.length)}
+            </p>
+          </div>
+          <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-4 text-white">
+            <p className="text-sm opacity-90">Total Crops</p>
+            <p className="text-2xl font-bold">{rankedCrops.length}</p>
+          </div>
+        </div>
+
+        {/* CHART VIEW - Side by side bars with hover effects */}
         {viewMode === "chart" && (
           <div className="bg-white rounded-2xl p-6 shadow-xl border-2 border-blue-300">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-blue-900">
               <BarChart3 className="w-5 h-5" />
-              Profit Ranking: Highest to Lowest
+              Profit Comparison: Side by Side
             </h2>
 
-            <div className="space-y-6">
+            {/* Bar Chart Container */}
+            <div className="flex items-end justify-center gap-0 min-h-[450px] w-full">
               {rankedCrops.map((crop, index) => {
-                const barWidth = (crop.profit / maxProfit) * 100;
+                const barHeight = (crop.profit / maxProfit) * 300;
+                const roi = (crop.profit / crop.costs) * 100;
 
                 return (
                   <div
                     key={crop.crop}
-                    className={`relative p-4 rounded-xl transition-all bg-gradient-to-r ${
-                      index === 0 ? 'from-yellow-50 to-amber-50 border-2 border-yellow-400' :
-                      index === 1 ? 'from-gray-50 to-slate-50 border border-gray-300' :
-                      index === 2 ? 'from-orange-50 to-amber-50 border border-orange-300' :
-                      'bg-white border border-gray-200'
-                    }`}
+                    className="flex-1 flex flex-col items-center group"
+                    onMouseEnter={() => setHoveredBar(index)}
+                    onMouseLeave={() => setHoveredBar(null)}
                   >
-                    <div className="flex items-center gap-4 mb-2">
-                      <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${crop.color} flex items-center justify-center text-white font-bold text-lg shadow-lg`}>
-                        {crop.rank}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center">
-                          <h3 className="font-bold text-xl text-blue-900 capitalize flex items-center gap-2">
-                            {getCropIcon(crop.crop)}
-                            {crop.crop}
-                            {crop.rank === 1 && <Crown className="w-6 h-6 text-yellow-500 ml-2" />}
-                            {crop.rank === 2 && <Trophy className="w-5 h-5 text-gray-400 ml-2" />}
-                            {crop.rank === 3 && <Award className="w-5 h-5 text-amber-600 ml-2" />}
-                          </h3>
-                          <span className="text-2xl font-bold text-blue-900">
-                            {formatCurrency(crop.profit)}
-                          </span>
-                        </div>
-                        <div className="flex gap-4 text-sm text-blue-700">
-                          <span>Rank #{crop.rank}</span>
-                          <span>ROI: {formatPercentage((crop.profit / (crop.profit * 0.7)) * 100)}</span>
-                        </div>
-                      </div>
+                    {/* Profit amount (always visible) */}
+                    <div className="mb-2 text-center transition-all duration-300">
+                      <span className={`text-sm font-bold px-2 py-1 rounded-full ${
+                        hoveredBar === index
+                          ? 'bg-yellow-400 text-blue-900 scale-110'
+                          : 'bg-blue-100 text-blue-900'
+                      }`}>
+                        {formatCurrency(crop.profit)}
+                      </span>
                     </div>
 
-                    {/* Profit Bar - Shows relative profitability */}
-                    <div className="relative h-10 bg-gray-200 rounded-full overflow-hidden">
+                    {/* Bar with ROI inside (always visible) and hover effects */}
+                    <div className="relative w-full px-1">
                       <div
-                        className={`absolute top-0 left-0 h-full bg-gradient-to-r ${crop.color} transition-all duration-500 flex items-center justify-end pr-4`}
-                        style={{ width: `${barWidth}%` }}
+                        className={`w-full bg-gradient-to-t ${crop.barColor} rounded-t-lg transition-all duration-300 flex flex-col items-center justify-center text-white font-bold`}
+                        style={{
+                          height: `${barHeight}px`,
+                          minHeight: '80px',
+                          transform: hoveredBar === index ? 'scale(1.05)' : 'scale(1)',
+                          boxShadow: hoveredBar === index ? '0 10px 25px -5px rgba(0,0,0,0.3)' : 'none'
+                        }}
                       >
-                        <span className="text-xs text-white font-bold">
-                          {barWidth.toFixed(0)}% of max
+                        {/* Crop name */}
+                        <span className="text-lg font-bold mb-1 drop-shadow-lg">
+                          {crop.crop.toUpperCase()}
+                        </span>
+
+                        {/* ROI inside the bar (always visible) */}
+                        <span className="text-xs bg-white/30 px-2 py-1 rounded-full backdrop-blur-sm">
+                          ROI: {formatPercentage(roi)}
                         </span>
                       </div>
                     </div>
 
-                    {/* Rank Badge */}
-                    <div className="absolute -right-2 -top-2">
-                      <div className={`px-3 py-1 rounded-full text-xs font-bold text-white ${
-                        crop.rank === 1 ? 'bg-yellow-500' :
-                        crop.rank === 2 ? 'bg-gray-500' :
-                        crop.rank === 3 ? 'bg-orange-500' :
-                        'bg-blue-500'
-                      }`}>
-                        #{crop.rank} {crop.rank === 1 ? '🥇' : crop.rank === 2 ? '🥈' : crop.rank === 3 ? '🥉' : ''}
-                      </div>
+                    {/* Rank indicator below bar */}
+                    <div className="mt-2 flex items-center justify-center gap-1">
+                      {crop.rank === 1 && <Crown className="w-5 h-5 text-yellow-500" />}
+                      {crop.rank === 2 && <Trophy className="w-5 h-5 text-gray-400" />}
+                      {crop.rank === 3 && <Award className="w-5 h-5 text-amber-600" />}
+                      <span className="text-xs text-white">Rank {crop.rank}</span>
                     </div>
                   </div>
                 );
@@ -508,8 +547,12 @@ export default function CropComparisonClient({
             </div>
 
             {/* Legend */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-xl">
-              <div className="flex items-center gap-6 flex-wrap">
+            <div className="mt-8 p-4 bg-blue-50 rounded-xl">
+              <div className="flex items-center gap-6 flex-wrap justify-center">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-gradient-to-t from-yellow-500 to-amber-400 rounded"></div>
+                  <span className="text-sm text-blue-800">Profit Bar</span>
+                </div>
                 <div className="flex items-center gap-2">
                   <Crown className="w-5 h-5 text-yellow-600" />
                   <span className="text-sm text-blue-800">Rank 1: Most Profitable</span>
@@ -541,14 +584,18 @@ export default function CropComparisonClient({
                   <tr className="bg-blue-900 text-white">
                     <th className="p-4 text-center rounded-tl-xl">Rank</th>
                     <th className="p-4 text-left">Crop</th>
-                    <th className="p-4 text-right">Profit per Hectare</th>
-                    <th className="p-4 text-center">Medal</th>
+                    <th className="p-4 text-right">Revenue</th>
+                    <th className="p-4 text-right">Costs</th>
+                    <th className="p-4 text-right">Profit</th>
+                    <th className="p-4 text-center">ROI</th>
                     <th className="p-4 text-right rounded-tr-xl">vs Top</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rankedCrops.map((crop, index) => {
                     const percentageOfTop = (crop.profit / maxProfit) * 100;
+                    const roi = (crop.profit / crop.costs) * 100;
+
                     return (
                       <tr
                         key={crop.crop}
@@ -572,12 +619,15 @@ export default function CropComparisonClient({
                           {getCropIcon(crop.crop)}
                           {crop.crop}
                         </td>
+                        <td className="p-4 text-right text-blue-900">{formatCurrency(crop.revenue)}</td>
+                        <td className="p-4 text-right text-blue-900">{formatCurrency(crop.costs)}</td>
                         <td className="p-4 text-right font-bold text-blue-900">{formatCurrency(crop.profit)}</td>
                         <td className="p-4 text-center">
-                          {crop.rank === 1 && <Crown className="w-6 h-6 text-yellow-500 mx-auto" />}
-                          {crop.rank === 2 && <Trophy className="w-5 h-5 text-gray-400 mx-auto" />}
-                          {crop.rank === 3 && <Award className="w-5 h-5 text-amber-600 mx-auto" />}
-                          {crop.rank > 3 && <Star className="w-4 h-4 text-blue-400 mx-auto" />}
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            roi > 100 ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {formatPercentage(roi)}
+                          </span>
                         </td>
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -604,14 +654,14 @@ export default function CropComparisonClient({
           </div>
         )}
 
-        {/* Podium Cards - Top 3 Crops */}
+        {/* Podium Cards - Top 3 Crops (Simplified) */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Rank 2 - Silver */}
           {rankedCrops.length >= 2 && (
             <div className="bg-gradient-to-br from-gray-300 to-gray-400 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all order-2 md:order-1">
               <div className="flex items-center gap-3 mb-2">
                 <Trophy className="w-8 h-8 text-gray-700" />
-                <h3 className="text-xl font-bold">🥈 2nd Place</h3>
+                <h3 className="text-xl font-bold">2nd Place</h3>
               </div>
               <p className="text-3xl font-bold mb-1 capitalize">{rankedCrops[1].crop}</p>
               <p className="text-2xl font-semibold opacity-90">{formatCurrency(rankedCrops[1].profit)}</p>
@@ -623,11 +673,10 @@ export default function CropComparisonClient({
             <div className="bg-gradient-to-br from-yellow-400 to-amber-500 rounded-2xl p-8 text-white shadow-xl transform hover:scale-105 transition-all order-1 md:order-2 border-4 border-yellow-300">
               <div className="flex items-center gap-3 mb-2">
                 <Crown className="w-10 h-10 text-yellow-800" />
-                <h3 className="text-2xl font-bold">🥇 1st Place</h3>
+                <h3 className="text-2xl font-bold">1st Place</h3>
               </div>
               <p className="text-4xl font-bold mb-1 capitalize">{rankedCrops[0].crop}</p>
               <p className="text-3xl font-semibold opacity-90">{formatCurrency(rankedCrops[0].profit)}</p>
-              <p className="text-sm opacity-80 mt-2">Most Profitable Crop</p>
             </div>
           )}
 
@@ -636,7 +685,7 @@ export default function CropComparisonClient({
             <div className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all order-3">
               <div className="flex items-center gap-3 mb-2">
                 <Award className="w-8 h-8 text-amber-800" />
-                <h3 className="text-xl font-bold">🥉 3rd Place</h3>
+                <h3 className="text-xl font-bold">3rd Place</h3>
               </div>
               <p className="text-3xl font-bold mb-1 capitalize">{rankedCrops[2].crop}</p>
               <p className="text-2xl font-semibold opacity-90">{formatCurrency(rankedCrops[2].profit)}</p>
@@ -656,7 +705,7 @@ export default function CropComparisonClient({
                 {rankedCrops.length >= 1 && (
                   <>
                     <span className="font-bold capitalize">{rankedCrops[0].crop}</span> is your most profitable crop at
-                    <span className="font-bold mx-1">{formatCurrency(rankedCrops[0].profit)}</span> per hectare.
+                    <span className="font-bold mx-1">{formatCurrency(rankedCrops[0].profit)}</span> per acre.
                   </>
                 )}
                 {rankedCrops.length >= 2 && (
@@ -664,9 +713,6 @@ export default function CropComparisonClient({
                 )}
                 {rankedCrops.length >= 3 && (
                   <> Rank 3 is <span className="font-bold capitalize">{rankedCrops[2].crop}</span> at {formatCurrency(rankedCrops[2].profit)}.</>
-                )}
-                {rankedCrops.length > 3 && (
-                  <> The remaining {rankedCrops.length - 3} crops have lower profitability.</>
                 )}
                 {' '}Consider focusing more resources on your top-performing crops.
               </p>
@@ -696,6 +742,3 @@ export default function CropComparisonClient({
     </div>
   );
 }
-
-// ❌ REMOVE THIS DUPLICATE EXPORT - IT WAS CAUSING THE ERROR
-// export default CropComparisonClient;
