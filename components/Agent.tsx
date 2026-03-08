@@ -43,8 +43,16 @@ import {
   CheckCircle2,
   VolumeX,
   Pause,
-  Play
+  Play,
+  Award,
+  Gem,
+  Rocket,
+  Zap,
+  Target,
+  Crown
 } from "lucide-react";
+import { useCurrency } from '@/lib/context/CurrencyContext';
+import { formatCurrencyForDisplay, formatCurrencyForSpeech } from '@/lib/utils/currency';
 
 interface AgentProps {
   userName: string;
@@ -59,6 +67,7 @@ const Agent = ({
   interviewId,
   sessionData
 }: AgentProps) => {
+  const { currency } = useCurrency();
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceInitializing, setVoiceInitializing] = useState(false);
   const [hasPaid, setHasPaid] = useState(false);
@@ -71,7 +80,7 @@ const Agent = ({
   const [showFinancials, setShowFinancials] = useState(false);
   const [filteredRecommendations, setFilteredRecommendations] = useState<any[]>([]);
 
-  // ============ VERCELL SPEECH FIXES ============
+  // Voice state
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -85,6 +94,7 @@ const Agent = ({
   const [activeStreamingRec, setActiveStreamingRec] = useState<number | null>(null);
   const recWordsRef = useRef<{[key: number]: string[]}>({});
   const isAISpeakingRef = useRef(false);
+  const nameUsageCountRef = useRef(0); // ADDED: Counter for name usage
 
   const voiceServiceRef = useRef<VoiceService | null>(null);
   const mountedRef = useRef(true);
@@ -96,7 +106,156 @@ const Agent = ({
   const interventions = soilTest?.interventions || [];
   const fertilizerPlan = soilTest?.fertilizerPlan;
 
-  // ============ CHECK SPEECH SUPPORT FOR VERCELL ============
+  // Get farmer name from session
+  const farmerName = sessionData?.farmerName || userName || "Farmer";
+
+  // ============ HELPER TO GET CURRENCY NAME FOR SPEECH ============
+  const getCurrencyName = () => {
+    switch(currency.code) {
+      case 'KES': return 'Kenyan Shillings';
+      case 'UGX': return 'Ugandan Shillings';
+      case 'TZS': return 'Tanzanian Shillings';
+      case 'RWF': return 'Rwandan Francs';
+      case 'BIF': return 'Burundian Francs';
+      case 'SSP': return 'South Sudanese Pounds';
+      case 'ETB': return 'Ethiopian Birr';
+      case 'SOS': return 'Somali Shillings';
+      case 'DJF': return 'Djiboutian Francs';
+      case 'ERN': return 'Eritrean Nakfa';
+      case 'NGN': return 'Nigerian Nairas';
+      case 'GHS': return 'Ghanaian Cedis';
+      case 'XOF': return 'West African CFA Francs';
+      case 'XAF': return 'Central African CFA Francs';
+      case 'GNF': return 'Guinean Francs';
+      case 'LRD': return 'Liberian Dollars';
+      case 'SLL': return 'Sierra Leonean Leones';
+      case 'GMD': return 'Gambian Dalasis';
+      case 'CVE': return 'Cape Verdean Escudos';
+      case 'CDF': return 'Congolese Francs';
+      case 'AOA': return 'Angolan Kwanzas';
+      case 'STN': return 'São Tomé and Príncipe Dobras';
+      case 'ZAR': return 'South African Rand';
+      case 'NAD': return 'Namibian Dollars';
+      case 'BWP': return 'Botswana Pula';
+      case 'ZWL': return 'Zimbabwean Dollars';
+      case 'ZMW': return 'Zambian Kwacha';
+      case 'MWK': return 'Malawian Kwacha';
+      case 'MZN': return 'Mozambican Meticais';
+      case 'MGA': return 'Malagasy Ariary';
+      case 'KMF': return 'Comorian Francs';
+      case 'MUR': return 'Mauritian Rupees';
+      case 'SCR': return 'Seychellois Rupees';
+      case 'SZL': return 'Swazi Lilangeni';
+      case 'LSL': return 'Lesotho Loti';
+      case 'EGP': return 'Egyptian Pounds';
+      case 'SDG': return 'Sudanese Pounds';
+      case 'LYD': return 'Libyan Dinars';
+      case 'TND': return 'Tunisian Dinars';
+      case 'DZD': return 'Algerian Dinars';
+      case 'MAD': return 'Moroccan Dirhams';
+      case 'MRU': return 'Mauritanian Ouguiya';
+      case 'USD': return 'US Dollars';
+      case 'GBP': return 'British Pounds';
+      case 'EUR': return 'Euros';
+      default: return currency.name;
+    }
+  };
+
+  // Helper to clean text of emojis and formatting
+  const cleanText = (text: string): string => {
+    return text
+      .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
+      .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
+      .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
+      .replace(/[\u{2600}-\u{26FF}]/gu, '')
+      .replace(/[\u{2700}-\u{27BF}]/gu, '')
+      .replace(/\*\*\*/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/#{1,6}\s?/g, '')
+      .replace(/_/g, '')
+      .replace(/~/g, '')
+      .replace(/`/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Helper to replace currency symbols with full names for speech - WITH NAME COUNTER
+  const prepareForSpeech = (text: string): string => {
+    let speechText = cleanText(text);
+
+    // Currency replacements
+    switch(currency.code) {
+      case 'ZAR':
+        speechText = speechText.replace(/R\s/g, 'South African Rand ');
+        speechText = speechText.replace(/R\b/g, 'South African Rand');
+        break;
+      case 'KES':
+        speechText = speechText.replace(/Ksh\s/g, 'Kenyan Shillings ');
+        speechText = speechText.replace(/Ksh\b/g, 'Kenyan Shillings');
+        break;
+      case 'UGX':
+        speechText = speechText.replace(/USh\s/g, 'Ugandan Shillings ');
+        speechText = speechText.replace(/USh\b/g, 'Ugandan Shillings');
+        break;
+      case 'TZS':
+        speechText = speechText.replace(/TSh\s/g, 'Tanzanian Shillings ');
+        speechText = speechText.replace(/TSh\b/g, 'Tanzanian Shillings');
+        break;
+      case 'RWF':
+        speechText = speechText.replace(/FRw\s/g, 'Rwandan Francs ');
+        speechText = speechText.replace(/FRw\b/g, 'Rwandan Francs');
+        break;
+      case 'GHS':
+        speechText = speechText.replace(/GH₵\s/g, 'Ghanaian Cedis ');
+        speechText = speechText.replace(/GH₵\b/g, 'Ghanaian Cedis');
+        break;
+      case 'NGN':
+        speechText = speechText.replace(/₦\s/g, 'Nigerian Nairas ');
+        speechText = speechText.replace(/₦\b/g, 'Nigerian Nairas');
+        break;
+      case 'ETB':
+        speechText = speechText.replace(/Br\s/g, 'Ethiopian Birr ');
+        speechText = speechText.replace(/Br\b/g, 'Ethiopian Birr');
+        break;
+      case 'USD':
+        speechText = speechText.replace(/\$\s/g, 'US Dollars ');
+        speechText = speechText.replace(/\$\b/g, 'US Dollars');
+        break;
+      case 'GBP':
+        speechText = speechText.replace(/£\s/g, 'British Pounds ');
+        speechText = speechText.replace(/£\b/g, 'British Pounds');
+        break;
+      case 'EUR':
+        speechText = speechText.replace(/€\s/g, 'Euros ');
+        speechText = speechText.replace(/€\b/g, 'Euros');
+        break;
+      default:
+        const symbol = currency.symbol;
+        if (symbol && symbol !== '') {
+          const regex = new RegExp(`${symbol}\\s`, 'g');
+          speechText = speechText.replace(regex, `${currency.name} `);
+        }
+    }
+
+    // Add farmer name personalization - REDUCED FREQUENCY
+    nameUsageCountRef.current++;
+    const useName = nameUsageCountRef.current % 3 === 0;
+
+    speechText = speechText
+      .replace(/\b(farmer)\b/gi, useName ? farmerName : 'the farmer')
+      .replace(/\b(you)\b/gi, useName ? farmerName : 'you')
+      .replace(/\b(your)\b/gi, useName ? `${farmerName}'s` : 'your');
+
+    return speechText;
+  };
+
+  // Reset name counter when starting new session
+  useEffect(() => {
+    nameUsageCountRef.current = 0;
+  }, [sessionData]);
+
+  // Check speech support
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const supported = 'speechSynthesis' in window;
@@ -104,12 +263,11 @@ const Agent = ({
       console.log("Speech synthesis supported in Vercel:", supported);
 
       if (supported) {
-        // Force voices to load
         const loadVoices = () => {
           const voices = window.speechSynthesis.getVoices();
           if (voices.length > 0) {
             setVoicesLoaded(true);
-            console.log(`✅ ${voices.length} voices loaded in Vercel`);
+            console.log(`${voices.length} voices loaded in Vercel`);
           }
         };
 
@@ -122,7 +280,7 @@ const Agent = ({
     }
   }, []);
 
-  // ============ FILTER RECOMMENDATIONS ON MOUNT ============
+  // Filter recommendations on mount
   useEffect(() => {
     if (sessionData?.recommendations) {
       console.log("Raw recommendations:", sessionData.recommendations);
@@ -134,7 +292,6 @@ const Agent = ({
         if (text.includes('"recommendations"')) return false;
         if (text.match(/^\[\s*$/)) return false;
         if (!/[A-Za-z]/.test(text)) return false;
-        if (!text.includes('**') && !text.includes(':')) return false;
         return true;
       });
 
@@ -143,14 +300,14 @@ const Agent = ({
     }
   }, [sessionData]);
 
-  // ============ PAYMENT CHECK ============
+  // Payment check
   useEffect(() => {
-    console.log(`⏩ Payment check - INTERVIEW UNLOCKED`);
+    console.log(`Payment check - INTERVIEW UNLOCKED`);
     setHasPaid(true);
     setPaymentChecked(true);
   }, [interviewId, userId]);
 
-  // ============ VOICE SERVICE INIT ============
+  // Voice service init
   useEffect(() => {
     if (!mountedRef.current) return;
     if (voiceServiceInitializedRef.current && voiceServiceRef.current) return;
@@ -176,24 +333,25 @@ const Agent = ({
           interviewId: interviewId || `demo-${Date.now()}`,
           userId: currentUserId,
           type: "practice",
-          speechRate: 1.0,
-          speechVolume: 0.8
+          speechRate: 0.75,
+          speechVolume: 0.8,
+          farmerName: farmerName
         });
 
         voiceServiceInitializedRef.current = true;
         setVoiceInitializing(false);
-        console.log("✅ VoiceService created");
+        console.log(`VoiceService created for ${farmerName}`);
 
-        toast.success("🌱 Smart Farmer AI is here!");
+        toast.success(`Smart Farmer AI is here!`);
       } catch (error: any) {
-        console.error("❌ Failed to initialize VoiceService:", error);
+        console.error("Failed to initialize VoiceService:", error);
         toast.error("Failed to initialize voice service");
         setVoiceInitializing(false);
       }
     }
-  }, [voiceEnabled]);
+  }, [voiceEnabled, farmerName]);
 
-  // ============ SPEAK FUNCTION ============
+  // Speak function
   const speakStreaming = async (text: string) => {
     isAISpeakingRef.current = true;
 
@@ -204,13 +362,13 @@ const Agent = ({
         const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
         for (const sentence of sentences) {
           const utterance = new SpeechSynthesisUtterance(sentence);
-          utterance.rate = 0.9;
+          utterance.rate = 0.75;
           await new Promise((resolve) => {
             utterance.onend = resolve;
             utterance.onerror = resolve;
             window.speechSynthesis.speak(utterance);
           });
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       } else {
         if (typeof voiceServiceRef.current.speakStreaming === 'function') {
@@ -226,7 +384,7 @@ const Agent = ({
     }
   };
 
-  // ============ KARAOKE STREAMING WITH VERCELL FIXES ============
+  // Karaoke streaming
   const streamRecommendationKaraoke = async (recommendation: string, index: number) => {
     if (!voiceEnabled || !window.speechSynthesis || !voicesLoaded) {
       setRecommendationStreams(prev => ({ ...prev, [index]: recommendation }));
@@ -234,7 +392,6 @@ const Agent = ({
       return;
     }
 
-    // Cancel any ongoing speech
     if (window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel();
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -246,19 +403,19 @@ const Agent = ({
     setRecommendationStreams(prev => ({ ...prev, [index]: "" }));
 
     const utterance = new SpeechSynthesisUtterance(recommendation);
-    utterance.rate = 0.9;
+    utterance.rate = 0.75;
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
 
-    // Get voices
     const voices = window.speechSynthesis.getVoices();
 
-    // Prefer natural sounding voices
     const preferredVoice = voices.find(v =>
       v.name.includes('Google UK') ||
       v.name.includes('Google') ||
       v.name.includes('Samantha') ||
-      v.name.includes('Microsoft Zira') // Better than David
+      v.name.includes('Microsoft Jenny') ||
+      v.name.includes('Microsoft Aria') ||
+      v.name.includes('Microsoft Sonia')
     );
 
     if (preferredVoice) {
@@ -266,7 +423,6 @@ const Agent = ({
       console.log(`Using voice: ${preferredVoice.name}`);
     }
 
-    // Store reference to current utterance
     currentUtteranceRef.current = utterance;
 
     let wordIndex = 0;
@@ -288,8 +444,7 @@ const Agent = ({
     };
 
     utterance.onerror = (event) => {
-      console.error("Speech error in Vercel:", event);
-      // Instead of failing, mark as read and show full text
+      console.error("Speech error:", event);
       setRecommendationStreams(prev => ({ ...prev, [index]: recommendation }));
       setReadRecommendations(prev => new Set(prev).add(index));
       setActiveStreamingRec(null);
@@ -299,53 +454,67 @@ const Agent = ({
     window.speechSynthesis.speak(utterance);
   };
 
-  // ============ AUTO-STREAM ALL RECOMMENDATIONS ============
+  // Auto-stream all recommendations
   const streamAllRecommendations = async () => {
     if (filteredRecommendations.length === 0 || recommendationsSpoken) return;
 
     setRecommendationsSpoken(true);
     setRecommendationStreams({});
     setReadRecommendations(new Set());
+    nameUsageCountRef.current = 0;
 
-    let introMessage = "I've prepared your personalized recommendations. ";
-    if (hasSoilTest) {
-      introMessage += "Based on your soil test, I've calculated precision fertilizer recommendations. ";
+    const currencyName = getCurrencyName();
+
+    let introMessage = `I've prepared personalized recommendations for your farm enterprise. `;
+    if (hasSoilTest && fertilizerPlan?.totalCost) {
+      introMessage += `Based on your soil test, I've calculated precision fertilizer recommendations. Total investment is ${currencyName} ${fertilizerPlan.totalCost.toLocaleString()}. Remember, every shilling invested should put more money in your pocket. `;
+    } else if (hasSoilTest) {
+      introMessage += `Based on your soil test, I've calculated precision fertilizer recommendations. `;
     }
 
     await speakStreaming(introMessage);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 2500));
 
-    // Stream recommendations one by one with error recovery
     for (let i = 0; i < filteredRecommendations.length; i++) {
-      await streamRecommendationKaraoke(filteredRecommendations[i], i);
+      let recommendation = filteredRecommendations[i];
+      recommendation = prepareForSpeech(recommendation);
 
-      // Wait longer between recommendations to prevent overlap
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await streamRecommendationKaraoke(recommendation, i);
+      await new Promise(resolve => setTimeout(resolve, 4000));
 
-      // If current utterance is still active, wait for it
       while (currentUtteranceRef.current !== null) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
     if (sessionData?.financialAdvice) {
-      await speakStreaming("I've also prepared detailed financial analysis for your farm.");
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      let financialAdvice = sessionData.financialAdvice;
+      financialAdvice = prepareForSpeech(financialAdvice);
+
+      const roi = sessionData.grossMarginAnalysis?.roi;
+      if (roi > 100) {
+        await speakStreaming(`Excellent news! Your return on investment is ${roi.toFixed(1)} percent. You're making excellent profit. `);
+      } else if (roi > 50) {
+        await speakStreaming(`Good work! Your return on investment is ${roi.toFixed(1)} percent. Let's see how we can improve it further. `);
+      }
+
+      await speakStreaming(financialAdvice);
+      await new Promise(resolve => setTimeout(resolve, 2500));
     }
 
-    await speakStreaming("You can now view your financial analysis or ask me questions about your farm.");
+    await speakStreaming(`You can now view your financial analysis or ask me questions about your farm. Remember, produce more with less - put more money in your pocket.`);
   };
 
-  // ============ START VOICE INTERVIEW ============
+  // Start voice interview
   const startVoiceInterview = async () => {
     if (interviewId && userId) {
       if (paymentUsed) {
-        toast.info("💳 Payment used. New payment required.");
+        toast.info("Payment used. New payment required.");
         setShowPaymentModal(true);
         return;
       }
       if (!hasPaid) {
-        toast.info("💳 Payment required to start");
+        toast.info("Payment required to start");
         setShowPaymentModal(true);
         return;
       }
@@ -357,7 +526,7 @@ const Agent = ({
         return;
       }
 
-      const initToast = toast.loading("🔄 Initializing voice...");
+      const initToast = toast.loading("Initializing voice...");
       setVoiceInitializing(true);
 
       let attempts = 0;
@@ -384,17 +553,17 @@ const Agent = ({
 
       if (sessionData && !welcomeSpoken) {
         setWelcomeSpoken(true);
+        nameUsageCountRef.current = 0;
 
         try {
-          const welcomeUtterance = new SpeechSynthesisUtterance("I'm ready to help you with your farm plan.");
-          welcomeUtterance.rate = 0.9;
+          const welcomeUtterance = new SpeechSynthesisUtterance(`I'm ready to help you with your farm plan. Let's make your farm more profitable.`);
+          welcomeUtterance.rate = 0.75;
           window.speechSynthesis.speak(welcomeUtterance);
 
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 3000));
           await streamAllRecommendations();
         } catch (speechError) {
           console.error("Speech error:", speechError);
-          // Fallback: show all recommendations without streaming
           filteredRecommendations.forEach((rec, i) => {
             setRecommendationStreams(prev => ({ ...prev, [i]: rec }));
             setReadRecommendations(prev => new Set(prev).add(i));
@@ -402,9 +571,9 @@ const Agent = ({
         }
       }
 
-      toast.success("🌱 Ready! Ask away");
+      toast.success(`Ready! Ask away`);
     } catch (error: any) {
-      console.error("❌ Failed to start:", error);
+      console.error("Failed to start:", error);
       toast.error("Failed to start: " + error.message);
     } finally {
       setIsLoading(false);
@@ -414,39 +583,39 @@ const Agent = ({
   const handleVoiceToggle = (enabled: boolean) => {
     setVoiceEnabled(enabled);
     if (enabled) {
-      toast.success("🌱 Voice mode activated!");
+      toast.success(`Voice mode activated!`);
+      nameUsageCountRef.current = 0;
     } else {
       toast.info("Voice mode disabled");
     }
   };
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-
-  // ============ UI RENDER ============
   const isStartButtonDisabled = isLoading || !voiceEnabled || !hasPaid || voiceInitializing;
 
   const getStartButtonText = () => {
     if (isLoading) return "Starting...";
     if (voiceInitializing) return "Initializing...";
-    if (!hasPaid) return "Pay KES 3 to Start";
-    return "🌱 Start Voice Session";
+    if (!hasPaid) return `Pay ${currency.symbol} 3 to Start`;
+    return "Start Voice Session";
+  };
+
+  const getRatingColor = (rating: string) => {
+    switch(rating?.toLowerCase()) {
+      case 'very low': return 'text-red-600 bg-red-100';
+      case 'low': return 'text-orange-600 bg-orange-100';
+      case 'optimum': return 'text-green-600 bg-green-100';
+      case 'high': return 'text-blue-600 bg-blue-100';
+      case 'very high': return 'text-purple-600 bg-purple-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
   };
 
   return (
     <div className="flex flex-col gap-6 p-4 bg-gradient-to-br from-slate-50 to-white rounded-2xl">
-      {/* Header with Back Button */}
+      {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-emerald-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {/* BACK BUTTON */}
             <Link
               href={`/interview/${interviewId}`}
               className="p-2 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition-all"
@@ -475,7 +644,7 @@ const Agent = ({
                 <div className="mt-1 flex flex-wrap gap-2">
                   <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full flex items-center gap-1">
                     <Sprout className="w-3 h-3" />
-                    {sessionData.crops?.join(", ")}
+                    {sessionData.crops?.map((c: string) => `${c} Enterprise`).join(", ")}
                   </span>
                   <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
@@ -505,15 +674,15 @@ const Agent = ({
                     </span>
                   ) : paymentUsed ? (
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
-                      🔒 Payment used - Pay again
+                      Payment used - Pay again
                     </span>
                   ) : hasPaid ? (
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                      ✅ Payment Verified • KES 3 ready
+                      Payment Verified • {currency.symbol} 3 ready
                     </span>
                   ) : (
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
-                      🔒 Payment required (KES 3)
+                      Payment required ({currency.symbol} 3)
                     </span>
                   )}
                 </div>
@@ -549,7 +718,7 @@ const Agent = ({
           </h4>
           {!speechSupported && (
             <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
-              ⚠️ Voice limited
+              Voice limited
             </span>
           )}
           {sessionData?.grossMarginAnalysis && (
@@ -581,13 +750,28 @@ const Agent = ({
               <Beaker className="w-5 h-5 text-purple-700" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-purple-800">Soil Test Analysis Available</h3>
-              <p className="text-sm text-purple-700">
-                pH: {soilTest.ph} ({soilTest.phRating}) • P: {soilTest.phosphorus} ppm • K: {soilTest.potassium} ppm
-              </p>
+              <h3 className="font-bold text-purple-800">Your Soil Test Analysis</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                <div className="bg-white rounded p-2">
+                  <p className="text-xs text-gray-500">pH</p>
+                  <p className="font-bold">{soilTest.ph} <span className={`text-xs px-1 rounded ${getRatingColor(soilTest.phRating)}`}>({soilTest.phRating})</span></p>
+                </div>
+                <div className="bg-white rounded p-2">
+                  <p className="text-xs text-gray-500">P</p>
+                  <p className="font-bold">{soilTest.phosphorus}ppm <span className={`text-xs px-1 rounded ${getRatingColor(soilTest.phosphorusRating)}`}>({soilTest.phosphorusRating})</span></p>
+                </div>
+                <div className="bg-white rounded p-2">
+                  <p className="text-xs text-gray-500">K</p>
+                  <p className="font-bold">{soilTest.potassium}ppm <span className={`text-xs px-1 rounded ${getRatingColor(soilTest.potassiumRating)}`}>({soilTest.potassiumRating})</span></p>
+                </div>
+                <div className="bg-white rounded p-2">
+                  <p className="text-xs text-gray-500">Ca</p>
+                  <p className="font-bold">{soilTest.calcium}ppm <span className={`text-xs px-1 rounded ${getRatingColor(soilTest.calciumRating)}`}>({soilTest.calciumRating})</span></p>
+                </div>
+              </div>
               {fertilizerPlan && (
-                <p className="text-xs text-purple-600 mt-1">
-                  ✓ Precision fertilizer plan calculated - Total investment: {formatCurrency(fertilizerPlan.totalCost)}
+                <p className="text-xs text-purple-600 mt-2">
+                  Precision fertilizer plan calculated - Total investment: {formatCurrencyForDisplay(fertilizerPlan.totalCost, currency)}
                 </p>
               )}
             </div>
@@ -597,6 +781,7 @@ const Agent = ({
               </button>
             </Link>
           </div>
+          <p className="text-xs text-purple-600 mt-2">Test soil yearly to track improvements.</p>
         </div>
       )}
 
@@ -619,26 +804,27 @@ const Agent = ({
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-white/80 rounded-lg p-2">
               <p className="text-xs text-gray-500">Low</p>
-              <p className="font-bold text-emerald-700">{formatCurrency(sessionData.grossMarginAnalysis.low?.grossMargin || 44190)}</p>
+              <p className="font-bold text-emerald-700">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.low?.grossMargin || 44190, currency)}</p>
             </div>
             <div className="bg-white/80 rounded-lg p-2">
               <p className="text-xs text-gray-500">Medium</p>
-              <p className="font-bold text-emerald-700">{formatCurrency(sessionData.grossMarginAnalysis.medium?.grossMargin || 217710)}</p>
+              <p className="font-bold text-emerald-700">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.medium?.grossMargin || 217710, currency)}</p>
             </div>
             <div className="bg-white/80 rounded-lg p-2">
               <p className="text-xs text-gray-500">High</p>
-              <p className="font-bold text-emerald-700">{formatCurrency(sessionData.grossMarginAnalysis.high?.grossMargin || 433680)}</p>
+              <p className="font-bold text-emerald-700">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.high?.grossMargin || 433680, currency)}</p>
             </div>
           </div>
+          <p className="text-xs text-emerald-600 mt-2">Every {currency.symbol} 1 invested should return {currency.symbol} 3-5 profit.</p>
         </div>
       )}
 
-      {/* ========== KARAOKE RECOMMENDATIONS ========== */}
+      {/* KARAOKE RECOMMENDATIONS */}
       {filteredRecommendations.length > 0 && (
         <div className="bg-white rounded-2xl p-6 border-2 border-purple-200 shadow-xl">
           <h3 className="font-bold text-2xl mb-4 flex items-center gap-2 text-purple-800">
             <Sparkles className="w-6 h-6 text-purple-600" />
-            Your Personalized Recommendations
+            Personalized Recommendations
             {activeStreamingRec !== null && (
               <span className="ml-auto flex items-center gap-2 text-purple-600">
                 <Volume2 className="w-5 h-5 animate-pulse" />
@@ -647,12 +833,20 @@ const Agent = ({
             )}
           </h3>
 
-          {/* Fertilizer Investment Summary - Show if available */}
+          {/* Business Summary Card */}
+          <div className="mb-6 p-3 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-xl text-white">
+            <p className="text-sm flex items-center gap-2">
+              <Rocket className="w-4 h-4" />
+              BUSINESS TIP: Produce more with less. Every shilling saved is profit in your pocket.
+            </p>
+          </div>
+
+          {/* Fertilizer Investment Summary */}
           {fertilizerPlan?.totalCost > 0 && (
             <div className="mb-6 p-4 bg-green-100 rounded-xl border-2 border-green-400">
               <h4 className="font-bold text-green-800 flex items-center gap-2">
                 <Package className="w-5 h-5" />
-                Total Fertilizer Investment: {formatCurrency(fertilizerPlan.totalCost)} per acre
+                Total Fertilizer Investment: {formatCurrencyForDisplay(fertilizerPlan.totalCost, currency)} per acre
               </h4>
               <p className="text-sm text-green-700 mt-1">
                 Based on your soil test, this is the exact fertilizer you need to buy.
@@ -666,7 +860,6 @@ const Agent = ({
               const isActive = activeStreamingRec === idx;
               const isRead = readRecommendations.has(idx);
 
-              // Only show if streaming OR already read
               if (!streamingText && !isRead && !isActive) return null;
 
               const displayText = streamingText || rec;
@@ -695,14 +888,7 @@ const Agent = ({
                     <div className="flex-1">
                       <div className="min-h-[60px]">
                         <p className="text-xl text-gray-800 leading-relaxed whitespace-pre-line">
-                          {displayText.split(' ').map((word, wordIdx, arr) => (
-                            <span key={wordIdx}>
-                              <span className={isActive ? "text-purple-900 font-bold" : "text-gray-700"}>
-                                {word}
-                              </span>
-                              {wordIdx < arr.length - 1 ? ' ' : ''}
-                            </span>
-                          ))}
+                          {displayText}
                         </p>
                       </div>
 
@@ -728,7 +914,7 @@ const Agent = ({
             })}
           </div>
 
-          {/* Fertilizer Plan Details - Show if available */}
+          {/* Fertilizer Plan Details */}
           {interventions.length > 0 && (
             <div className="mt-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-300">
               <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
@@ -744,7 +930,7 @@ const Agent = ({
                     <p className="text-sm text-gray-700">{inv.recommendation}</p>
                     <div className="mt-1 text-xs text-gray-600">
                       Options: {inv.fertilizerOptions.map((opt: any) =>
-                        `${opt.name} (${opt.amountKg}kg @ ${formatCurrency(opt.cost || 0)})`
+                        `${opt.name} (${opt.amountKg}kg @ ${formatCurrencyForDisplay(opt.cost || 0, currency)})`
                       ).join(' OR ')}
                     </div>
                   </div>
@@ -769,8 +955,8 @@ const Agent = ({
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-xl">
               <div className="text-center">
                 <Sprout className="w-5 h-5 text-emerald-600 mx-auto" />
-                <p className="text-xs text-gray-500">Crops</p>
-                <p className="font-bold">{sessionData.crops?.join(", ") || "N/A"}</p>
+                <p className="text-xs text-gray-500">Crop Enterprises</p>
+                <p className="font-bold">{sessionData.crops?.map((c: string) => c).join(", ") || "N/A"}</p>
               </div>
               <div className="text-center">
                 <Tractor className="w-5 h-5 text-blue-600 mx-auto" />
@@ -787,6 +973,16 @@ const Agent = ({
                 <p className="text-xs text-gray-500">Experience</p>
                 <p className="font-bold">{sessionData.experience || "?"} yrs</p>
               </div>
+            </div>
+          )}
+
+          {/* Soil Test Reminder */}
+          {!hasSoilTest && (
+            <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-300">
+              <p className="text-yellow-800 text-sm flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Consider doing a soil test for precision recommendations. It can save up to 30% on fertilizer costs.
+              </p>
             </div>
           )}
 
@@ -813,6 +1009,11 @@ const Agent = ({
               </button>
             </Link>
           </div>
+
+          {/* Yearly Testing Reminder */}
+          <div className="mt-4 text-center text-sm text-gray-500">
+            Test your soil yearly to keep your enterprise profitable.
+          </div>
         </div>
       )}
 
@@ -824,7 +1025,7 @@ const Agent = ({
           setShowPaymentModal(false);
           setHasPaid(true);
           setPaymentUsed(false);
-          toast.success("✅ Payment confirmed!");
+          toast.success(`Payment confirmed!`);
           setTimeout(() => {
             startVoiceInterview();
           }, 1500);

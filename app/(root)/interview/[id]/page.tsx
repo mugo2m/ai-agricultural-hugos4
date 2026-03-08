@@ -1,88 +1,116 @@
-// app/interview/[id]/page.tsx
-import { db } from "@/firebase/admin";
-import { notFound } from "next/navigation";
-import InterviewClient from "@/components/InterviewClient";
-import { ArrowLeft, DollarSign, BarChart3 } from "lucide-react";
-import Link from "next/link";
+import Image from "next/image";
+import { redirect } from "next/navigation";
 
-interface PageProps {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
+import Agent from "@/components/Agent";
+import { getRandomInterviewCover } from "@/lib/utils";
 
-export default async function InterviewPage({ params }: PageProps) {
+import {
+  getFarmerSessionById,
+  getFeedbackByInterviewId,
+} from "@/lib/actions/general.action";
+import { getCurrentUser } from "@/lib/actions/auth.action";
+
+const InterviewDetails = async ({ params }: RouteParams) => {
   const { id } = await params;
 
-  // Get session data from Firebase
-  let sessionData = null;
+  console.log("🌾🌾🌾 FARMER SESSION PAGE LOADED 🌾🌾🌾");
+  console.log("Session ID:", id);
+
+  const user = await getCurrentUser();
+  console.log("Current user:", user?.id);
+
+  // Get farmer session instead of interview
+  const session = await getFarmerSessionById(id);
+  console.log("Farmer session data:", {
+    exists: !!session,
+    crops: session?.crops,
+    county: session?.county,
+    acres: session?.acres,
+    recommendations: session?.recommendations?.length
+  });
+
+  if (!session) {
+    console.log("❌ Farmer session not found, redirecting...");
+    redirect("/");
+  }
+
+  // ✅ FIX: Safely handle feedback - don't throw error if function returns null
+  let feedback = null;
   try {
-    const session = await db.collection("farmer_sessions").doc(id).get();
-    if (session.exists) {
-      sessionData = { id: session.id, ...session.data() };
-      console.log("📊 InterviewPage - Session data loaded:", {
-        id: sessionData.id,
-        crop: sessionData.crops?.[0]
+    if (user?.id) {
+      const feedbackResult = await getFeedbackByInterviewId({
+        interviewId: id,
+        userId: user.id,
       });
+      // Check if it's actually a function result (could be null or undefined)
+      if (feedbackResult && typeof feedbackResult === 'object') {
+        feedback = feedbackResult;
+      }
     }
   } catch (error) {
-    console.error("Error fetching session:", error);
+    console.log("⚠️ Feedback fetch skipped or failed (normal for new sessions)");
+    feedback = null;
   }
 
-  if (!sessionData) {
-    notFound();
-  }
+  console.log("Feedback exists:", !!feedback);
+
+  // Create welcome message from recommendations
+  const welcomeMessages = session.recommendations || [
+    `Welcome! I see you grow ${session.crops?.join(", ")} in ${session.county}. Ask me anything about your farm!`
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900">
-      {/* Header with Navigation */}
-      <div className="bg-gradient-to-r from-blue-950 to-indigo-950 text-white p-6 shadow-xl">
-        <div className="container mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/"
-                className="p-2 bg-white/10 backdrop-blur-sm hover:bg-white/20 rounded-xl transition-all"
-              >
-                <ArrowLeft className="w-5 h-5 text-white" />
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  <Sprout className="w-6 h-6" />
-                  Farm Recommendations
-                </h1>
-                <p className="text-white/80">
-                  {sessionData.crops?.[0] || "Crop"} • {sessionData.county || "Unknown"}
-                </p>
-              </div>
+    <>
+      {/* Farm Header - Green themed */}
+      <div className="flex flex-row gap-4 justify-between bg-green-50 p-4 rounded-xl mb-4">
+        <div className="flex flex-row gap-4 items-center max-sm:flex-col">
+          <div className="flex flex-row gap-4 items-center">
+            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white text-xl">
+              🌾
             </div>
-
-            {/* Navigation Buttons */}
-            <div className="flex gap-4">
-              <Link
-                href={`/financial/${id}`}
-                className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-medium hover:from-green-600 hover:to-emerald-700 transition-all flex items-center gap-2"
-              >
-                <DollarSign className="w-4 h-4" />
-                Financial Analysis
-              </Link>
-
-              {/* COMPARE CROPS BY PROFIT BUTTON */}
-              <Link
-                href={`/compare/${id}`}
-                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-700 transition-all flex items-center gap-2"
-              >
-                <BarChart3 className="w-4 h-4" />
-                Compare Crops by Profit
-              </Link>
+            <div>
+              <h3 className="capitalize text-xl font-semibold text-green-800">
+                {session.crops?.join(", ")} Farm
+              </h3>
+              <p className="text-sm text-gray-600">
+                {session.county}{session.subCounty ? `, ${session.subCounty}` : ""}
+                {session.village ? `, ${session.village}` : ""}
+              </p>
             </div>
           </div>
+
+          {/* Farm Stats */}
+          <div className="flex gap-3 ml-4">
+            {session.acres && (
+              <span className="bg-white px-3 py-1 rounded-full text-sm">
+                📏 {session.acres} acres
+              </span>
+            )}
+            {session.cattle > 0 && (
+              <span className="bg-white px-3 py-1 rounded-full text-sm">
+                🐄 {session.cattle} cattle
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="bg-green-100 text-green-700 px-4 py-2 rounded-lg font-medium">
+            🌱 Ask & Learn
+          </span>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        <InterviewClient sessionData={sessionData} sessionId={id} />
-      </div>
-    </div>
+      {/* Agent Component - Now configured for farmer Q&A */}
+      <Agent
+        userName={user?.name || "Farmer"}
+        userId={user?.id}
+        interviewId={id}
+        sessionData={session}
+        profileImage={user?.profileURL}
+      />
+    </>
   );
-}
+};
+
+export default InterviewDetails; 

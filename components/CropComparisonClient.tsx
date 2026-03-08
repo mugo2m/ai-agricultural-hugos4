@@ -44,8 +44,12 @@ import {
   Flower2,
   Trophy,
   Flag,
-  Citrus
+  Citrus,
+  AlertCircle,
+  CheckCircle2
 } from "lucide-react";
+import { useCurrency } from '@/lib/context/CurrencyContext';
+import { formatCurrencyForDisplay, formatCurrencyForSpeech } from '@/lib/utils/currency';
 
 interface CropComparisonClientProps {
   sessionData: any;
@@ -61,12 +65,14 @@ interface RankedCrop {
   color: string;
   icon: string;
   barColor: string;
+  roi?: number;
 }
 
 export default function CropComparisonClient({
   sessionData,
   sessionId
 }: CropComparisonClientProps) {
+  const { currency } = useCurrency();
   const [rankedCrops, setRankedCrops] = useState<RankedCrop[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
@@ -82,15 +88,8 @@ export default function CropComparisonClient({
   const wordsRef = useRef<string[]>([]);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
+  // Get farmer name from session data
+  const farmerName = sessionData?.farmerName || "Farmer";
 
   // Format percentage
   const formatPercentage = (value: number) => {
@@ -120,49 +119,34 @@ export default function CropComparisonClient({
           });
         }
 
-        // Add sample data for demonstration if only one crop
-        if (crops.length === 1 && crops[0].crop === "maize") {
-          crops.push({
-            crop: "beans",
-            profit: 71520,
-            revenue: 103500,
-            costs: 31980,
-            rank: 0,
-            color: "",
-            icon: "",
-            barColor: ""
-          });
-          crops.push({
-            crop: "sorghum",
-            profit: 90360,
-            revenue: 117000,
-            costs: 26640,
-            rank: 0,
-            color: "",
-            icon: "",
-            barColor: ""
-          });
-        } else if (crops.length === 1 && crops[0].crop === "sorghum") {
-          crops.push({
-            crop: "maize",
-            profit: 217710,
-            revenue: 270000,
-            costs: 52290,
-            rank: 0,
-            color: "",
-            icon: "",
-            barColor: ""
-          });
-          crops.push({
-            crop: "beans",
-            profit: 71520,
-            revenue: 103500,
-            costs: 31980,
-            rank: 0,
-            color: "",
-            icon: "",
-            barColor: ""
-          });
+        // 🔥 FETCH ALL USER SESSIONS FROM FIREBASE
+        try {
+          const response = await fetch(`/api/user/sessions?userId=${sessionData?.userId}`);
+          if (response.ok) {
+            const data = await response.json();
+            const allSessions = data.sessions || [];
+
+            // Add crops from other sessions
+            allSessions.forEach((session: any) => {
+              // Skip current session (already added)
+              if (session.id === sessionData?.id) return;
+
+              if (session?.grossMarginAnalysis && session?.crops?.[0]) {
+                crops.push({
+                  crop: session.crops[0],
+                  profit: session.grossMarginAnalysis.grossMargin || 0,
+                  revenue: session.grossMarginAnalysis.revenue || 0,
+                  costs: session.grossMarginAnalysis.totalCosts || 0,
+                  rank: 0,
+                  color: "",
+                  icon: "",
+                  barColor: ""
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching user sessions:", error);
         }
 
         // Sort by profit descending
@@ -183,7 +167,8 @@ export default function CropComparisonClient({
           rank: index + 1,
           color: barColors[index % barColors.length],
           barColor: barColors[index % barColors.length],
-          icon: ["Crown", "Trophy", "Award", "Star", "Target", "Flag"][index % 6]
+          icon: ["Crown", "Trophy", "Award", "Star", "Target", "Flag"][index % 6],
+          roi: item.costs > 0 ? (item.profit / item.costs) * 100 : 0
         }));
 
         setRankedCrops(ranked);
@@ -194,7 +179,11 @@ export default function CropComparisonClient({
       }
     };
 
-    fetchAllCrops();
+    if (sessionData?.userId) {
+      fetchAllCrops();
+    } else {
+      setIsLoading(false);
+    }
   }, [sessionData]);
 
   // Get icon component based on string
@@ -217,13 +206,15 @@ export default function CropComparisonClient({
       beans: <Leaf className="w-5 h-5" />,
       coffee: <Coffee className="w-5 h-5" />,
       sorghum: <Wheat className="w-5 h-5" />,
+      "finger millet": <Wheat className="w-5 h-5" />,
       bananas: <Banana className="w-5 h-5" />,
       tomatoes: <Apple className="w-5 h-5" />,
       onions: <Sprout className="w-5 h-5" />,
       cabbage: <Sprout className="w-5 h-5" />,
-      kale: <Leaf className="w-5 h-5" />,
+      kales: <Leaf className="w-5 h-5" />,
       groundnuts: <Sprout className="w-5 h-5" />,
       cassava: <Sprout className="w-5 h-5" />,
+      "sweet potatoes": <Sprout className="w-5 h-5" />,
       potatoes: <Sprout className="w-5 h-5" />,
       oranges: <Citrus className="w-5 h-5" />,
       avocado: <Apple className="w-5 h-5" />
@@ -252,12 +243,12 @@ export default function CropComparisonClient({
     wordsRef.current = words;
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;
+    utterance.rate = 0.8; // SLOWER (was 0.9)
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
 
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.name.includes('Google UK') || v.name.includes('Samantha'));
+    const preferredVoice = voices.find(v => v.name.includes('Google UK') || v.name.includes('Samantha') || v.name.includes('Microsoft Zira'));
     if (preferredVoice) utterance.voice = preferredVoice;
 
     utteranceRef.current = utterance;
@@ -300,24 +291,78 @@ export default function CropComparisonClient({
     }
   };
 
-  // Stream comparison summary
+  // Helper to get currency name for speech
+  const getCurrencyName = () => {
+    switch(currency.code) {
+      case 'KES': return 'Kenyan Shillings';
+      case 'UGX': return 'Ugandan Shillings';
+      case 'TZS': return 'Tanzanian Shillings';
+      case 'RWF': return 'Rwandan Francs';
+      case 'BIF': return 'Burundian Francs';
+      case 'SSP': return 'South Sudanese Pounds';
+      case 'ETB': return 'Ethiopian Birr';
+      case 'SOS': return 'Somali Shillings';
+      case 'DJF': return 'Djiboutian Francs';
+      case 'ERN': return 'Eritrean Nakfa';
+      case 'NGN': return 'Nigerian Nairas';
+      case 'GHS': return 'Ghanaian Cedis';
+      case 'XOF': return 'West African CFA Francs';
+      case 'XAF': return 'Central African CFA Francs';
+      case 'GNF': return 'Guinean Francs';
+      case 'LRD': return 'Liberian Dollars';
+      case 'SLL': return 'Sierra Leonean Leones';
+      case 'GMD': return 'Gambian Dalasis';
+      case 'CVE': return 'Cape Verdean Escudos';
+      case 'CDF': return 'Congolese Francs';
+      case 'AOA': return 'Angolan Kwanzas';
+      case 'STN': return 'São Tomé and Príncipe Dobras';
+      case 'ZAR': return 'South African Rand';
+      case 'NAD': return 'Namibian Dollars';
+      case 'BWP': return 'Botswana Pula';
+      case 'ZWL': return 'Zimbabwean Dollars';
+      case 'ZMW': return 'Zambian Kwacha';
+      case 'MWK': return 'Malawian Kwacha';
+      case 'MZN': return 'Mozambican Meticais';
+      case 'MGA': return 'Malagasy Ariary';
+      case 'KMF': return 'Comorian Francs';
+      case 'MUR': return 'Mauritian Rupees';
+      case 'SCR': return 'Seychellois Rupees';
+      case 'SZL': return 'Swazi Lilangeni';
+      case 'LSL': return 'Lesotho Loti';
+      case 'EGP': return 'Egyptian Pounds';
+      case 'SDG': return 'Sudanese Pounds';
+      case 'LYD': return 'Libyan Dinars';
+      case 'TND': return 'Tunisian Dinars';
+      case 'DZD': return 'Algerian Dinars';
+      case 'MAD': return 'Moroccan Dirhams';
+      case 'MRU': return 'Mauritanian Ouguiya';
+      case 'USD': return 'US Dollars';
+      case 'GBP': return 'British Pounds';
+      case 'EUR': return 'Euros';
+      default: return currency.name;
+    }
+  };
+
+  // Stream comparison summary - SLOWER with farmer name
   const streamComparison = () => {
     if (rankedCrops.length === 0) return;
 
     const bestCrop = rankedCrops[0];
     const avgProfit = rankedCrops.reduce((sum, c) => sum + c.profit, 0) / rankedCrops.length;
+    const currencyName = getCurrencyName();
 
-    let text = `Here's your crop profitability ranking based on actual farm data.\n`;
-    text += `Rank 1: ${bestCrop.crop} with profit of ${formatCurrency(bestCrop.profit)} per acre.\n`;
+    let text = `${farmerName}, here's your crop enterprise profitability ranking based on YOUR actual farm data. `;
+    text += `Rank 1: ${bestCrop.crop} enterprise with profit of ${currencyName} ${bestCrop.profit.toLocaleString()} per acre. `;
 
     if (rankedCrops.length >= 2) {
-      text += `Rank 2: ${rankedCrops[1].crop} with ${formatCurrency(rankedCrops[1].profit)}.\n`;
+      text += `Rank 2: ${rankedCrops[1].crop} enterprise with ${currencyName} ${rankedCrops[1].profit.toLocaleString()}. `;
     }
     if (rankedCrops.length >= 3) {
-      text += `Rank 3: ${rankedCrops[2].crop} with ${formatCurrency(rankedCrops[2].profit)}.\n`;
+      text += `Rank 3: ${rankedCrops[2].crop} enterprise with ${currencyName} ${rankedCrops[2].profit.toLocaleString()}. `;
     }
 
-    text += `Your average profit across all crops is ${formatCurrency(avgProfit)}.`;
+    text += `Your average profit across all your crop enterprises is ${currencyName} ${avgProfit.toLocaleString()}. `;
+    text += `Remember ${farmerName}, focus more resources on your most profitable enterprises to put MORE MONEY IN YOUR POCKET!`;
 
     streamTextWithVoice(text);
   };
@@ -335,8 +380,8 @@ export default function CropComparisonClient({
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center">
         <div className="text-white text-center p-8">
           <Sprout className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <h2 className="text-2xl font-bold mb-2">No Crop Data Available</h2>
-          <p className="text-blue-200">Complete more farm interviews to see profitability comparisons.</p>
+          <h2 className="text-2xl font-bold mb-2">No Crop Enterprise Data Available</h2>
+          <p className="text-blue-200">Complete more farm interviews to see profitability comparisons, {farmerName}.</p>
           <Link href={`/interview/${sessionId}`} className="mt-6 inline-block px-6 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition-all">
             Back to Recommendations
           </Link>
@@ -431,11 +476,11 @@ export default function CropComparisonClient({
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                   <BarChart3 className="w-6 h-6" />
-                  Crop Profitability Rankings
+                  {farmerName}'s Crop Enterprise Profitability Rankings
                 </h1>
                 <p className="text-white/80 flex items-center gap-2">
                   <Sprout className="w-4 h-4" />
-                  Based on your actual farm data from Firebase
+                  Comparing {rankedCrops.length} crop enterprise{rankedCrops.length > 1 ? 's' : ''} from your farm history
                 </p>
               </div>
             </div>
@@ -460,21 +505,35 @@ export default function CropComparisonClient({
 
       {/* Main Content */}
       <div className="container mx-auto px-4 pb-12">
+        {/* Business Summary Card */}
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-4 text-white shadow-xl mb-8">
+          <div className="flex items-start gap-3">
+            <Rocket className="w-6 h-6 flex-shrink-0" />
+            <div>
+              <p className="text-sm opacity-90">🔥 BUSINESS INSIGHT, {farmerName.toUpperCase()}</p>
+              <p className="font-medium">
+                Your most profitable enterprise is <span className="font-bold">{rankedCrops[0]?.crop}</span> with {formatCurrencyForDisplay(rankedCrops[0]?.profit, currency)} profit.
+                Focus more resources here to maximize returns!
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 text-white">
-            <p className="text-sm opacity-90">Most Profitable</p>
+            <p className="text-sm opacity-90">Most Profitable Enterprise</p>
             <p className="text-2xl font-bold capitalize">{rankedCrops[0]?.crop}</p>
-            <p className="text-xl">{formatCurrency(rankedCrops[0]?.profit)}</p>
+            <p className="text-xl">{formatCurrencyForDisplay(rankedCrops[0]?.profit, currency)}</p>
           </div>
           <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 text-white">
-            <p className="text-sm opacity-90">Average Profit</p>
+            <p className="text-sm opacity-90">Average Profit Per Enterprise</p>
             <p className="text-2xl font-bold">
-              {formatCurrency(rankedCrops.reduce((sum, c) => sum + c.profit, 0) / rankedCrops.length)}
+              {formatCurrencyForDisplay(rankedCrops.reduce((sum, c) => sum + c.profit, 0) / rankedCrops.length, currency)}
             </p>
           </div>
           <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl p-4 text-white">
-            <p className="text-sm opacity-90">Total Crops</p>
+            <p className="text-sm opacity-90">Total Crop Enterprises</p>
             <p className="text-2xl font-bold">{rankedCrops.length}</p>
           </div>
         </div>
@@ -484,7 +543,7 @@ export default function CropComparisonClient({
           <div className="bg-white rounded-2xl p-6 shadow-xl border-2 border-blue-300">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-blue-900">
               <BarChart3 className="w-5 h-5" />
-              Profit Comparison: Side by Side
+              Profit Comparison: Side by Side - {farmerName}'s Enterprises
             </h2>
 
             {/* Bar Chart Container */}
@@ -507,7 +566,7 @@ export default function CropComparisonClient({
                           ? 'bg-yellow-400 text-blue-900 scale-110'
                           : 'bg-blue-100 text-blue-900'
                       }`}>
-                        {formatCurrency(crop.profit)}
+                        {formatCurrencyForDisplay(crop.profit, currency)}
                       </span>
                     </div>
 
@@ -524,7 +583,7 @@ export default function CropComparisonClient({
                       >
                         {/* Crop name */}
                         <span className="text-lg font-bold mb-1 drop-shadow-lg">
-                          {crop.crop.toUpperCase()}
+                          {crop.crop.toUpperCase()} ENTERPRISE
                         </span>
 
                         {/* ROI inside the bar (always visible) */}
@@ -555,15 +614,15 @@ export default function CropComparisonClient({
                 </div>
                 <div className="flex items-center gap-2">
                   <Crown className="w-5 h-5 text-yellow-600" />
-                  <span className="text-sm text-blue-800">Rank 1: Most Profitable</span>
+                  <span className="text-sm text-blue-800">Rank 1: Most Profitable Enterprise</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-gray-500" />
-                  <span className="text-sm text-blue-800">Rank 2: Second Best</span>
+                  <span className="text-sm text-blue-800">Rank 2: Second Best Enterprise</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Award className="w-5 h-5 text-amber-600" />
-                  <span className="text-sm text-blue-800">Rank 3: Third Place</span>
+                  <span className="text-sm text-blue-800">Rank 3: Third Place Enterprise</span>
                 </div>
               </div>
             </div>
@@ -575,7 +634,7 @@ export default function CropComparisonClient({
           <div className="bg-white rounded-2xl p-6 shadow-xl border-2 border-blue-300">
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-blue-900">
               <Scale className="w-5 h-5" />
-              Crop Profitability Rankings
+              {farmerName}'s Crop Enterprise Profitability Rankings
             </h2>
 
             <div className="overflow-x-auto">
@@ -583,7 +642,7 @@ export default function CropComparisonClient({
                 <thead>
                   <tr className="bg-blue-900 text-white">
                     <th className="p-4 text-center rounded-tl-xl">Rank</th>
-                    <th className="p-4 text-left">Crop</th>
+                    <th className="p-4 text-left">Crop Enterprise</th>
                     <th className="p-4 text-right">Revenue</th>
                     <th className="p-4 text-right">Costs</th>
                     <th className="p-4 text-right">Profit</th>
@@ -617,11 +676,11 @@ export default function CropComparisonClient({
                         </td>
                         <td className="p-4 font-medium text-blue-900 capitalize flex items-center gap-2">
                           {getCropIcon(crop.crop)}
-                          {crop.crop}
+                          {crop.crop} Enterprise
                         </td>
-                        <td className="p-4 text-right text-blue-900">{formatCurrency(crop.revenue)}</td>
-                        <td className="p-4 text-right text-blue-900">{formatCurrency(crop.costs)}</td>
-                        <td className="p-4 text-right font-bold text-blue-900">{formatCurrency(crop.profit)}</td>
+                        <td className="p-4 text-right text-blue-900">{formatCurrencyForDisplay(crop.revenue, currency)}</td>
+                        <td className="p-4 text-right text-blue-900">{formatCurrencyForDisplay(crop.costs, currency)}</td>
+                        <td className="p-4 text-right font-bold text-blue-900">{formatCurrencyForDisplay(crop.profit, currency)}</td>
                         <td className="p-4 text-center">
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             roi > 100 ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
@@ -661,10 +720,10 @@ export default function CropComparisonClient({
             <div className="bg-gradient-to-br from-gray-300 to-gray-400 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all order-2 md:order-1">
               <div className="flex items-center gap-3 mb-2">
                 <Trophy className="w-8 h-8 text-gray-700" />
-                <h3 className="text-xl font-bold">2nd Place</h3>
+                <h3 className="text-xl font-bold">2nd Place Enterprise</h3>
               </div>
               <p className="text-3xl font-bold mb-1 capitalize">{rankedCrops[1].crop}</p>
-              <p className="text-2xl font-semibold opacity-90">{formatCurrency(rankedCrops[1].profit)}</p>
+              <p className="text-2xl font-semibold opacity-90">{formatCurrencyForDisplay(rankedCrops[1].profit, currency)}</p>
             </div>
           )}
 
@@ -673,10 +732,10 @@ export default function CropComparisonClient({
             <div className="bg-gradient-to-br from-yellow-400 to-amber-500 rounded-2xl p-8 text-white shadow-xl transform hover:scale-105 transition-all order-1 md:order-2 border-4 border-yellow-300">
               <div className="flex items-center gap-3 mb-2">
                 <Crown className="w-10 h-10 text-yellow-800" />
-                <h3 className="text-2xl font-bold">1st Place</h3>
+                <h3 className="text-2xl font-bold">Most Profitable Enterprise</h3>
               </div>
               <p className="text-4xl font-bold mb-1 capitalize">{rankedCrops[0].crop}</p>
-              <p className="text-3xl font-semibold opacity-90">{formatCurrency(rankedCrops[0].profit)}</p>
+              <p className="text-3xl font-semibold opacity-90">{formatCurrencyForDisplay(rankedCrops[0].profit, currency)}</p>
             </div>
           )}
 
@@ -685,36 +744,31 @@ export default function CropComparisonClient({
             <div className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all order-3">
               <div className="flex items-center gap-3 mb-2">
                 <Award className="w-8 h-8 text-amber-800" />
-                <h3 className="text-xl font-bold">3rd Place</h3>
+                <h3 className="text-xl font-bold">3rd Place Enterprise</h3>
               </div>
               <p className="text-3xl font-bold mb-1 capitalize">{rankedCrops[2].crop}</p>
-              <p className="text-2xl font-semibold opacity-90">{formatCurrency(rankedCrops[2].profit)}</p>
+              <p className="text-2xl font-semibold opacity-90">{formatCurrencyForDisplay(rankedCrops[2].profit, currency)}</p>
             </div>
           )}
         </div>
 
-        {/* Recommendation Card */}
-        <div className="mt-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-xl">
+        {/* Business Insight Card */}
+        <div className="mt-8 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-6 text-white shadow-xl">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-white/20 rounded-xl">
-              <Sparkles className="w-8 h-8" />
+              <Wallet className="w-8 h-8" />
             </div>
             <div className="flex-1">
-              <h3 className="text-xl font-bold mb-2">📊 Profit-Based Recommendation</h3>
+              <h3 className="text-xl font-bold mb-2">💼 BUSINESS INSIGHT, {farmerName.toUpperCase()}</h3>
               <p className="text-lg opacity-90">
-                {rankedCrops.length >= 1 && (
-                  <>
-                    <span className="font-bold capitalize">{rankedCrops[0].crop}</span> is your most profitable crop at
-                    <span className="font-bold mx-1">{formatCurrency(rankedCrops[0].profit)}</span> per acre.
-                  </>
-                )}
+                Your top enterprise is <span className="font-bold capitalize">{rankedCrops[0]?.crop}</span> with <span className="font-bold">{formatCurrencyForDisplay(rankedCrops[0]?.profit, currency)}</span> profit.
                 {rankedCrops.length >= 2 && (
-                  <> Rank 2 is <span className="font-bold capitalize">{rankedCrops[1].crop}</span> at {formatCurrency(rankedCrops[1].profit)}.</>
+                  <> Rank 2 (<span className="font-bold capitalize">{rankedCrops[1].crop}</span>) earns {formatCurrencyForDisplay(rankedCrops[1].profit, currency)}.</>
                 )}
-                {rankedCrops.length >= 3 && (
-                  <> Rank 3 is <span className="font-bold capitalize">{rankedCrops[2].crop}</span> at {formatCurrency(rankedCrops[2].profit)}.</>
-                )}
-                {' '}Consider focusing more resources on your top-performing crops.
+              </p>
+              <p className="mt-3 text-white/80">
+                🔥 PRO TIP: Focus 60% of your resources on your most profitable enterprise.
+                Every {currency.symbol} 1 invested here returns more than others!
               </p>
             </div>
           </div>
@@ -737,6 +791,11 @@ export default function CropComparisonClient({
             Continue to Q&A
             <ArrowRight className="w-5 h-5" />
           </Link>
+        </div>
+
+        {/* Reminder to test soil yearly */}
+        <div className="mt-4 text-center text-white/50 text-sm">
+          🔬 Remember {farmerName}, test your soil yearly to keep your enterprises profitable!
         </div>
       </div>
     </div>

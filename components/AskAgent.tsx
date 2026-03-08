@@ -49,8 +49,16 @@ import {
   CreditCard,
   Landmark,
   Calculator,
-  Wallet
+  Wallet,
+  AlertCircle,
+  CheckCircle2,
+  Crown,
+  Target,
+  Trophy,
+  Flag
 } from "lucide-react";
+import { useCurrency } from '@/lib/context/CurrencyContext';
+import { formatCurrencyForDisplay, formatCurrencyForSpeech } from '@/lib/utils/currency';
 
 interface AskAgentProps {
   userName: string;
@@ -75,6 +83,7 @@ const AskAgent = ({
   sessionData,
   recommendations
 }: AskAgentProps) => {
+  const { currency } = useCurrency();
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userTranscript, setUserTranscript] = useState("");
@@ -94,6 +103,156 @@ const AskAgent = ({
   const wordsRef = useRef<string[]>([]);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const nameUsageCountRef = useRef(0); // ADDED: Counter for name usage
+
+  // Farmer name from props
+  const farmerName = userName;
+
+  // Helper to get currency name for speech
+  const getCurrencyName = () => {
+    switch(currency.code) {
+      case 'KES': return 'Kenyan Shillings';
+      case 'UGX': return 'Ugandan Shillings';
+      case 'TZS': return 'Tanzanian Shillings';
+      case 'RWF': return 'Rwandan Francs';
+      case 'BIF': return 'Burundian Francs';
+      case 'SSP': return 'South Sudanese Pounds';
+      case 'ETB': return 'Ethiopian Birr';
+      case 'SOS': return 'Somali Shillings';
+      case 'DJF': return 'Djiboutian Francs';
+      case 'ERN': return 'Eritrean Nakfa';
+      case 'NGN': return 'Nigerian Nairas';
+      case 'GHS': return 'Ghanaian Cedis';
+      case 'XOF': return 'West African CFA Francs';
+      case 'XAF': return 'Central African CFA Francs';
+      case 'GNF': return 'Guinean Francs';
+      case 'LRD': return 'Liberian Dollars';
+      case 'SLL': return 'Sierra Leonean Leones';
+      case 'GMD': return 'Gambian Dalasis';
+      case 'CVE': return 'Cape Verdean Escudos';
+      case 'CDF': return 'Congolese Francs';
+      case 'AOA': return 'Angolan Kwanzas';
+      case 'STN': return 'São Tomé and Príncipe Dobras';
+      case 'ZAR': return 'South African Rand';
+      case 'NAD': return 'Namibian Dollars';
+      case 'BWP': return 'Botswana Pula';
+      case 'ZWL': return 'Zimbabwean Dollars';
+      case 'ZMW': return 'Zambian Kwacha';
+      case 'MWK': return 'Malawian Kwacha';
+      case 'MZN': return 'Mozambican Meticais';
+      case 'MGA': return 'Malagasy Ariary';
+      case 'KMF': return 'Comorian Francs';
+      case 'MUR': return 'Mauritian Rupees';
+      case 'SCR': return 'Seychellois Rupees';
+      case 'SZL': return 'Swazi Lilangeni';
+      case 'LSL': return 'Lesotho Loti';
+      case 'EGP': return 'Egyptian Pounds';
+      case 'SDG': return 'Sudanese Pounds';
+      case 'LYD': return 'Libyan Dinars';
+      case 'TND': return 'Tunisian Dinars';
+      case 'DZD': return 'Algerian Dinars';
+      case 'MAD': return 'Moroccan Dirhams';
+      case 'MRU': return 'Mauritanian Ouguiya';
+      case 'USD': return 'US Dollars';
+      case 'GBP': return 'British Pounds';
+      case 'EUR': return 'Euros';
+      default: return currency.name;
+    }
+  };
+
+  // Helper to clean text of emojis and formatting
+  const cleanText = (text: string): string => {
+    return text
+      .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
+      .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
+      .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
+      .replace(/[\u{2600}-\u{26FF}]/gu, '')
+      .replace(/[\u{2700}-\u{27BF}]/gu, '')
+      .replace(/\*\*\*/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/#{1,6}\s?/g, '')
+      .replace(/_/g, '')
+      .replace(/~/g, '')
+      .replace(/`/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Helper to replace currency symbols with full names for speech - WITH NAME COUNTER
+  const prepareForSpeech = (text: string): string => {
+    let speechText = cleanText(text);
+
+    // Currency replacements
+    switch(currency.code) {
+      case 'ZAR':
+        speechText = speechText.replace(/R\s/g, 'South African Rand ');
+        speechText = speechText.replace(/R\b/g, 'South African Rand');
+        break;
+      case 'KES':
+        speechText = speechText.replace(/Ksh\s/g, 'Kenyan Shillings ');
+        speechText = speechText.replace(/Ksh\b/g, 'Kenyan Shillings');
+        break;
+      case 'UGX':
+        speechText = speechText.replace(/USh\s/g, 'Ugandan Shillings ');
+        speechText = speechText.replace(/USh\b/g, 'Ugandan Shillings');
+        break;
+      case 'TZS':
+        speechText = speechText.replace(/TSh\s/g, 'Tanzanian Shillings ');
+        speechText = speechText.replace(/TSh\b/g, 'Tanzanian Shillings');
+        break;
+      case 'RWF':
+        speechText = speechText.replace(/FRw\s/g, 'Rwandan Francs ');
+        speechText = speechText.replace(/FRw\b/g, 'Rwandan Francs');
+        break;
+      case 'GHS':
+        speechText = speechText.replace(/GH₵\s/g, 'Ghanaian Cedis ');
+        speechText = speechText.replace(/GH₵\b/g, 'Ghanaian Cedis');
+        break;
+      case 'NGN':
+        speechText = speechText.replace(/₦\s/g, 'Nigerian Nairas ');
+        speechText = speechText.replace(/₦\b/g, 'Nigerian Nairas');
+        break;
+      case 'ETB':
+        speechText = speechText.replace(/Br\s/g, 'Ethiopian Birr ');
+        speechText = speechText.replace(/Br\b/g, 'Ethiopian Birr');
+        break;
+      case 'USD':
+        speechText = speechText.replace(/\$\s/g, 'US Dollars ');
+        speechText = speechText.replace(/\$\b/g, 'US Dollars');
+        break;
+      case 'GBP':
+        speechText = speechText.replace(/£\s/g, 'British Pounds ');
+        speechText = speechText.replace(/£\b/g, 'British Pounds');
+        break;
+      case 'EUR':
+        speechText = speechText.replace(/€\s/g, 'Euros ');
+        speechText = speechText.replace(/€\b/g, 'Euros');
+        break;
+      default:
+        const symbol = currency.symbol;
+        if (symbol && symbol !== '') {
+          const regex = new RegExp(`${symbol}\\s`, 'g');
+          speechText = speechText.replace(regex, `${currency.name} `);
+        }
+    }
+
+    // Add farmer name personalization - REDUCED FREQUENCY
+    nameUsageCountRef.current++;
+    const useName = nameUsageCountRef.current % 3 === 0;
+
+    speechText = speechText
+      .replace(/\b(farmer)\b/gi, useName ? farmerName : 'the farmer')
+      .replace(/\b(you)\b/gi, useName ? farmerName : 'you')
+      .replace(/\b(your)\b/gi, useName ? `${farmerName}'s` : 'your');
+
+    return speechText;
+  };
+
+  // Reset name counter when component mounts or session changes
+  useEffect(() => {
+    nameUsageCountRef.current = 0;
+  }, [sessionId]);
 
   // Auto-scroll
   useEffect(() => {
@@ -118,14 +277,14 @@ const AskAgent = ({
       recognitionRef.current.onerror = () => setIsListening(false);
     }
 
-    // Get random greeting
+    // Get random greeting with farmer name
     const greetings = [
-      `🌱 Karibu ${userName}! Ready to level up your farm's profitability?`,
-      `🌾 Yo ${userName}! Let's make your farm more profitable!`,
-      `🍃 Hey ${userName}! I've got answers based on your complete farm financial profile.`,
-      `🌸 Welcome back ${userName}! Ready to maximize your returns?`,
-      `🌿 Sup ${userName}! Let's crunch those farm numbers!`,
-      `🍀 ${userName}! Your financial farming bestie is here to help.`
+      `Welcome! Ready to level up your farm enterprise's profitability?`,
+      `Let's make your farm enterprise more profitable!`,
+      `I've got answers based on your complete farm financial profile.`,
+      `Welcome back! Ready to maximize your returns?`,
+      `Let's crunch those farm numbers!`,
+      `Your financial farming assistant is here to help.`
     ];
     const greeting = greetings[Math.floor(Math.random() * greetings.length)];
 
@@ -133,18 +292,18 @@ const AskAgent = ({
     let welcomeContent = `${greeting} I'll answer your questions based on your complete farm profile`;
 
     if (sessionData) {
-      welcomeContent += ` for ${sessionData?.crops?.join(", ") || "your crops"} in ${sessionData?.county || "your area"}`;
+      welcomeContent += ` for your ${sessionData?.crops?.map((c: string) => `${c} Enterprise`).join(", ") || "crop enterprises"} in ${sessionData?.county || "your area"}`;
 
       if (sessionData.managementLevel) {
         welcomeContent += `. You're currently at a ${sessionData.managementLevel} management level`;
       }
 
       if (sessionData.grossMarginAnalysis) {
-        welcomeContent += `. I can also help with financial analysis and gross margin calculations!`;
+        welcomeContent += `. I can also help with financial analysis and gross margin calculations to put more money in your pocket.`;
       }
     }
 
-    welcomeContent += ` What would you like to know? 🌟`;
+    welcomeContent += ` What would you like to know?`;
 
     // Welcome message
     setMessages([{
@@ -164,22 +323,11 @@ const AskAgent = ({
         window.speechSynthesis.cancel();
       }
     };
-  }, [userName, sessionData]);
+  }, [farmerName, sessionData]);
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-
-  // 🔥 ENHANCED: Synchronized streaming function with financial indicators
+  // Synchronized streaming function with financial indicators
   const streamAnswerWithVoice = async (fullText: string, isFinancial: boolean = false) => {
     if (!voiceEnabled || !window.speechSynthesis) {
-      // Fallback: just show the full text
       setMessages(prev => [...prev, {
         role: "assistant",
         content: fullText,
@@ -193,50 +341,52 @@ const AskAgent = ({
     setStreamingContent("");
     setCurrentWordIndex(0);
 
+    // Prepare text for speech (currency names + farmer name)
+    let speechText = prepareForSpeech(fullText);
+
     // Split into words
-    const words = fullText.split(' ');
+    const words = speechText.split(' ');
     wordsRef.current = words;
 
     // Create utterance
-    const utterance = new SpeechSynthesisUtterance(fullText);
-    utterance.rate = 0.9;
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    utterance.rate = 0.75; // SLOWER (was 0.8)
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
 
     // Get available voices and pick a nice one
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.name.includes('Google UK') || v.name.includes('Samantha'));
+    const preferredVoice = voices.find(v =>
+      v.name.includes('Google UK') ||
+      v.name.includes('Google') ||
+      v.name.includes('Samantha') ||
+      v.name.includes('Microsoft Jenny') ||
+      v.name.includes('Microsoft Aria') ||
+      v.name.includes('Microsoft Sonia')
+    );
     if (preferredVoice) utterance.voice = preferredVoice;
 
     utteranceRef.current = utterance;
     isAISpeakingRef.current = true;
     setIsSpeaking(true);
 
-    // Track word boundaries for synchronization
     let wordIndex = 0;
     let currentText = '';
 
-    // Use onboundary event to sync text with speech
     utterance.onboundary = (event) => {
       if (event.name === 'word') {
-        // Add the next word
         if (wordIndex < words.length) {
           currentText += (wordIndex === 0 ? '' : ' ') + words[wordIndex];
           setStreamingContent(currentText);
           setCurrentWordIndex(wordIndex + 1);
           wordIndex++;
-
-          // Auto-scroll
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }
       }
     };
 
     utterance.onend = () => {
-      // Ensure full text is displayed
       setStreamingContent(fullText);
-
-      // Add to messages after a tiny delay
       setTimeout(() => {
         setMessages(prev => [...prev, {
           role: "assistant",
@@ -253,8 +403,6 @@ const AskAgent = ({
 
     utterance.onerror = (event) => {
       console.error("Speech error:", event);
-
-      // Fallback: show full text
       setMessages(prev => [...prev, {
         role: "assistant",
         content: fullText,
@@ -267,19 +415,18 @@ const AskAgent = ({
       isAISpeakingRef.current = false;
     };
 
-    // Start speaking
     window.speechSynthesis.speak(utterance);
   };
 
   const startListening = () => {
     if (!recognitionRef.current || !voiceEnabled || isAISpeakingRef.current) {
-      if (isAISpeakingRef.current) toast.info("✨ AI is speaking, hold up!");
+      if (isAISpeakingRef.current) toast.info(`AI is speaking, please wait.`);
       return;
     }
     try {
       recognitionRef.current.start();
       setIsListening(true);
-      toast.success("🎤 Listening... speak your question!", {
+      toast.success(`Listening... speak your question!`, {
         icon: <Mic className="w-4 h-4 text-purple-500" />,
         duration: 2000
       });
@@ -293,21 +440,20 @@ const AskAgent = ({
     setIsListening(false);
   };
 
-  // 🔥 ENHANCED: Submit with synchronized streaming and financial context
+  // Submit with synchronized streaming and financial context
   const submitQuestion = async () => {
     if (!userTranscript.trim()) {
-      toast.warning("🌱 Type or speak your question");
+      toast.warning(`Type or speak your question.`);
       return;
     }
 
     if (isAISpeakingRef.current) {
-      toast.info("✨ AI is speaking, please wait!");
+      toast.info(`AI is speaking, please wait.`);
       return;
     }
 
     stopListening();
 
-    // Add user message
     setMessages(prev => [...prev, {
       role: "user",
       content: userTranscript,
@@ -317,8 +463,8 @@ const AskAgent = ({
     const question = userTranscript;
     setUserTranscript("");
     setIsLoading(true);
+    nameUsageCountRef.current = 0; // Reset name counter for new response
 
-    // Detect if question is financial
     const isFinancialQuestion =
       question.toLowerCase().includes('cost') ||
       question.toLowerCase().includes('price') ||
@@ -331,15 +477,15 @@ const AskAgent = ({
       question.toLowerCase().includes('investment');
 
     try {
-      console.log("📡 Sending question:", question);
+      console.log("Sending question:", question);
 
-      // Enhance sessionData with financial context
       const enhancedSessionData = {
         ...sessionData,
         isFinancialQuestion,
         financialData: sessionData?.grossMarginAnalysis || null,
         inputCosts: sessionData?.inputCosts || null,
-        labourCosts: sessionData?.labourCosts || null
+        labourCosts: sessionData?.labourCosts || null,
+        farmerName: farmerName
       };
 
       const response = await fetch('/api/farmer/query', {
@@ -368,22 +514,20 @@ const AskAgent = ({
       try {
         data = JSON.parse(text);
       } catch (parseError) {
-        console.error("❌ Failed to parse JSON:", parseError);
+        console.error("Failed to parse JSON:", parseError);
         throw new Error("Invalid response format from server");
       }
 
       if (data.success && data.answer) {
-        // Stream with synchronized voice
         await streamAnswerWithVoice(data.answer, isFinancialQuestion);
-
-        toast.success("✅ Answer ready! 💫", {
+        toast.success(`Answer ready!`, {
           icon: isFinancialQuestion ? <DollarSign className="w-4 h-4 text-green-500" /> : <Sparkles className="w-4 h-4 text-yellow-500" />
         });
       } else if (data.error) {
         toast.error(data.error);
         setMessages(prev => [...prev, {
           role: "assistant",
-          content: `😅 Oops! ${data.error}`,
+          content: `Oops! ${data.error}`,
           timestamp: Date.now()
         }]);
       } else {
@@ -391,12 +535,12 @@ const AskAgent = ({
       }
 
     } catch (error) {
-      console.error("❌ Query error:", error);
+      console.error("Query error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to process question");
 
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: "🌧️ Sorry, something went wrong. Try again!",
+        content: `Sorry, something went wrong. Try again!`,
         timestamp: Date.now()
       }]);
     } finally {
@@ -416,9 +560,10 @@ const AskAgent = ({
       setIsStreaming(false);
       setStreamingContent("");
     } else {
-      toast.success("🎤 Voice mode activated! Ask about your farm finances too!", {
+      toast.success(`Voice mode activated! Ask about your farm enterprise finances too!`, {
         icon: <Volume2 className="w-4 h-4 text-green-500" />
       });
+      nameUsageCountRef.current = 0;
     }
   };
 
@@ -452,7 +597,7 @@ const AskAgent = ({
 
   return (
     <div className="flex flex-col gap-6 p-4 min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl">
-      {/* Header with rainbow gradient */}
+      {/* Header */}
       <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 rounded-2xl p-5 shadow-xl border-2 border-white/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -470,7 +615,7 @@ const AskAgent = ({
               </h2>
               <p className="text-white/90 flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
-                {sessionData?.county} • {sessionData?.crops?.join(", ")}
+                {sessionData?.county} • {sessionData?.crops?.map((c: string) => `${c} Enterprise`).join(", ")}
                 {sessionData?.managementLevel && (
                   <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-xs">
                     {sessionData.managementLevel}
@@ -498,7 +643,7 @@ const AskAgent = ({
         </div>
       </div>
 
-      {/* Voice Toggle - Cosmic theme */}
+      {/* Voice Toggle */}
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-5 shadow-xl border-2 border-white/30">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-lg text-white flex items-center gap-2">
@@ -516,25 +661,25 @@ const AskAgent = ({
         )}
       </div>
 
-      {/* Financial Summary Card (if showFinancial) */}
+      {/* Financial Summary Card */}
       {showFinancial && sessionData?.grossMarginAnalysis && (
         <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-5 shadow-xl border-2 border-white/30">
           <h3 className="font-bold text-lg text-white flex items-center gap-2 mb-3">
             <DollarSign className="w-5 h-5" />
-            Your Farm Financial Snapshot
+            Your Farm Enterprise Financial Snapshot
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
               <p className="text-white/80 text-xs">Low Input GM</p>
-              <p className="text-white font-bold text-lg">{formatCurrency(sessionData.grossMarginAnalysis.low?.grossMargin || 44190)}</p>
+              <p className="text-white font-bold text-lg">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.low?.grossMargin || 44190, currency)}</p>
             </div>
             <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
               <p className="text-white/80 text-xs">Medium Input GM</p>
-              <p className="text-white font-bold text-lg">{formatCurrency(sessionData.grossMarginAnalysis.medium?.grossMargin || 217710)}</p>
+              <p className="text-white font-bold text-lg">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.medium?.grossMargin || 217710, currency)}</p>
             </div>
             <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
               <p className="text-white/80 text-xs">High Input GM</p>
-              <p className="text-white font-bold text-lg">{formatCurrency(sessionData.grossMarginAnalysis.high?.grossMargin || 433680)}</p>
+              <p className="text-white font-bold text-lg">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.high?.grossMargin || 433680, currency)}</p>
             </div>
             <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
               <p className="text-white/80 text-xs">Your Level</p>
@@ -543,18 +688,19 @@ const AskAgent = ({
           </div>
           {sessionData.financialAdvice && (
             <p className="text-white/90 text-sm mt-3 bg-white/10 p-2 rounded-lg">
-              💡 {sessionData.financialAdvice.substring(0, 100)}...
+              {sessionData.financialAdvice.substring(0, 100)}...
             </p>
           )}
+          <p className="text-white/80 text-xs mt-2">Every {currency.symbol} 1 invested should return {currency.symbol} 3-5 profit.</p>
         </div>
       )}
 
-      {/* Recommendations Panel (if showRecommendations) */}
+      {/* Recommendations Panel */}
       {showRecommendations && recommendations.length > 0 && (
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-5 shadow-xl border-2 border-white/30">
           <h3 className="font-bold text-lg text-white flex items-center gap-2 mb-3">
             <Sparkles className="w-5 h-5" />
-            Your Personalized Recommendations
+            Personalized Recommendations
           </h3>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {recommendations.map((rec, idx) => (
@@ -604,7 +750,7 @@ const AskAgent = ({
         </button>
       </div>
 
-      {/* Messages Area - WhatsApp style with colored bubbles */}
+      {/* Messages Area */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-xl border-2 border-emerald-200 min-h-[400px] max-h-[500px] overflow-y-auto">
         <div className="space-y-4">
           {messages.map((msg, index) => (
@@ -644,7 +790,7 @@ const AskAgent = ({
             </div>
           ))}
 
-          {/* 🔥 SYNCHRONIZED STREAMING - Yellow with Green border */}
+          {/* SYNCHRONIZED STREAMING */}
           {isStreaming && streamingContent && (
             <div className="flex justify-start">
               <div className="max-w-[80%] rounded-2xl p-4 shadow-md bg-gradient-to-r from-yellow-300 to-amber-300 border-2 border-green-500 rounded-bl-none">
@@ -672,16 +818,24 @@ const AskAgent = ({
             </div>
           )}
         </div>
+
+        {/* Business Tip */}
+        <div className="mt-4 p-2 bg-yellow-50 rounded-lg border border-yellow-300">
+          <p className="text-xs text-yellow-800 flex items-center gap-1">
+            <Rocket className="w-3 h-3" />
+            PRO TIP: Every question you ask helps build your profitable farm enterprise!
+          </p>
+        </div>
       </div>
 
-      {/* Input Area - Vibrant rainbow */}
+      {/* Input Area */}
       <div className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 rounded-2xl p-5 shadow-xl border-2 border-white/30">
         <div className="flex gap-2">
           <input
             type="text"
             value={userTranscript}
             onChange={(e) => setUserTranscript(e.target.value)}
-            placeholder={activeTab === "financial" ? "💵 Ask about costs, profits, margins..." : "💬 Type your question here..."}
+            placeholder={activeTab === "financial" ? `Ask about costs, profits, margins...` : `Type your question here...`}
             className="flex-1 px-5 py-4 bg-white/90 backdrop-blur-sm border-2 border-white rounded-xl focus:border-purple-400 focus:ring-4 focus:ring-purple-200 transition-all text-gray-800 placeholder-gray-500"
             disabled={isAISpeakingRef.current}
           />
@@ -706,7 +860,7 @@ const AskAgent = ({
           </button>
         </div>
 
-        {/* Voice button - Cosmic */}
+        {/* Voice button */}
         {voiceEnabled && (
           <div className="mt-3">
             <button
@@ -719,28 +873,26 @@ const AskAgent = ({
               } ${isAISpeakingRef.current ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Mic className={`w-5 h-5 ${isListening ? 'animate-pulse' : ''}`} />
-              {isListening ? '🎤 Listening... Click to stop' : '🎙️ Click to speak your question'}
+              {isListening ? `Listening... Click to stop` : `Click to speak your question`}
             </button>
           </div>
         )}
       </div>
 
-      {/* Quick question chips - Context-aware */}
+      {/* Quick question chips */}
       <div className="flex flex-wrap gap-2 justify-center">
         {activeTab === "financial" ? (
-          // Financial quick questions
           financialQuickQuestions.map((item) => (
             <button
               key={item.text}
-              onClick={() => setUserTranscript(`What is my ${item.text} for ${sessionData?.crops?.[0] || 'maize'}?`)}
+              onClick={() => setUserTranscript(`What is my ${item.text} for my ${sessionData?.crops?.[0] || 'maize'} enterprise?`)}
               className={`px-4 py-2 bg-gradient-to-r ${item.color} text-white rounded-full text-sm hover:scale-105 transition-all duration-300 shadow-md flex items-center gap-1 border border-white/50`}
             >
               {item.icon}
-              {item.text} 💰
+              {item.text}
             </button>
           ))
         ) : (
-          // General quick questions
           [
             { text: 'fertilizer', icon: <Sprout className="w-4 h-4" />, color: 'from-emerald-400 to-teal-400' },
             { text: 'pests', icon: <Bug className="w-4 h-4" />, color: 'from-red-400 to-rose-400' },
@@ -751,11 +903,11 @@ const AskAgent = ({
           ].map((item) => (
             <button
               key={item.text}
-              onClick={() => setUserTranscript(`Tell me about ${item.text} for my ${sessionData?.crops?.[0] || 'crops'}`)}
+              onClick={() => setUserTranscript(`Tell me about ${item.text} for my ${sessionData?.crops?.[0] || 'crops'} enterprise`)}
               className={`px-4 py-2 bg-gradient-to-r ${item.color} text-white rounded-full text-sm hover:scale-105 transition-all duration-300 shadow-md flex items-center gap-1 border border-white/50`}
             >
               {item.icon}
-              {item.text} 🌱
+              {item.text}
             </button>
           ))
         )}
@@ -766,7 +918,7 @@ const AskAgent = ({
         <div className="flex justify-around text-white text-sm">
           <div className="flex items-center gap-1">
             <Sprout className="w-4 h-4" />
-            <span>{sessionData?.crops?.join(", ")}</span>
+            <span>{sessionData?.crops?.map((c: string) => `${c}`).join(", ")}</span>
           </div>
           <div className="flex items-center gap-1">
             <MapPin className="w-4 h-4" />
@@ -782,6 +934,9 @@ const AskAgent = ({
               <span>GM Available</span>
             </div>
           )}
+        </div>
+        <div className="text-center text-white/70 text-xs mt-2">
+          Test soil yearly. Knowledge = Profit!
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { soilTestInterpreter } from "@/lib/soilTestInterpreter";
 import { fertilizerCalculator } from "@/lib/fertilizerCalculator";
 import { calculateRankedCropProfits } from "@/lib/utils/cropCalculations";
+import { COUNTRY_CURRENCY_MAP } from "@/lib/config/currency";
 
 let genAI: GoogleGenerativeAI | null = null;
 try {
@@ -60,14 +61,22 @@ function buildFarmerQaHistory(messages: any[]) {
   return pairs;
 }
 
-// 🌾 Format currency helper
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-KE', {
+// 🌾 Format currency helper - Uses the country from session data
+function formatCurrencyForCountry(amount: number, country: string = 'kenya'): string {
+  const currency = COUNTRY_CURRENCY_MAP[country] || COUNTRY_CURRENCY_MAP.kenya;
+
+  return new Intl.NumberFormat(currency.locale, {
     style: 'currency',
-    currency: 'KES',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    currency: currency.code,
+    minimumFractionDigits: currency.decimalPlaces,
+    maximumFractionDigits: currency.decimalPlaces
   }).format(amount);
+}
+
+// 🌾 Format currency for speech
+function formatCurrencyForSpeech(amount: number, country: string = 'kenya'): string {
+  const currency = COUNTRY_CURRENCY_MAP[country] || COUNTRY_CURRENCY_MAP.kenya;
+  return `${currency.name} ${amount.toLocaleString()}`;
 }
 
 // 🌾 Calculate gross margin based on Bungoma Farm Management Guidelines (FALLBACK ONLY)
@@ -76,6 +85,7 @@ function calculateGrossMargin(session: any) {
 
   const crop = session.crops?.[0] || 'maize';
   const lowerCrop = crop.toLowerCase();
+  const country = session.country || 'kenya';
 
   // Default values from Bungoma guidelines
   const defaults: Record<string, any> = {
@@ -150,18 +160,18 @@ function calculateGrossMargin(session: any) {
     medium,
     high,
     farmerLevel: session.managementLevel || "Medium input",
-    recommendation: getFinancialRecommendation(session.managementLevel, low, medium, high)
+    recommendation: getFinancialRecommendation(session.managementLevel, low, medium, high, country)
   };
 }
 
 // 🌾 Generate financial recommendation
-function getFinancialRecommendation(level: string, low: any, medium: any, high: any): string {
+function getFinancialRecommendation(level: string, low: any, medium: any, high: any, country: string = 'kenya'): string {
   if (level?.toLowerCase().includes('low')) {
-    return `Based on your low-input farming, you're currently earning ${formatCurrency(low.grossMargin)} per hectare. By adopting medium-input practices, you could increase your profit to ${formatCurrency(medium.grossMargin)}. Remember: Every Ksh 1 invested returns Ksh 3-5 profit!`;
+    return `Based on your low-input farming, you're currently earning ${formatCurrencyForCountry(low.grossMargin, country)} per hectare. By adopting medium-input practices, you could increase your profit to ${formatCurrencyForCountry(medium.grossMargin, country)}. Remember: Every Ksh 1 invested returns Ksh 3-5 profit!`;
   } else if (level?.toLowerCase().includes('high')) {
-    return `Excellent! Your high-input farming is generating ${formatCurrency(high.grossMargin)} per hectare. You're maximizing your profits!`;
+    return `Excellent! Your high-input farming is generating ${formatCurrencyForCountry(high.grossMargin, country)} per hectare. You're maximizing your profits!`;
   } else {
-    return `At your current medium-input level, you're earning ${formatCurrency(medium.grossMargin)} per hectare. Upgrading to high-input practices could increase profit to ${formatCurrency(high.grossMargin)}. Farming is still in exponential phase - more inputs = more profits!`;
+    return `At your current medium-input level, you're earning ${formatCurrencyForCountry(medium.grossMargin, country)} per hectare. Upgrading to high-input practices could increase profit to ${formatCurrencyForCountry(high.grossMargin, country)}. Farming is still in exponential phase - more inputs = more profits!`;
   }
 }
 
@@ -187,6 +197,7 @@ export async function generateFarmerSessionSummary(params: {
       throw new Error("Session not found");
     }
 
+    const country = session.country || 'kenya';
     const qaPairs = buildFarmerQaHistory(messages);
     const financialPairs = qaPairs.filter(p => p.isFinancial);
     const soilTestPairs = qaPairs.filter(p => p.isSoilTest);
@@ -233,9 +244,9 @@ export async function generateFarmerSessionSummary(params: {
 
         const financialContext = grossMargin ? `
 GROSS MARGIN ANALYSIS (Bungoma Guidelines):
-- Low input: ${formatCurrency(grossMargin.low.grossMargin)}
-- Medium input: ${formatCurrency(grossMargin.medium.grossMargin)}
-- High input: ${formatCurrency(grossMargin.high.grossMargin)}
+- Low input: ${formatCurrencyForCountry(grossMargin.low.grossMargin, country)}
+- Medium input: ${formatCurrencyForCountry(grossMargin.medium.grossMargin, country)}
+- High input: ${formatCurrencyForCountry(grossMargin.high.grossMargin, country)}
 - Farmer's current level: ${session.managementLevel || "Medium input"}
 ` : "";
 

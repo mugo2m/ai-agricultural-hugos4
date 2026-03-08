@@ -38,20 +38,86 @@ import {
   Beaker,
   FlaskConical,
   Scale,
-  Gauge
+  Gauge,
+  Globe,
+  Smartphone,
+  PhoneCall
 } from "lucide-react";
 import { plantingFertilizers } from "@/lib/fertilizers/plantingFertilizers";
 import { topDressingFertilizers } from "@/lib/fertilizers/topDressingFertilizers";
 import { cropVarieties } from "@/lib/data/varieties";
 import { cropPestDiseaseMap } from "@/lib/data/pestDiseaseMapping";
-// NEW: Import spacing options
 import { getSpacingOptions } from "@/lib/data/spacing";
+import { useCurrency } from "@/lib/context/CurrencyContext";
+import { COUNTRY_CURRENCY_MAP } from "@/lib/config/currency";
 
 interface CreateInterviewAgentProps {
   userName: string;
   userId?: string;
   profileImage?: string;
 }
+
+// Country codes for phone numbers
+const countryCodes = [
+  { code: "+254", country: "Kenya", flag: "🇰🇪" },
+  { code: "+256", country: "Uganda", flag: "🇺🇬" },
+  { code: "+255", country: "Tanzania", flag: "🇹🇿" },
+  { code: "+250", country: "Rwanda", flag: "🇷🇼" },
+  { code: "+257", country: "Burundi", flag: "🇧🇮" },
+  { code: "+211", country: "South Sudan", flag: "🇸🇸" },
+  { code: "+251", country: "Ethiopia", flag: "🇪🇹" },
+  { code: "+252", country: "Somalia", flag: "🇸🇴" },
+  { code: "+253", country: "Djibouti", flag: "🇩🇯" },
+  { code: "+291", country: "Eritrea", flag: "🇪🇷" },
+  { code: "+234", country: "Nigeria", flag: "🇳🇬" },
+  { code: "+233", country: "Ghana", flag: "🇬🇭" },
+  { code: "+221", country: "Senegal", flag: "🇸🇳" },
+  { code: "+225", country: "Ivory Coast", flag: "🇨🇮" },
+  { code: "+223", country: "Mali", flag: "🇲🇱" },
+  { code: "+226", country: "Burkina Faso", flag: "🇧🇫" },
+  { code: "+227", country: "Niger", flag: "🇳🇪" },
+  { code: "+228", country: "Togo", flag: "🇹🇬" },
+  { code: "+229", country: "Benin", flag: "🇧🇯" },
+  { code: "+224", country: "Guinea", flag: "🇬🇳" },
+  { code: "+245", country: "Guinea-Bissau", flag: "🇬🇼" },
+  { code: "+231", country: "Liberia", flag: "🇱🇷" },
+  { code: "+232", country: "Sierra Leone", flag: "🇸🇱" },
+  { code: "+220", country: "Gambia", flag: "🇬🇲" },
+  { code: "+238", country: "Cape Verde", flag: "🇨🇻" },
+  { code: "+237", country: "Cameroon", flag: "🇨🇲" },
+  { code: "+241", country: "Gabon", flag: "🇬🇦" },
+  { code: "+235", country: "Chad", flag: "🇹🇩" },
+  { code: "+236", country: "Central African Republic", flag: "🇨🇫" },
+  { code: "+240", country: "Equatorial Guinea", flag: "🇬🇶" },
+  { code: "+242", country: "Congo Brazzaville", flag: "🇨🇬" },
+  { code: "+243", country: "Congo Kinshasa", flag: "🇨🇩" },
+  { code: "+244", country: "Angola", flag: "🇦🇴" },
+  { code: "+239", country: "São Tomé", flag: "🇸🇹" },
+  { code: "+27", country: "South Africa", flag: "🇿🇦" },
+  { code: "+264", country: "Namibia", flag: "🇳🇦" },
+  { code: "+267", country: "Botswana", flag: "🇧🇼" },
+  { code: "+263", country: "Zimbabwe", flag: "🇿🇼" },
+  { code: "+260", country: "Zambia", flag: "🇿🇲" },
+  { code: "+265", country: "Malawi", flag: "🇲🇼" },
+  { code: "+258", country: "Mozambique", flag: "🇲🇿" },
+  { code: "+261", country: "Madagascar", flag: "🇲🇬" },
+  { code: "+269", country: "Comoros", flag: "🇰🇲" },
+  { code: "+230", country: "Mauritius", flag: "🇲🇺" },
+  { code: "+248", country: "Seychelles", flag: "🇸🇨" },
+  { code: "+268", country: "Eswatini", flag: "🇸🇿" },
+  { code: "+266", country: "Lesotho", flag: "🇱🇸" },
+  { code: "+20", country: "Egypt", flag: "🇪🇬" },
+  { code: "+249", country: "Sudan", flag: "🇸🇩" },
+  { code: "+218", country: "Libya", flag: "🇱🇾" },
+  { code: "+216", country: "Tunisia", flag: "🇹🇳" },
+  { code: "+213", country: "Algeria", flag: "🇩🇿" },
+  { code: "+212", country: "Morocco", flag: "🇲🇦" },
+  { code: "+222", country: "Mauritania", flag: "🇲🇷" },
+  { code: "+1", country: "USA/Canada", flag: "🇺🇸" },
+  { code: "+44", country: "UK", flag: "🇬🇧" },
+  { code: "+33", country: "France", flag: "🇫🇷" },
+  { code: "+49", country: "Germany", flag: "🇩🇪" }
+];
 
 // Define crop categories
 const cropCategories = {
@@ -78,42 +144,28 @@ const getCropType = (crop: string): string => {
   return "grains";
 };
 
-// Helper to get varieties dropdown - FIXED to prevent duplicate "Other"
+// Helper to get varieties dropdown
 const getVarietiesOptions = (crop: string) => {
   const varieties = cropVarieties[crop.toLowerCase() as keyof typeof cropVarieties] || [];
-  // Check if "Other" already exists
-  if (varieties.includes("Other")) {
-    return varieties;
-  }
-  return [...varieties, "Other"];
+  return varieties;
 };
 
-// Helper to get pests dropdown - FIXED to prevent duplicate "Other (specify)"
+// Helper to get pests dropdown
 const getPestsOptions = (crop: string) => {
   const pests = cropPestDiseaseMap[crop.toLowerCase()]?.filter(p => p.type === "pest").map(p => p.name) || [];
-  // Add common pests for all crops if none found
   if (pests.length === 0) {
     return ["Aphids", "Cutworms", "Stalk borers", "Fall armyworm", "Thrips", "Whiteflies", "Other (specify)"];
   }
-  // Make sure we don't add duplicate "Other (specify)"
-  if (pests.includes("Other (specify)")) {
-    return pests;
-  }
-  return [...pests, "Other (specify)"];
+  return pests;
 };
 
-// Helper to get diseases dropdown - FIXED to prevent duplicate "Other (specify)"
+// Helper to get diseases dropdown
 const getDiseasesOptions = (crop: string) => {
   const diseases = cropPestDiseaseMap[crop.toLowerCase()]?.filter(p => p.type === "disease").map(p => p.name) || [];
-  // Add common diseases for all crops if none found
   if (diseases.length === 0) {
     return ["Blight", "Rust", "Mosaic virus", "Leaf spot", "Powdery mildew", "Other (specify)"];
   }
-  // Make sure we don't add duplicate "Other (specify)"
-  if (diseases.includes("Other (specify)")) {
-    return diseases;
-  }
-  return [...diseases, "Other (specify)"];
+  return diseases;
 };
 
 // Helper to get planting material question
@@ -124,7 +176,7 @@ const getPlantingMaterialQuestion = (crop: string) => {
   if (lowerCrop === "bananas") {
     return {
       id: "plantingMaterial",
-      question: "What type of banana planting material will you use?",
+      question: "What type of banana planting material will you use for your enterprise?",
       type: "dropdown",
       options: ["Sword suckers", "Tissue culture seedlings", "Mother plant corms", "Bits", "Other"],
       section: "Planting Material"
@@ -133,7 +185,7 @@ const getPlantingMaterialQuestion = (crop: string) => {
   if (lowerCrop === "coffee") {
     return {
       id: "plantingMaterial",
-      question: "What type of coffee planting material will you use?",
+      question: "What type of coffee planting material will you use for your enterprise?",
       type: "dropdown",
       options: ["Grafted seedlings", "Cuttings", "Seeds", "Tissue culture", "Other"],
       section: "Planting Material"
@@ -142,7 +194,7 @@ const getPlantingMaterialQuestion = (crop: string) => {
   if (lowerCrop === "sugarcane") {
     return {
       id: "plantingMaterial",
-      question: "What type of sugarcane planting material will you use?",
+      question: "What type of sugarcane planting material will you use for your enterprise?",
       type: "dropdown",
       options: ["Setts (cane cuttings)", "Ratoon (regrowth)", "Tissue culture", "Other"],
       section: "Planting Material"
@@ -151,7 +203,7 @@ const getPlantingMaterialQuestion = (crop: string) => {
   if (lowerCrop.includes("potato")) {
     return {
       id: "plantingMaterial",
-      question: "What type of potato planting material will you use?",
+      question: "What type of potato planting material will you use for your enterprise?",
       type: "dropdown",
       options: ["Certified seed potatoes", "Farm-saved tubers", "Whole tubers", "Cut pieces", "Other"],
       section: "Planting Material"
@@ -160,7 +212,7 @@ const getPlantingMaterialQuestion = (crop: string) => {
   if (cropType === "tubers") {
     return {
       id: "plantingMaterial",
-      question: `What type of planting material will you use for ${crop}?`,
+      question: `What type of planting material will you use for your ${crop} enterprise?`,
       type: "dropdown",
       options: ["Tubers", "Root cuttings", "Sets", "Certified seed", "Other"],
       section: "Planting Material"
@@ -169,7 +221,7 @@ const getPlantingMaterialQuestion = (crop: string) => {
   if (cropType === "fruits") {
     return {
       id: "plantingMaterial",
-      question: `What type of planting material will you use for ${crop}?`,
+      question: `What type of planting material will you use for your ${crop} enterprise?`,
       type: "dropdown",
       options: ["Grafted seedlings", "Seedlings", "Cuttings", "Air layers", "Other"],
       section: "Planting Material"
@@ -178,7 +230,7 @@ const getPlantingMaterialQuestion = (crop: string) => {
   if (cropType === "vegetables") {
     return {
       id: "plantingMaterial",
-      question: `How will you establish your ${crop} crop?`,
+      question: `How will you establish your ${crop} enterprise?`,
       type: "dropdown",
       options: ["Direct seeding", "Transplanting seedlings", "Sets", "Cuttings", "Other"],
       section: "Planting Material"
@@ -186,7 +238,7 @@ const getPlantingMaterialQuestion = (crop: string) => {
   }
   return {
     id: "seedSource",
-    question: "Where will you get your seeds from?",
+    question: "Where will you get your seeds from for your enterprise?",
     type: "dropdown",
     options: ["Certified seed dealer", "Farm-saved seed", "Local market", "Neighbors", "Agrovet", "Other"],
     section: "Seeds"
@@ -201,152 +253,169 @@ const getPlantingQuantityQuestion = (crop: string) => {
   if (lowerCrop === "maize") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (kg per acre) - Recommended: 10kg/acre (25kg/ha)",
+      question: "What seed rate will you use for your maize enterprise? (kg per acre) - Recommended: 10kg/acre (25kg/ha)",
       type: "number",
       placeholder: "e.g., 10 kg",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "beans") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (kg per acre) - Recommended: 20-24kg/acre (50-60kg/ha)",
+      question: "What seed rate will you use for your beans enterprise? (kg per acre) - Recommended: 20-24kg/acre (50-60kg/ha)",
       type: "number",
       placeholder: "e.g., 20 kg",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "finger millet") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (kg per acre) - Recommended: 1.6kg/acre (4kg/ha)",
+      question: "What seed rate will you use for your finger millet enterprise? (kg per acre) - Recommended: 1.6kg/acre (4kg/ha)",
       type: "number",
       placeholder: "e.g., 1.6 kg",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "sorghum") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (kg per acre) - Recommended: 2.8kg/acre (7kg/ha)",
+      question: "What seed rate will you use for your sorghum enterprise? (kg per acre) - Recommended: 2.8kg/acre (7kg/ha)",
       type: "number",
       placeholder: "e.g., 2.8 kg",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "soya beans") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (kg per acre) - Recommended: 16-24kg/acre (40-60kg/ha)",
+      question: "What seed rate will you use for your soya beans enterprise? (kg per acre) - Recommended: 16-24kg/acre (40-60kg/ha)",
       type: "number",
       placeholder: "e.g., 20 kg",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "groundnuts") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (kg per acre) - Recommended: 18-20kg/acre (45-50kg/ha)",
+      question: "What seed rate will you use for your groundnuts enterprise? (kg per acre) - Recommended: 18-20kg/acre (45-50kg/ha)",
       type: "number",
       placeholder: "e.g., 18 kg",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "sunflower") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (kg per acre) - Recommended: 2kg/acre (5kg/ha)",
+      question: "What seed rate will you use for your sunflower enterprise? (kg per acre) - Recommended: 2kg/acre (5kg/ha)",
       type: "number",
       placeholder: "e.g., 2 kg",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "cassava") {
     return {
       id: "plantingQuantity",
-      question: "How many cuttings will you plant per acre? - Recommended: 4,000 cuttings (10,000/ha)",
+      question: "How many cuttings will you plant per acre for your cassava enterprise? - Recommended: 4,000 cuttings (10,000/ha)",
       type: "number",
       placeholder: "e.g., 4000",
+      step: "any",
       section: "Planting Material"
     };
   }
   if (lowerCrop === "sweet potatoes") {
     return {
       id: "plantingQuantity",
-      question: "How many vines will you plant per acre? - Recommended: 16,000 plants",
+      question: "How many vines will you plant per acre for your sweet potatoes enterprise? - Recommended: 16,000 plants",
       type: "number",
       placeholder: "e.g., 16000",
+      step: "any",
       section: "Planting Density"
     };
   }
   if (lowerCrop === "irish potatoes") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (90kg bags per acre) - Recommended: 10-12 bags (25-30 bags/ha)",
+      question: "What seed rate will you use for your Irish potatoes enterprise? (90kg bags per acre) - Recommended: 10-12 bags (25-30 bags/ha)",
       type: "number",
       placeholder: "e.g., 10 bags",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "tomatoes") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (grams for nursery) - Recommended: 60-80g/acre (150-200g/ha)",
+      question: "What seed rate will you use for your tomatoes enterprise? (grams for nursery) - Recommended: 60-80g/acre (150-200g/ha)",
       type: "number",
       placeholder: "e.g., 80 grams",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "onions") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (kg for nursery) - Recommended: 0.7-0.8kg/acre (1.75-2kg/ha)",
+      question: "What seed rate will you use for your onions enterprise? (kg for nursery) - Recommended: 0.7-0.8kg/acre (1.75-2kg/ha)",
       type: "number",
       placeholder: "e.g., 0.8 kg",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "cabbages" || lowerCrop === "kales") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (grams for nursery) - Recommended: 200g/acre (500g/ha)",
+      question: "What seed rate will you use for your cabbage/kales enterprise? (grams for nursery) - Recommended: 200g/acre (500g/ha)",
       type: "number",
       placeholder: "e.g., 200 grams",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "carrots") {
     return {
       id: "seedRate",
-      question: "What seed rate will you use? (kg per acre) - Recommended: 1.2-1.6kg/acre (3-4kg/ha)",
+      question: "What seed rate will you use for your carrots enterprise? (kg per acre) - Recommended: 1.2-1.6kg/acre (3-4kg/ha)",
       type: "number",
       placeholder: "e.g., 1.5 kg",
+      step: "any",
       section: "Seeds"
     };
   }
   if (lowerCrop === "bananas") {
     return {
       id: "plantingQuantity",
-      question: "How many banana suckers will you plant per acre? - Recommended: 450 suckers (3m x 3m spacing)",
+      question: "How many banana suckers will you plant per acre for your banana enterprise? - Recommended: 450 suckers (3m x 3m spacing)",
       type: "number",
       placeholder: "e.g., 450",
+      step: "any",
       section: "Planting Density"
     };
   }
   if (lowerCrop === "coffee") {
     return {
       id: "plantingQuantity",
-      question: "How many coffee seedlings will you plant per acre? - Recommended: 1,300 trees (2.75m x 2.75m)",
+      question: "How many coffee seedlings will you plant per acre for your coffee enterprise? - Recommended: 1,300 trees (2.75m x 2.75m)",
       type: "number",
       placeholder: "e.g., 1300",
+      step: "any",
       section: "Planting Density"
     };
   }
   return {
     id: "seedRate",
-    question: `What seed rate will you use for ${crop}? (kg per acre)`,
+    question: `What seed rate will you use for your ${crop} enterprise? (kg per acre)`,
     type: "number",
     placeholder: "e.g., 10 kg",
+    step: "any",
     section: "Seeds"
   };
 };
@@ -358,7 +427,7 @@ const getStorageQuestion = (crop: string) => {
   if (lowerCrop === "maize" || lowerCrop === "sorghum" || lowerCrop === "finger millet") {
     return {
       id: "storageMethod",
-      question: "How will you store your grain?",
+      question: "How will you store your grain to protect your investment?",
       type: "dropdown",
       options: ["Hermetic bags", "Metallic silos", "Gunny bags", "Local cribs", "Sold immediately", "Other"],
       section: "Storage"
@@ -367,7 +436,7 @@ const getStorageQuestion = (crop: string) => {
   if (lowerCrop === "beans" || lowerCrop === "cowpeas" || lowerCrop === "green grams" || lowerCrop === "groundnuts") {
     return {
       id: "storageMethod",
-      question: "How will you store your pulses?",
+      question: "How will you store your pulses to maximize profit?",
       type: "dropdown",
       options: ["Hermetic bags", "Gunny bags", "Plastic containers", "Sold immediately", "Other"],
       section: "Storage"
@@ -376,7 +445,7 @@ const getStorageQuestion = (crop: string) => {
   if (lowerCrop === "irish potatoes" || lowerCrop === "sweet potatoes" || lowerCrop === "cassava") {
     return {
       id: "storageMethod",
-      question: "How will you store your tubers?",
+      question: "How will you store your tubers to reduce losses?",
       type: "dropdown",
       options: ["Cool dark room", "In-ground storage", "Sold immediately", "Processed into flour", "Other"],
       section: "Storage"
@@ -385,7 +454,7 @@ const getStorageQuestion = (crop: string) => {
   if (lowerCrop === "tomatoes" || lowerCrop === "onions" || lowerCrop === "cabbages") {
     return {
       id: "storageMethod",
-      question: "How will you handle your vegetables after harvest?",
+      question: "How will you handle your vegetables after harvest to maintain quality?",
       type: "dropdown",
       options: ["Sold immediately", "Cool storage", "Market delivery", "Other"],
       section: "Storage"
@@ -393,7 +462,7 @@ const getStorageQuestion = (crop: string) => {
   }
   return {
     id: "storageMethod",
-    question: "How will you store your harvest?",
+    question: "How will you store your harvest to protect your investment?",
     type: "dropdown",
     options: ["Sold immediately", "Storage facility", "Cold storage", "Other"],
     section: "Storage"
@@ -405,11 +474,14 @@ const CreateInterviewAgent = ({
   userId,
   profileImage
 }: CreateInterviewAgentProps) => {
+  const { setCountry } = useCurrency();
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userTranscript, setUserTranscript] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastSubmittedAnswer, setLastSubmittedAnswer] = useState("");
+  const [selectedCountryCode, setSelectedCountryCode] = useState("+254");
+  const nameUsageCountRef = useRef(0);
 
   const [currentStep, setCurrentStep] = useState<"idle" | "configuring" | "generating" | "redirecting" | "error">("idle");
   const [configStep, setConfigStep] = useState(0);
@@ -420,7 +492,6 @@ const CreateInterviewAgent = ({
   const questionWordsRef = useRef<string[]>([]);
 
   // ========== FERTILIZER DATABASE MAPPINGS ==========
-  // Display labels mapped to database IDs
   const plantingFertilizerOptions = [
     { label: "DAP (18-46-0)", id: "dap" },
     { label: "TSP (0-46-0)", id: "tsp" },
@@ -454,20 +525,19 @@ const CreateInterviewAgent = ({
     { label: "None - I don't use potassium", id: "none" }
   ];
 
-  // Farmer details state - COMPLETE WITH ALL FIELDS
+  // Farmer details state
   const [farmerDetails, setFarmerDetails] = useState({
+    country: "",
     farmerName: "",
+    phoneCountryCode: "+254",
     phoneNumber: "",
     county: "",
     subCounty: "",
     ward: "",
     village: "",
-    // REMOVED: altitude, annualRainfall, soilType
     totalFarmSize: "",
     cultivatedAcres: "",
     waterSources: "",
-
-    // Crops
     hasDoneSoilTest: "",
     crops: "",
     cropVarieties: "",
@@ -477,21 +547,14 @@ const CreateInterviewAgent = ({
     plantingMaterial: "",
     plantingQuantity: "",
     seedSource: "",
-    spacing: "", // NEW: Spacing field
-
-    // Pests & Diseases
+    spacing: "",
     commonPests: "",
     pestControlMethod: "",
     commonDiseases: "",
     diseaseControlMethod: "",
-
-    // Production
-    averageHarvest: "",
     harvestUnit: "",
     pricePerUnit: "",
     storageMethod: "",
-
-    // Financial - REMOVED: dapCost, canCost
     npkCost: "",
     ploughingCost: "",
     plantingLabourCost: "",
@@ -500,30 +563,21 @@ const CreateInterviewAgent = ({
     transportCostPerBag: "",
     bagCost: "",
     seedCost: "",
-
-    // Livestock
+    calciticLimePricePerBag: "",
+    recCalciticLime: "",
     livestockTypes: "",
     cattle: "",
     cattleBreed: "",
     milkYield: "",
-
-    // Post-Harvest
     postHarvestPractices: "",
     postHarvestLosses: "",
     valueAddition: "",
     storageAccess: "",
-
-    // CHALLENGES - REMOVED: mainChallenge, experience, knowledgeChallenges
     productionChallenges: "",
     marketingChallenges: "",
     climateChallenges: "",
     financialChallenges: "",
-
-    // CONSERVATION - COMBINED
-    conservationPractices: "", // NEW: Combined conservation practices
-    // REMOVED: organicManure, terracing, mulching, coverCrops, rainwaterHarvesting, contourFarming, managementLevel
-
-    // SOIL TEST RAW VALUES
+    conservationPractices: "",
     soilTestDate: "",
     soilTestPH: "",
     soilTestPHRating: "",
@@ -545,25 +599,19 @@ const CreateInterviewAgent = ({
     soilTestMgRating: "",
     soilTestNa: "",
     soilTestNaRating: "",
-
-    // ========== SOIL TEST RECOMMENDATIONS (TEXT INPUT) ==========
     targetYield: "",
-    recPlantingFertilizer: "",      // Text input - e.g., "NPK 12.24.12+5S"
-    recPlantingQuantity: "",         // Number - e.g., "100"
-    recTopdressingFertilizer: "",    // Text input - e.g., "UREA 46-0-0"
-    recTopdressingQuantity: "",      // Number - e.g., "90"
-    recPotassiumFertilizer: "",      // Text input - e.g., "MOP 0-0-60"
-    recPotassiumQuantity: "",        // Number - e.g., "30"
-
-    // ========== FERTILIZER SELECTION (DROPDOWN - STORE IDS) ==========
-    plantingFertilizerToUse: "",      // Will store ID like "dap"
+    recPlantingFertilizer: "",
+    recPlantingQuantity: "",
+    recTopdressingFertilizer: "",
+    recTopdressingQuantity: "",
+    recPotassiumFertilizer: "",
+    recPotassiumQuantity: "",
+    plantingFertilizerToUse: "",
     plantingFertilizerCost: "",
-    topdressingFertilizerToUse: "",   // Will store ID like "ss_urea"
+    topdressingFertilizerToUse: "",
     topdressingFertilizerCost: "",
-    potassiumFertilizerToUse: "",     // Will store ID like "mop"
+    potassiumFertilizerToUse: "",
     potassiumFertilizerCost: "",
-
-    // For farmers WITHOUT soil test
     plantingFertilizerType: "",
     plantingFertilizerQuantity: "",
     topdressingFertilizerType: "",
@@ -588,19 +636,138 @@ const CreateInterviewAgent = ({
   const retryCountRef = useRef(0);
   const maxRetries = 3;
 
-  // ============ BASE QUESTIONS (UPDATED - REMOVED 8 QUESTIONS) ============
-  const baseQuestions = [
-    { id: "farmerName", question: "What is your name?", type: "text", section: "Personal" },
-    { id: "phoneNumber", question: "What is your phone number?", type: "tel", section: "Personal" },
-    { id: "county", question: "What county are you in?", type: "text", section: "Location" },
-    { id: "subCounty", question: "Which sub-county?", type: "text", section: "Location" },
-    { id: "ward", question: "Which ward?", type: "text", section: "Location" },
-    { id: "village", question: "Which village?", type: "text", section: "Location" },
-    // REMOVED: altitude, annualRainfall, soilType
-    { id: "totalFarmSize", question: "Total farm size? (acres)", type: "number", section: "Farm" },
-    { id: "cultivatedAcres", question: "Cultivated acres?", type: "number", section: "Farm" },
+  // ============ REORDERED BASE QUESTIONS ============
+  // PART 1: COUNTRY (1st)
+  const countryQuestion = [
+    {
+      id: "country",
+      question: "Which country are you in?",
+      type: "dropdown",
+      options: [
+        "kenya", "uganda", "tanzania", "rwanda", "burundi", "southsudan",
+        "ethiopia", "somalia", "djibouti", "eritrea", "nigeria", "ghana",
+        "senegal", "ivorycoast", "mali", "burkinafaso", "niger", "togo",
+        "benin", "guinea", "liberia", "sierraleone", "gambia", "capoverde",
+        "cameroon", "gabon", "chad", "car", "equatorialguinea", "congobrazzaville",
+        "congokinshasa", "angola", "saotome", "southafrica", "namibia",
+        "botswana", "zimbabwe", "zambia", "malawi", "mozambique", "madagascar",
+        "comoros", "mauritius", "seychelles", "eswatini", "lesotho", "egypt",
+        "sudan", "libya", "tunisia", "algeria", "morocco", "mauritania",
+        "usa", "uk", "europe", "other"
+      ],
+      section: "Location"
+    }
+  ];
 
-    // WATER SOURCES
+  // PART 2: SOIL TEST GATEKEEPER (2nd)
+  const soilTestGatekeeperQuestion = [
+    {
+      id: "hasDoneSoilTest",
+      question: "Have you done a comprehensive soil test for your enterprise?",
+      type: "dropdown",
+      options: ["Yes", "No"],
+      section: "Soil Test"
+    }
+  ];
+
+  // PART 3: CROP SELECTION (3rd) - FIXED: Now dropdown only, not date
+  const cropSelectionQuestion = {
+    id: "crops",
+    question: "Which crop enterprise will you invest in?",
+    type: "dropdown",
+    options: [
+      "maize", "beans", "finger millet", "sorghum", "soya beans", "cowpeas",
+      "green grams", "bambara nuts", "groundnuts", "sunflower", "simsim",
+      "coffee", "cotton", "sugarcane", "tobacco", "cassava", "sweet potatoes",
+      "irish potatoes", "tomatoes", "kales", "cabbages", "onions", "carrots",
+      "capsicums", "chillies", "brinjals", "french beans", "garden peas",
+      "bananas", "oranges", "pineapples", "avocados", "pawpaws", "passion fruit"
+    ],
+    section: "Crops"
+  };
+
+  // PART 4: CROP-SPECIFIC QUESTIONS (4th)
+  const getCropSpecificQuestions = () => {
+    if (!farmerDetails.crops) return [];
+    const crop = farmerDetails.crops;
+
+    const spacingOptions = getSpacingOptions(crop);
+
+    return [
+      {
+        id: "cropVarieties",
+        question: `Which variety will you grow for your ${crop} enterprise?`,
+        type: "combobox", // CHANGED: dropdown + typing
+        options: getVarietiesOptions(crop),
+        section: "Crops"
+      },
+      {
+        id: "cropAcres",
+        question: `How many acres will you dedicate to your ${crop} enterprise?`,
+        type: "number",
+        step: "any",
+        placeholder: "e.g., 2.5",
+        section: "Crops"
+      },
+      { id: "season", question: "Which season will you plant for maximum profit?", type: "dropdown", options: ["long rains", "short rains", "dry season"], section: "Crops" },
+      {
+        id: "plantingDate",
+        question: "When will you plant? (select date)",
+        type: "date",
+        minDate: "2024-01-01",
+        maxDate: new Date().toISOString().split('T')[0],
+        section: "Crops"
+      },
+      getPlantingMaterialQuestion(crop),
+      {
+        id: "spacing",
+        question: `What spacing will you use for your ${crop} enterprise?`,
+        type: "dropdown",
+        options: spacingOptions.map(s => s.label),
+        section: "Planting Density"
+      },
+      getPlantingQuantityQuestion(crop),
+    ];
+  };
+
+  // PART 5: PRODUCTION QUESTIONS (5th)
+  const getProductionQuestions = () => {
+    if (!farmerDetails.crops) return [];
+    const crop = farmerDetails.crops;
+    const cropType = getCropType(crop);
+
+    let unitOptions = ["kg", "tonnes"];
+    if (cropType === "grains") unitOptions = ["90kg bags", "50kg bags", "kg", "tonnes"];
+    if (crop === "bananas") unitOptions = ["tonnes", "kg", "bunches"];
+    if (crop === "coffee") unitOptions = ["kg cherry", "tonnes cherry", "kg clean coffee"];
+    if (crop === "tomatoes") unitOptions = ["kg", "crates", "tonnes"];
+    if (crop === "irish potatoes") unitOptions = ["90kg bags", "kg", "tonnes"];
+
+    return [
+      { id: "harvestUnit", question: "What unit will you use for your yield?", type: "dropdown", options: unitOptions, section: "Production" },
+      { id: "pricePerUnit", question: "What price do you expect per unit?", type: "number", step: "any", placeholder: "e.g., 6750", section: "Production" },
+      getStorageQuestion(crop)
+    ];
+  };
+
+  // PART 6: FARM & WATER (6th)
+  const farmWaterQuestions = [
+    {
+      id: "totalFarmSize",
+      question: "What is your total farm size? (acres)",
+      type: "number",
+      step: "any",
+      placeholder: "e.g., 5",
+      section: "Farm"
+    },
+    {
+      id: "cultivatedAcres",
+      question: "How many acres are you cultivating for this enterprise?",
+      type: "number",
+      step: "any",
+      placeholder: "e.g., 2.5",
+      section: "Farm"
+    },
     {
       id: "waterSources",
       question: "What are your main water sources? (Select all that apply)",
@@ -616,74 +783,10 @@ const CreateInterviewAgent = ({
         "All available sources", "None (dryland farming)"
       ],
       section: "Water"
-    },
-
-    // SOIL TEST - GATEKEEPER QUESTION
-    {
-      id: "hasDoneSoilTest",
-      question: "Have you done a comprehensive soil test?",
-      type: "dropdown",
-      options: ["Yes", "No"],
-      section: "Soil Test"
-    },
-
-    // CROPS
-    {
-      id: "crops",
-      question: "What crop will you plant?",
-      type: "dropdown",
-      options: [
-        "maize", "beans", "finger millet", "sorghum", "soya beans", "cowpeas",
-        "green grams", "bambara nuts", "groundnuts", "sunflower", "simsim",
-        "coffee", "cotton", "sugarcane", "tobacco", "cassava", "sweet potatoes",
-        "irish potatoes", "tomatoes", "kales", "cabbages", "onions", "carrots",
-        "capsicums", "chillies", "brinjals", "french beans", "garden peas",
-        "bananas", "oranges", "pineapples", "avocados", "pawpaws", "passion fruit"
-      ],
-      section: "Crops"
-    },
+    }
   ];
 
-  // ============ CROP-SPECIFIC QUESTIONS (UPDATED with spacing dropdown) ============
-  const getCropSpecificQuestions = () => {
-    if (!farmerDetails.crops) return [];
-    const crop = farmerDetails.crops;
-
-    // Get spacing options for this crop
-    const spacingOptions = getSpacingOptions(crop);
-
-    return [
-      {
-        id: "cropVarieties",
-        question: `Which variety will you grow?`,
-        type: "dropdown",
-        options: getVarietiesOptions(crop),
-        section: "Crops"
-      },
-      { id: "cropAcres", question: `How many acres of ${crop}?`, type: "number", section: "Crops" },
-      { id: "season", question: "Which season?", type: "dropdown", options: ["long rains", "short rains", "dry season"], section: "Crops" },
-      {
-        id: "plantingDate",
-        question: "When will you plant? (select date)",
-        type: "date",
-        minDate: "2024-01-01",
-        maxDate: new Date().toISOString().split('T')[0],
-        section: "Crops"
-      },
-      getPlantingMaterialQuestion(crop),
-      // NEW: Spacing dropdown from database
-      {
-        id: "spacing",
-        question: `What is your recommended spacing for ${crop}?`,
-        type: "dropdown",
-        options: spacingOptions.map(s => s.label),
-        section: "Planting Density"
-      },
-      getPlantingQuantityQuestion(crop),
-    ];
-  };
-
-  // ============ PEST & DISEASE QUESTIONS ============
+  // PART 7: PESTS & DISEASES (7th)
   const getPestQuestions = () => {
     if (!farmerDetails.crops) return [];
     const crop = farmerDetails.crops;
@@ -691,14 +794,14 @@ const CreateInterviewAgent = ({
     return [
       {
         id: "commonPests",
-        question: "Which pests affect your crop?",
+        question: "Which pests threaten your enterprise's profitability?",
         type: "multiselect",
         options: getPestsOptions(crop),
         section: "Pests"
       },
       {
         id: "commonDiseases",
-        question: "Which diseases affect your crop?",
+        question: "Which diseases affect your enterprise's yield?",
         type: "multiselect",
         options: getDiseasesOptions(crop),
         section: "Diseases"
@@ -706,98 +809,27 @@ const CreateInterviewAgent = ({
     ];
   };
 
-  // ============ PRODUCTION QUESTIONS ============
-  const getProductionQuestions = () => {
-    if (!farmerDetails.crops) return [];
-    const crop = farmerDetails.crops;
-    const cropType = getCropType(crop);
-
-    let unitOptions = ["kg", "tonnes"];
-    if (cropType === "grains") unitOptions = ["90kg bags", "50kg bags", "kg", "tonnes"];
-    if (crop === "bananas") unitOptions = ["tonnes", "kg", "bunches"];
-    if (crop === "coffee") unitOptions = ["kg cherry", "tonnes cherry", "kg clean coffee"];
-    if (crop === "tomatoes") unitOptions = ["kg", "crates", "tonnes"];
-    if (crop === "irish potatoes") unitOptions = ["90kg bags", "kg", "tonnes"];
-
-    return [
-      // REMOVED: averageHarvest (expected yield)
-      { id: "harvestUnit", question: "Unit for yield?", type: "dropdown", options: unitOptions, section: "Production" },
-      { id: "pricePerUnit", question: "Expected price per unit? (Ksh)", type: "number", section: "Production" },
-      getStorageQuestion(crop)
-    ];
-  };
-
-  // ============ FINANCIAL QUESTIONS (UPDATED - removed DAP/CAN costs) ============
+  // PART 8: FINANCIAL (8th)
   const getFinancialQuestions = () => {
     if (!farmerDetails.crops) return [];
 
     return [
-      { id: "seedCost", question: "How much do you pay per kg for your seed? (Ksh)", type: "number", placeholder: "e.g., 180", section: "Finance" },
-      // REMOVED: dapCost, canCost
-      { id: "ploughingCost", question: "Ploughing cost per acre? (Ksh)", type: "number", section: "Finance" },
-      { id: "plantingLabourCost", question: "Planting labour cost per acre? (Ksh)", type: "number", section: "Finance" },
-      { id: "weedingCost", question: "Weeding cost per acre? (Ksh)", type: "number", section: "Finance" },
-      { id: "harvestingCost", question: "Harvesting cost per acre? (Ksh)", type: "number", section: "Finance" },
-      { id: "transportCostPerBag", question: "Transport cost per unit? (Ksh)", type: "number", section: "Finance" },
-      { id: "bagCost", question: "Cost per empty bag? (Ksh)", type: "number", section: "Finance" },
+      { id: "seedCost", question: "How much do you pay per kg for your seed?", type: "number", placeholder: "e.g., 180", step: "any", section: "Finance" },
+      { id: "calciticLimePricePerBag", question: "How much do you pay per 50kg bag of calcitic lime?", type: "number", placeholder: "e.g., 300", step: "any", section: "Finance" },
+      { id: "ploughingCost", question: "Ploughing cost per acre?", type: "number", step: "any", placeholder: "e.g., 7000", section: "Finance" },
+      { id: "plantingLabourCost", question: "Planting labour cost per acre?", type: "number", step: "any", placeholder: "e.g., 2000", section: "Finance" },
+      { id: "weedingCost", question: "Weeding cost per acre?", type: "number", step: "any", placeholder: "e.g., 2500", section: "Finance" },
+      { id: "harvestingCost", question: "Harvesting cost per acre?", type: "number", step: "any", placeholder: "e.g., 2000", section: "Finance" },
+      { id: "transportCostPerBag", question: "Transport cost per unit?", type: "number", step: "any", placeholder: "e.g., 50", section: "Finance" },
+      { id: "bagCost", question: "Cost per empty bag?", type: "number", step: "any", placeholder: "e.g., 40", section: "Finance" },
     ];
   };
 
-  // ============ CHALLENGES QUESTIONS (UPDATED - removed knowledgeChallenges, mainChallenge, experience) ============
-  const challengesQuestions = [
-    {
-      id: "productionChallenges",
-      question: "What production challenges do you face?",
-      type: "multiselect",
-      options: [
-        "Pests", "Diseases", "Drought", "Floods", "Poor soil fertility",
-        "High input costs", "Labor shortage", "Weeds", "Wild animals",
-        "Fall armyworm", "Stalk borers", "Aphids", "Whiteflies",
-        "Maize streak virus", "Leaf rust", "Blight", "Other"
-      ],
-      section: "Challenges"
-    },
-    {
-      id: "marketingChallenges",
-      question: "What marketing challenges do you face?",
-      type: "multiselect",
-      options: [
-        "Low prices", "Price fluctuations", "No reliable buyer",
-        "Transport costs", "Brokers/middlemen", "Post-harvest losses",
-        "No storage", "Perishability", "Other"
-      ],
-      section: "Challenges"
-    },
-    {
-      id: "climateChallenges",
-      question: "What climate challenges affect you?",
-      type: "multiselect",
-      options: [
-        "Unreliable rains", "Drought", "Floods", "Hailstorms",
-        "Strong winds", "Extreme heat", "Late rains", "Early cessation",
-        "Other"
-      ],
-      section: "Challenges"
-    },
-    {
-      id: "financialChallenges",
-      question: "What financial challenges do you face?",
-      type: "multiselect",
-      options: [
-        "No capital", "No loans", "High interest rates",
-        "No subsidies", "High input costs", "Cash flow problems",
-        "Debt", "Other"
-      ],
-      section: "Challenges"
-    },
-    // REMOVED: knowledgeChallenges, mainChallenge, experience
-  ];
-
-  // ============ COMBINED CONSERVATION QUESTION ============
+  // PART 9: CONSERVATION (9th)
   const conservationQuestion = [
     {
       id: "conservationPractices",
-      question: "What soil and water conservation practices do you use?",
+      question: "What soil and water conservation practices do you use to protect your investment?",
       type: "multiselect",
       options: [
         "Organic manure",
@@ -810,38 +842,112 @@ const CreateInterviewAgent = ({
       ],
       section: "Conservation"
     }
-    // REMOVED: managementLevel
+  ];
+
+  // PART 10: CHALLENGES (10th)
+  const challengesQuestions = [
+    {
+      id: "productionChallenges",
+      question: "What production challenges hurt your profit?",
+      type: "multiselect",
+      options: [
+        "Pests", "Diseases", "Drought", "Floods", "Poor soil fertility",
+        "High input costs", "Labor shortage", "Weeds", "Wild animals",
+        "Fall armyworm", "Stalk borers", "Aphids", "Whiteflies",
+        "Maize streak virus", "Leaf rust", "Blight", "Other"
+      ],
+      section: "Challenges"
+    },
+    {
+      id: "marketingChallenges",
+      question: "What marketing challenges keep money from your pocket?",
+      type: "multiselect",
+      options: [
+        "Low prices", "Price fluctuations", "No reliable buyer",
+        "Transport costs", "Brokers/middlemen", "Post-harvest losses",
+        "No storage", "Perishability", "Other"
+      ],
+      section: "Challenges"
+    },
+    {
+      id: "climateChallenges",
+      question: "What climate challenges affect your enterprise?",
+      type: "multiselect",
+      options: [
+        "Unreliable rains", "Drought", "Floods", "Hailstorms",
+        "Strong winds", "Extreme heat", "Late rains", "Early cessation",
+        "Other"
+      ],
+      section: "Challenges"
+    },
+    {
+      id: "financialChallenges",
+      question: "What financial challenges limit your growth?",
+      type: "multiselect",
+      options: [
+        "No capital", "No loans", "High interest rates",
+        "No subsidies", "High input costs", "Cash flow problems",
+        "Debt", "Other"
+      ],
+      section: "Challenges"
+    },
+  ];
+
+  // PART 11: PERSONAL & LOCATION (11th - LAST)
+  const personalLocationQuestions = [
+    { id: "farmerName", question: "What is your name?", type: "text", placeholder: "e.g., John Mugo", section: "Personal" },
+    {
+      id: "phoneNumber",
+      question: "What is your phone number?",
+      type: "tel",
+      renderCustom: true,
+      section: "Personal"
+    },
+    { id: "county", question: "What county/region are you in?", type: "text", placeholder: "e.g., Bungoma", section: "Location" },
+    { id: "subCounty", question: "Which sub-county/district?", type: "text", placeholder: "e.g., Kimilili", section: "Location" },
+    { id: "ward", question: "Which ward?", type: "text", placeholder: "e.g., Kimilili", section: "Location" },
+    { id: "village", question: "Which village?", type: "text", placeholder: "e.g., Sikulu", section: "Location" },
   ];
 
   // ============ SOIL TEST DETAILS QUESTIONS ============
   const soilTestDetailsQuestions = [
-    { id: "soilTestDate", question: "When was soil test done?", type: "date", minDate: "2020-01-01", maxDate: new Date().toISOString().split('T')[0], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
-    { id: "soilTestPH", question: "pH value?", type: "number", min: 0, max: 14, step: 0.1, dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
-    { id: "soilTestPHRating", question: "pH rating?", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
-    { id: "soilTestP", question: "Phosphorus (P) in ppm?", type: "number", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
+    { id: "soilTestDate", question: "When was your soil test done?", type: "date", minDate: "2020-01-01", maxDate: new Date().toISOString().split('T')[0], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
+    { id: "soilTestPH", question: "What is your pH value?", type: "number", min: 0, max: 14, step: 0.1, dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
+    { id: "soilTestPHRating", question: "What is your pH rating?", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
+    { id: "soilTestP", question: "Phosphorus (P) in ppm?", type: "number", step: "any", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
     { id: "soilTestPRating", question: "Phosphorus rating?", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
-    { id: "soilTestK", question: "Potassium (K) in ppm?", type: "number", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
+    { id: "soilTestK", question: "Potassium (K) in ppm?", type: "number", step: "any", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
     { id: "soilTestKRating", question: "Potassium rating?", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
     { id: "soilTestNPercent", question: "Total Nitrogen (N) in %?", type: "number", min: 0, max: 5, step: 0.01, dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
     { id: "soilTestNPercentRating", question: "Nitrogen rating?", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
-    { id: "soilTestCa", question: "Calcium (Ca) in ppm?", type: "number", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
+    { id: "soilTestCa", question: "Calcium (Ca) in ppm?", type: "number", step: "any", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
     { id: "soilTestCaRating", question: "Calcium rating?", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
-    { id: "soilTestMg", question: "Magnesium (Mg) in ppm?", type: "number", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
+    { id: "soilTestMg", question: "Magnesium (Mg) in ppm?", type: "number", step: "any", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
     { id: "soilTestMgRating", question: "Magnesium rating?", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
-    { id: "soilTestNa", question: "Sodium (Na) in ppm?", type: "number", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
+    { id: "soilTestNa", question: "Sodium (Na) in ppm?", type: "number", step: "any", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
     { id: "soilTestNaRating", question: "Sodium rating?", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
-    { id: "soilTestOC", question: "Organic Carbon (OC) in %?", type: "number", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
+    { id: "soilTestOC", question: "Organic Carbon (OC) in %?", type: "number", step: 0.01, dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
     { id: "soilTestOCRating", question: "Organic Carbon rating?", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
-    { id: "soilTestOM", question: "Organic Matter (OM) in %?", type: "number", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
+    { id: "soilTestOM", question: "Organic Matter (OM) in %?", type: "number", step: 0.01, dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
     { id: "soilTestOMRating", question: "Organic Matter rating?", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
-    { id: "soilTestCEC", question: "CEC in meq/100g?", type: "number", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
+    { id: "soilTestCEC", question: "CEC in meq/100g?", type: "number", step: "any", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
     { id: "soilTestCECRating", question: "CEC rating?", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, section: "Soil Test" },
 
-    // ========== SOIL TEST RECOMMENDATIONS (TEXT INPUT) ==========
+    // SOIL TEST RECOMMENDATIONS
     {
       id: "targetYield",
       question: "According to your soil test, what is your recommended target yield? (e.g., 27 bags/acre)",
       type: "number",
+      step: "any",
+      dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
+      section: "Soil Test Recommendations"
+    },
+    {
+      id: "recCalciticLime",
+      question: "According to your soil test, what calcitic lime rate (kg/acre) was recommended? (e.g., 120)",
+      type: "number",
+      step: "any",
+      placeholder: "e.g., 120",
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       section: "Soil Test Recommendations"
     },
@@ -849,6 +955,7 @@ const CreateInterviewAgent = ({
       id: "recPlantingFertilizer",
       question: "According to your soil test, what is your recommended planting fertilizer and its formulation? (e.g., NPK 12.24.12+5S)",
       type: "text",
+      placeholder: "e.g., NPK 12.24.12+5S",
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       section: "Soil Test Recommendations"
     },
@@ -856,6 +963,8 @@ const CreateInterviewAgent = ({
       id: "recPlantingQuantity",
       question: "According to your soil test, what is the recommended quantity per acre for your planting fertilizer? (e.g., 100kg)",
       type: "number",
+      step: "any",
+      placeholder: "e.g., 100",
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       section: "Soil Test Recommendations"
     },
@@ -863,6 +972,7 @@ const CreateInterviewAgent = ({
       id: "recTopdressingFertilizer",
       question: "According to your soil test, what is your recommended topdressing fertilizer and its formulation? (e.g., UREA 46-0-0)",
       type: "text",
+      placeholder: "e.g., UREA 46-0-0",
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       section: "Soil Test Recommendations"
     },
@@ -870,6 +980,8 @@ const CreateInterviewAgent = ({
       id: "recTopdressingQuantity",
       question: "According to your soil test, what is the recommended quantity per acre for your topdressing fertilizer? (e.g., 90kg)",
       type: "number",
+      step: "any",
+      placeholder: "e.g., 90",
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       section: "Soil Test Recommendations"
     },
@@ -877,6 +989,7 @@ const CreateInterviewAgent = ({
       id: "recPotassiumFertilizer",
       question: "According to your soil test, what is your recommended potassium fertilizer and its formulation? (e.g., MOP 0-0-60)",
       type: "text",
+      placeholder: "e.g., MOP 0-0-60",
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       section: "Soil Test Recommendations"
     },
@@ -884,6 +997,8 @@ const CreateInterviewAgent = ({
       id: "recPotassiumQuantity",
       question: "According to your soil test, what is the recommended quantity per acre for your potassium fertilizer? (e.g., 30kg)",
       type: "number",
+      step: "any",
+      placeholder: "e.g., 30",
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       section: "Soil Test Recommendations"
     },
@@ -893,7 +1008,7 @@ const CreateInterviewAgent = ({
   const fertilizerSelectionQuestions = [
     {
       id: "plantingFertilizerToUse",
-      question: "Based on your soil test recommendations, which planting fertilizer will you actually buy and use?",
+      question: "Based on your soil test recommendations, which planting fertilizer will you actually buy and use for your enterprise?",
       type: "dropdown",
       options: plantingFertilizerOptions.map(opt => opt.label),
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
@@ -904,6 +1019,7 @@ const CreateInterviewAgent = ({
       question: "How much do you pay for a 50kg bag of your chosen planting fertilizer?",
       type: "number",
       placeholder: "e.g., 3,500",
+      step: "any",
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       section: "Fertilizer Selection"
     },
@@ -920,6 +1036,7 @@ const CreateInterviewAgent = ({
       question: "How much do you pay for a 50kg bag of your chosen topdressing fertilizer?",
       type: "number",
       placeholder: "e.g., 2,800",
+      step: "any",
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       section: "Fertilizer Selection"
     },
@@ -936,6 +1053,7 @@ const CreateInterviewAgent = ({
       question: "How much do you pay for a 50kg bag of your chosen potassium fertilizer?",
       type: "number",
       placeholder: "e.g., 2,800",
+      step: "any",
       dependsOn: { field: "hasDoneSoilTest", value: "Yes", field2: "potassiumFertilizerToUse", valueNot: "None - I don't use potassium" },
       section: "Fertilizer Selection"
     },
@@ -945,7 +1063,7 @@ const CreateInterviewAgent = ({
   const fertilizerQuestionsWithoutSoilTest = [
     {
       id: "plantingFertilizerType",
-      question: "Which planting fertilizer do you use?",
+      question: "Which planting fertilizer do you use for your enterprise?",
       type: "dropdown",
       options: plantingFertilizerOptions.map(opt => opt.label),
       dependsOn: { field: "hasDoneSoilTest", value: "No" },
@@ -956,6 +1074,7 @@ const CreateInterviewAgent = ({
       question: "How many kg per acre do you apply?",
       type: "number",
       placeholder: "e.g., 50 kg",
+      step: "any",
       dependsOn: { field: "hasDoneSoilTest", value: "No" },
       section: "Fertilizer Selection"
     },
@@ -972,6 +1091,7 @@ const CreateInterviewAgent = ({
       question: "How many kg per acre do you apply for topdressing?",
       type: "number",
       placeholder: "e.g., 50 kg",
+      step: "any",
       dependsOn: { field: "hasDoneSoilTest", value: "No" },
       section: "Fertilizer Selection"
     },
@@ -988,32 +1108,50 @@ const CreateInterviewAgent = ({
       question: "How many kg per acre do you apply for potassium?",
       type: "number",
       placeholder: "e.g., 50 kg",
+      step: "any",
       dependsOn: { field: "hasDoneSoilTest", value: "No", field2: "potassiumFertilizerType", valueNot: "None - I don't use potassium" },
       section: "Fertilizer Selection"
     },
   ];
 
-  // Combine all questions in order
+  // Combine all questions
   const getAllQuestions = () => {
-    let questions = [...baseQuestions];
+    let questions = [];
+
+    questions = [...questions, ...countryQuestion];
+    questions = [...questions, ...soilTestGatekeeperQuestion];
+
+    if (farmerDetails.hasDoneSoilTest === "Yes") {
+      questions = [...questions, ...soilTestDetailsQuestions];
+      questions = [...questions, ...fertilizerSelectionQuestions];
+    }
+    else if (farmerDetails.hasDoneSoilTest === "No") {
+      questions = [...questions, ...fertilizerQuestionsWithoutSoilTest];
+    }
+
+    questions = [...questions, cropSelectionQuestion];
 
     if (farmerDetails.crops) {
       questions = [...questions, ...getCropSpecificQuestions()];
     }
 
-    questions = [...questions, ...getPestQuestions()];
-    questions = [...questions, ...getProductionQuestions()];
-    questions = [...questions, ...getFinancialQuestions()];
-    questions = [...questions, ...challengesQuestions];
-    questions = [...questions, ...conservationQuestion]; // Updated to use combined conservation
-
-    // Soil test details ONLY if they said YES
-    if (farmerDetails.hasDoneSoilTest === "Yes") {
-      questions = [...questions, ...soilTestDetailsQuestions];
-      questions = [...questions, ...fertilizerSelectionQuestions];
-    } else {
-      questions = [...questions, ...fertilizerQuestionsWithoutSoilTest];
+    if (farmerDetails.crops) {
+      questions = [...questions, ...getProductionQuestions()];
     }
+
+    questions = [...questions, ...farmWaterQuestions];
+
+    if (farmerDetails.crops) {
+      questions = [...questions, ...getPestQuestions()];
+    }
+
+    if (farmerDetails.crops) {
+      questions = [...questions, ...getFinancialQuestions()];
+    }
+
+    questions = [...questions, ...conservationQuestion];
+    questions = [...questions, ...challengesQuestions];
+    questions = [...questions, ...personalLocationQuestions];
 
     return questions;
   };
@@ -1054,12 +1192,11 @@ const CreateInterviewAgent = ({
   const visibleQuestions = filterQuestions(allQuestions);
   const totalQuestions = visibleQuestions.length;
 
-  // Update debug info
   useEffect(() => {
     setDebugInfo(prev => ({ ...prev, totalQuestions: visibleQuestions.length }));
   }, [visibleQuestions.length]);
 
-  // Voice initialization (keep existing)
+  // Voice initialization
   useEffect(() => {
     const checkVoiceSupport = () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -1125,7 +1262,6 @@ const CreateInterviewAgent = ({
     };
   }, []);
 
-  // Karaoke streaming (keep existing)
   const streamQuestionWithVoice = async (fullText: string) => {
     if (!voiceEnabled || !window.speechSynthesis) {
       setStreamingQuestion(fullText);
@@ -1147,11 +1283,18 @@ const CreateInterviewAgent = ({
     questionWordsRef.current = words;
 
     const utterance = new SpeechSynthesisUtterance(fullText);
-    utterance.rate = 0.9;
+    utterance.rate = 0.75;
     utterance.pitch = 1.1;
 
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.name.includes('Google UK') || v.name.includes('Samantha'));
+    const preferredVoice = voices.find(v =>
+      v.name.includes('Google UK') ||
+      v.name.includes('Google') ||
+      v.name.includes('Samantha') ||
+      v.name.includes('Microsoft Jenny') ||
+      v.name.includes('Microsoft Aria') ||
+      v.name.includes('Microsoft Sonia')
+    );
     if (preferredVoice) utterance.voice = preferredVoice;
 
     setIsSpeaking(true);
@@ -1172,7 +1315,7 @@ const CreateInterviewAgent = ({
       setStreamingQuestion(fullText);
       setIsStreaming(false);
       setIsSpeaking(false);
-      setTimeout(() => safeStartListening(), 800);
+      setTimeout(() => safeStartListening(), 1500);
     };
 
     utterance.onerror = () => {
@@ -1184,32 +1327,34 @@ const CreateInterviewAgent = ({
     window.speechSynthesis.speak(utterance);
   };
 
-  // VOICE ACKNOWLEDGMENT (keep existing)
   const speakAcknowledgment = async (answer: string, fieldId: string) => {
     let acknowledgment = "";
 
     if (fieldId === "plantingFertilizerToUse") {
-      acknowledgment = `You'll buy and use ${answer} at planting. Is that correct?`;
+      acknowledgment = `You will invest in ${answer} at planting for your enterprise. Is that correct?`;
     } else if (fieldId === "topdressingFertilizerToUse") {
-      acknowledgment = `You'll buy and use ${answer} for topdressing. Is that correct?`;
+      acknowledgment = `You will invest in ${answer} for topdressing. Is that correct?`;
     } else if (fieldId === "potassiumFertilizerToUse") {
-      acknowledgment = `You'll buy and use ${answer} for potassium. Is that correct?`;
+      acknowledgment = `You will invest in ${answer} for potassium. Is that correct?`;
     } else if (fieldId === "plantingFertilizerCost" || fieldId === "topdressingFertilizerCost" || fieldId === "potassiumFertilizerCost") {
-      acknowledgment = `${answer} Ksh per bag. Is that correct?`;
+      acknowledgment = `${answer} per bag. Is that correct?`;
     } else if (fieldId === "recPlantingFertilizer") {
       acknowledgment = `Your soil test recommends ${answer} for planting. Is that correct?`;
     } else if (fieldId === "recTopdressingFertilizer") {
       acknowledgment = `Your soil test recommends ${answer} for topdressing. Is that correct?`;
     } else if (fieldId === "recPotassiumFertilizer") {
       acknowledgment = `Your soil test recommends ${answer} for potassium. Is that correct?`;
+    } else if (fieldId === "recCalciticLime") {
+      acknowledgment = `Your soil test recommends ${answer} kilograms of calcitic lime per acre. Is that correct?`;
     } else if (fieldId === "targetYield") {
       acknowledgment = `Your target yield is ${answer} bags per acre. Is that correct?`;
-    } else if (fieldId === "county") {
-      acknowledgment = `${answer} county. Is that correct?`;
+    } else if (fieldId === "country") {
+      acknowledgment = `You are in ${answer}. Is that correct?`;
+      setCountry(answer);
     } else if (fieldId === "phoneNumber") {
-      acknowledgment = `${answer}. Is that your phone number?`;
+      acknowledgment = `${selectedCountryCode} ${answer}. Is that your phone number?`;
     } else if (fieldId === "crops") {
-      acknowledgment = `You're planting ${answer}. Correct?`;
+      acknowledgment = `You are investing in ${answer} enterprise. Correct?`;
     } else if (fieldId === "plantingDate") {
       const date = new Date(answer).toLocaleDateString();
       acknowledgment = `Planting on ${date}. Is that right?`;
@@ -1218,7 +1363,7 @@ const CreateInterviewAgent = ({
     }
 
     await voiceAssistantRef.current?.speak(acknowledgment);
-    toast.success(`✅ Recorded: ${answer}`);
+    toast.success(`Recorded: ${answer}`);
   };
 
   // Initialize voice assistant
@@ -1228,7 +1373,7 @@ const CreateInterviewAgent = ({
       return;
     }
     voiceAssistantRef.current = { speak: async (text: string) => streamQuestionWithVoice(text) };
-    toast.success("🎤 Voice ready!");
+    toast.success("Voice ready!");
   }, [voiceEnabled]);
 
   const handleVoiceToggle = (enabled: boolean) => {
@@ -1236,7 +1381,6 @@ const CreateInterviewAgent = ({
     toast.success(enabled ? "Voice mode on!" : "Voice mode off");
   };
 
-  // Process answer (keep existing, but updated for new fields)
   const processAnswer = async (answer: string) => {
     if (currentStep !== "configuring") return;
 
@@ -1244,7 +1388,6 @@ const CreateInterviewAgent = ({
     let cleanAnswer = answer;
     let finalValue = cleanAnswer;
 
-    // Remove common question phrases
     const questionPhrases = [
       "what is your", "what's your", "tell me your", "your phone number is",
       "what county are you in", "you are in", "the answer is", "i said",
@@ -1270,16 +1413,16 @@ const CreateInterviewAgent = ({
     }
 
     if (currentConfig.id === "phoneNumber") {
+      cleanAnswer = cleanAnswer.replace(/\+?\d{1,3}\s?/, '').trim();
       const digits = cleanAnswer.match(/\d+/g);
       cleanAnswer = digits ? digits.join('') : cleanAnswer;
     }
 
     if (currentConfig.type === "number") {
-      const numbers = cleanAnswer.match(/\d+/g);
+      const numbers = cleanAnswer.match(/\d+\.?\d*/g);
       cleanAnswer = numbers ? numbers.join('') : "0";
     }
 
-    // Handle special cases for fertilizer names
     if (currentConfig.id.includes("rec") && currentConfig.id.includes("Fertilizer")) {
       const fertilizerMatch = cleanAnswer.match(/(NPK\s*[\d\.]+[\d\.]+[\d\.]+[^\s]*|UREA|CAN|DAP|MOP|SSP|TSP)/i);
       if (fertilizerMatch) {
@@ -1287,16 +1430,15 @@ const CreateInterviewAgent = ({
       }
     }
 
-    // Map fertilizer labels to IDs for dropdown selections
     if (currentConfig.id === "plantingFertilizerToUse") {
       finalValue = getFertilizerIdFromLabel(cleanAnswer, plantingFertilizerOptions);
-      console.log(`🌱 Mapping planting fertilizer: "${cleanAnswer}" → ID: "${finalValue}"`);
+      console.log(`Mapping planting fertilizer: "${cleanAnswer}" → ID: "${finalValue}"`);
     } else if (currentConfig.id === "topdressingFertilizerToUse") {
       finalValue = getFertilizerIdFromLabel(cleanAnswer, topdressingFertilizerOptions);
-      console.log(`🌱 Mapping topdressing fertilizer: "${cleanAnswer}" → ID: "${finalValue}"`);
+      console.log(`Mapping topdressing fertilizer: "${cleanAnswer}" → ID: "${finalValue}"`);
     } else if (currentConfig.id === "potassiumFertilizerToUse") {
       finalValue = getFertilizerIdFromLabel(cleanAnswer, potassiumFertilizerOptions);
-      console.log(`🌱 Mapping potassium fertilizer: "${cleanAnswer}" → ID: "${finalValue}"`);
+      console.log(`Mapping potassium fertilizer: "${cleanAnswer}" → ID: "${finalValue}"`);
     } else if (currentConfig.id === "subCounty") {
       const parts = cleanAnswer.split(/[.\s]+/);
       finalValue = parts[parts.length - 1].toLowerCase();
@@ -1307,6 +1449,14 @@ const CreateInterviewAgent = ({
       finalValue = cleanAnswer;
     }
 
+    if (currentConfig.id === "country" && finalValue) {
+      setCountry(finalValue);
+    }
+
+    if (currentConfig.id === "phoneNumber") {
+      finalValue = `${selectedCountryCode} ${finalValue}`;
+    }
+
     setFarmerDetails(prev => ({ ...prev, [currentConfig.id]: finalValue }));
     setLastSubmittedAnswer(cleanAnswer);
 
@@ -1315,24 +1465,23 @@ const CreateInterviewAgent = ({
 
     if (configStep < visibleQuestions.length - 1) {
       setConfigStep(prev => prev + 1);
-      setTimeout(() => askQuestion(configStep + 1), 2000);
+      setTimeout(() => askQuestion(configStep + 1), 2500);
     } else {
       setCurrentStep("generating");
       generateSession();
     }
   };
 
-  // Safe start listening
   const safeStartListening = () => {
     if (isSpeaking || isStreaming) {
-      console.log("⏳ AI is speaking, waiting to listen...");
+      console.log("AI is speaking, waiting to listen...");
       return;
     }
     if (!recognitionRef.current || isRecognitionActiveRef.current) return;
     try {
       recognitionRef.current.start();
       setDebugInfo(prev => ({ ...prev, isListening: true }));
-      console.log("🎤 Started listening for answer...");
+      console.log("Started listening for answer...");
     } catch (error) {}
   };
 
@@ -1355,17 +1504,22 @@ const CreateInterviewAgent = ({
     setConfigStep(0);
     setUserTranscript("");
     setLastSubmittedAnswer("");
+    nameUsageCountRef.current = 0;
 
-    // Reset farmer details with updated fields
     setFarmerDetails({
-      farmerName: "", phoneNumber: "", county: "", subCounty: "", ward: "", village: "",
+      country: "",
+      farmerName: "",
+      phoneCountryCode: "+254",
+      phoneNumber: "",
+      county: "", subCounty: "", ward: "", village: "",
       totalFarmSize: "", cultivatedAcres: "", waterSources: "",
       hasDoneSoilTest: "", crops: "", cropVarieties: "", cropAcres: "", season: "", plantingDate: "",
       plantingMaterial: "", plantingQuantity: "", seedSource: "", spacing: "",
       commonPests: "", pestControlMethod: "", commonDiseases: "", diseaseControlMethod: "",
-      averageHarvest: "", harvestUnit: "", pricePerUnit: "", storageMethod: "",
+      harvestUnit: "", pricePerUnit: "", storageMethod: "",
       npkCost: "", ploughingCost: "", plantingLabourCost: "", weedingCost: "",
       harvestingCost: "", transportCostPerBag: "", bagCost: "", seedCost: "",
+      calciticLimePricePerBag: "", recCalciticLime: "",
       livestockTypes: "", cattle: "", cattleBreed: "", milkYield: "",
       postHarvestPractices: "", postHarvestLosses: "", valueAddition: "", storageAccess: "",
       productionChallenges: "", marketingChallenges: "", climateChallenges: "", financialChallenges: "",
@@ -1387,13 +1541,12 @@ const CreateInterviewAgent = ({
     });
 
     await voiceAssistantRef.current.speak(
-      "Welcome! Let's set up your farm profile. Questions adapt to your answers. Speak clearly!"
+      `Welcome! Let's set up your farm enterprise profile. Questions adapt to your answers. Speak clearly! This is your business, let's make it profitable.`
     );
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1500));
     askQuestion(0);
   };
 
-  // Ask question
   const askQuestion = async (step: number) => {
     if (!voiceAssistantRef.current || step >= visibleQuestions.length) return;
     if (isSpeaking) await new Promise(resolve => setTimeout(resolve, 500));
@@ -1410,7 +1563,7 @@ const CreateInterviewAgent = ({
     if (!voiceAssistantRef.current) return;
     setIsLoading(true);
 
-    await voiceAssistantRef.current.speak("Creating your farm profile...");
+    await voiceAssistantRef.current.speak(`Creating your farm enterprise profile...`);
 
     let currentUserId = userId || localStorage.getItem('userId') || `user-${Date.now()}`;
     localStorage.setItem('userId', currentUserId);
@@ -1426,7 +1579,7 @@ const CreateInterviewAgent = ({
 
       const data = await response.json();
       if (data.success && data.sessionId) {
-        await voiceAssistantRef.current.speak(`Ready! Taking you to recommendations.`);
+        await voiceAssistantRef.current.speak(`Ready! Taking you to your personalized recommendations. Let's put more money in your pocket.`);
         setTimeout(() => window.location.href = `/interview/${data.sessionId}`, 2000);
         setCurrentStep("redirecting");
       }
@@ -1472,10 +1625,39 @@ const CreateInterviewAgent = ({
     ? `${currentWordIndex}/${questionWordsRef.current.length} words`
     : '';
 
-  // Render input
+  // Custom render for phone number input with country code
+  const renderPhoneInput = () => {
+    return (
+      <div className="flex gap-2">
+        <select
+          value={selectedCountryCode}
+          onChange={(e) => setSelectedCountryCode(e.target.value)}
+          className="px-3 py-3 border-2 rounded-xl text-blue-900 font-medium focus:border-blue-600 bg-white"
+        >
+          {countryCodes.map((cc) => (
+            <option key={cc.code} value={cc.code}>
+              {cc.flag} {cc.code} ({cc.country})
+            </option>
+          ))}
+        </select>
+        <input
+          type="tel"
+          value={userTranscript}
+          onChange={(e) => setUserTranscript(e.target.value)}
+          placeholder="712345678"
+          className="flex-1 px-4 py-3 border-2 rounded-xl text-blue-900 font-medium focus:border-blue-600 placeholder-gray-400"
+        />
+      </div>
+    );
+  };
+
   const renderInput = () => {
     const q = visibleQuestions[configStep];
     if (!q) return null;
+
+    if (q.id === "phoneNumber") {
+      return renderPhoneInput();
+    }
 
     if (q.type === "date") {
       return (
@@ -1509,6 +1691,27 @@ const CreateInterviewAgent = ({
       );
     }
 
+    if (q.type === "combobox") {
+      return (
+        <div className="relative">
+          <input
+            type="text"
+            list={q.id + "-options"}
+            value={userTranscript}
+            onChange={(e) => setUserTranscript(e.target.value)}
+            placeholder="Select or type your answer..."
+            className="w-full px-4 py-3 border-2 rounded-xl text-blue-900 font-medium focus:border-blue-600"
+          />
+          <datalist id={q.id + "-options"}>
+            {q.options?.map((opt: string) => (
+              <option key={opt} value={opt} />
+            ))}
+          </datalist>
+          <ChevronDown className="absolute right-3 top-3 w-5 h-5 text-blue-600 pointer-events-none" />
+        </div>
+      );
+    }
+
     if (q.type === "multiselect") {
       return (
         <div className="space-y-2 max-h-60 overflow-y-auto p-2 border-2 rounded-xl">
@@ -1538,6 +1741,7 @@ const CreateInterviewAgent = ({
         value={userTranscript}
         onChange={(e) => setUserTranscript(e.target.value)}
         placeholder={q.placeholder || "Type your answer here..."}
+        step={q.step || "any"}
         className="w-full px-4 py-3 border-2 rounded-xl text-blue-900 font-medium focus:border-blue-600 placeholder-gray-400"
       />
     );
@@ -1552,7 +1756,7 @@ const CreateInterviewAgent = ({
             <Image src={profileImage || "/farmer-avatar.png"} alt="Farmer" width={48} height={48} className="rounded-full ring-4" />
             <div>
               <h4 className="font-bold text-xl">{userName || "Farmer"}</h4>
-              <p className="text-sm text-gray-500">Smart Farmer</p>
+              <p className="text-sm text-gray-500">Smart Farmer • Building Your Enterprise</p>
             </div>
           </div>
           <button
@@ -1603,7 +1807,7 @@ const CreateInterviewAgent = ({
               </p>
             ) : (
               <p className="text-2xl text-gray-400 italic">
-                {isStreaming ? '🔊 Speaking...' : 'Ready for your answer...'}
+                {isStreaming ? 'Speaking...' : 'Ready for your answer...'}
               </p>
             )}
           </div>
@@ -1637,14 +1841,14 @@ const CreateInterviewAgent = ({
                     <CheckCircle className="w-4 h-4 text-blue-600" />
                     Your answer: <span className="font-bold text-blue-900">{lastSubmittedAnswer}</span>
                   </p>
-                  <p className="text-xs text-blue-600 mt-1">✓ Voice confirmation sent</p>
+                  <p className="text-xs text-blue-600 mt-1">Voice confirmation sent</p>
                 </div>
               )}
 
               {debugInfo.isListening && (
                 <div className="mt-3 p-3 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl flex items-center gap-3">
                   <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-red-600">🎤 Listening... Speak now!</span>
+                  <span className="text-sm font-medium text-red-600">Listening... Speak now!</span>
                 </div>
               )}
             </div>
@@ -1655,15 +1859,15 @@ const CreateInterviewAgent = ({
       {/* Summary Panel */}
       {currentStep === "configuring" && (
         <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-5 shadow-xl border border-purple-200">
-          <h4 className="font-bold text-lg text-purple-800">Your Farm Profile</h4>
+          <h4 className="font-bold text-lg text-purple-800">Your Farm Enterprise Profile</h4>
           <div className="grid grid-cols-2 gap-3 mt-3">
             <div className="bg-white p-2 rounded-lg border border-purple-100">
-              <span className="text-purple-600">Crop:</span>{" "}
-              <span className="font-bold text-blue-900">{farmerDetails.crops || "Not set"}</span>
+              <span className="text-purple-600">Enterprise:</span>{" "}
+              <span className="font-bold text-blue-900">{farmerDetails.crops ? `${farmerDetails.crops}` : "Not set"}</span>
             </div>
             <div className="bg-white p-2 rounded-lg border border-purple-100">
-              <span className="text-purple-600">County:</span>{" "}
-              <span className="font-bold text-blue-900">{farmerDetails.county || "Not set"}</span>
+              <span className="text-purple-600">Country:</span>{" "}
+              <span className="font-bold text-blue-900">{farmerDetails.country || "Not set"}</span>
             </div>
           </div>
           <p className="text-xs text-purple-600 mt-3">{debugInfo.currentQuestion}/{visibleQuestions.length} answered</p>
@@ -1675,26 +1879,27 @@ const CreateInterviewAgent = ({
         <div className="flex items-center gap-4">
           <Image src="/farmer-assistant.jpg" alt="AI" width={48} height={48} className="rounded-full ring-4 ring-purple-200" />
           <div>
-            <h4 className="font-bold text-purple-800">🌱 AI Assistant</h4>
+            <h4 className="font-bold text-purple-800">AI Business Assistant</h4>
             <p className="text-gray-600">
-              {currentStep === "idle" ? "Ready!" :
+              {currentStep === "idle" ? "Ready to build your profitable enterprise!" :
                currentStep === "configuring" ? `Asking ${currentSection} questions` :
                "Processing..."}
             </p>
             {debugInfo.isListening && (
-              <p className="text-sm text-blue-600 animate-pulse">🎤 Listening...</p>
+              <p className="text-sm text-blue-600 animate-pulse">Listening...</p>
             )}
             {isSpeaking && (
-              <p className="text-sm text-purple-600 animate-pulse">🔊 Speaking...</p>
+              <p className="text-sm text-purple-600 animate-pulse">Speaking...</p>
             )}
           </div>
         </div>
+        <p className="text-xs text-gray-500 mt-2 text-center">Every question builds your profitable farm enterprise.</p>
       </div>
 
       {/* Stop Button */}
       {(currentStep === "configuring" || currentStep === "generating") && (
         <button onClick={stopEverything} className="px-5 py-3 bg-gradient-to-r from-rose-500 to-red-500 text-white rounded-xl mx-auto w-48 font-medium flex items-center justify-center gap-2">
-          <span>🛑</span> Stop Setup
+          <span>Stop Setup</span>
         </button>
       )}
     </div>

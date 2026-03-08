@@ -4,12 +4,11 @@ import { db } from "@/firebase/admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { soilTestInterpreter } from "@/lib/soilTestInterpreter";
 import { fertilizerCalculator } from "@/lib/fertilizerCalculator";
-import { calculateRankedCropProfits } from "@/lib/utils/cropCalculations";
 import { generateRecommendations } from "@/lib/recommendationEngine";
 import { calculateGrossMarginFromFarmerData } from "@/lib/utils";
 import { getSpacingOptions } from "@/lib/data/spacing";
 
-console.log("🌾 Farmer Session Generation Route Loaded (100% Logic-Based)");
+console.log("Farmer Session Generation Route Loaded");
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,7 +49,6 @@ export async function POST(request: NextRequest) {
       bagCost,
       hasDoneSoilTest,
 
-      // SOIL TEST RAW VALUES
       soilTestDate,
       soilTestPH,
       soilTestPHRating,
@@ -67,8 +65,8 @@ export async function POST(request: NextRequest) {
       soilTestNa,
       soilTestNaRating,
 
-      // SOIL TEST RECOMMENDATIONS
       targetYield,
+      recCalciticLime,
       recPlantingFertilizer,
       recPlantingQuantity,
       recTopdressingFertilizer,
@@ -76,7 +74,6 @@ export async function POST(request: NextRequest) {
       recPotassiumFertilizer,
       recPotassiumQuantity,
 
-      // FERTILIZER SELECTION
       plantingFertilizerToUse,
       plantingFertilizerCost,
       topdressingFertilizerToUse,
@@ -84,12 +81,12 @@ export async function POST(request: NextRequest) {
       potassiumFertilizerToUse,
       potassiumFertilizerCost,
 
-      // RENAMED QUANTITIES
       plantingFertilizerQuantity: plantingFertilizerQuantityKg,
       topdressingFertilizerQuantity: topdressingFertilizerQuantityKg,
       potassiumFertilizerQuantity: potassiumFertilizerQuantityKg,
 
-      // SEED COST AND PRICE PER UNIT
+      calciticLimePricePerBag,
+
       seedCost,
       pricePerUnit,
 
@@ -101,7 +98,8 @@ export async function POST(request: NextRequest) {
       conservationPractices,
       useCertifiedSeed,
       seedQuantity,
-      userid
+      userid,
+      country
     } = body;
 
     if (!crops || !county || !userid) {
@@ -115,7 +113,6 @@ export async function POST(request: NextRequest) {
     const primaryCrop = cropsArray[0];
     const farmSize = parseFloat(cropAcres) || parseFloat(acres) || 1;
 
-    // ========== GET SPACING INFORMATION ==========
     let spacingInfo = null;
     if (spacing && primaryCrop) {
       const spacingOptions = getSpacingOptions(primaryCrop);
@@ -131,7 +128,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ========== SOIL TEST ANALYSIS ==========
     let soilAnalysis = null;
     let fertilizerPlan = null;
 
@@ -147,6 +143,7 @@ export async function POST(request: NextRequest) {
           sodium: parseFloat(soilTestNa) || 0,
           totalNitrogen: parseFloat(soilTestNPercent) || 0,
           targetYield: targetYield ? parseFloat(targetYield) : null,
+          recCalciticLime: recCalciticLime ? parseFloat(recCalciticLime) : null,
           recPlantingFertilizer: recPlantingFertilizer || null,
           recPlantingQuantity: recPlantingQuantity ? parseFloat(recPlantingQuantity) : null,
           recTopdressingFertilizer: recTopdressingFertilizer || null,
@@ -179,7 +176,8 @@ export async function POST(request: NextRequest) {
               potassiumCost: potassiumFertilizerCost ? parseFloat(potassiumFertilizerCost) : 0
             },
             farmSize,
-            spacingInfo
+            spacingInfo,
+            country || 'kenya'
           );
         }
       } catch (error) {
@@ -187,24 +185,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ========== GENERATE RECOMMENDATIONS ==========
-    const recommendations = generateRecommendations({
-      hasSoilTest: hasDoneSoilTest === "Yes",
-      soilAnalysis,
-      fertilizerPlan,
-      crop: primaryCrop,
-      crops: cropsArray,
-      farmerData: {
-        usePlantingFertilizer,
-        useTopdressingFertilizer,
-        conservationPractices,
-        commonPests,
-        commonDiseases,
-        managementLevel: "Medium"
-      }
-    });
-
-    // ========== CALCULATE GROSS MARGIN ==========
     let grossMargin = null;
     try {
       const grossMarginInput = {
@@ -229,14 +209,33 @@ export async function POST(request: NextRequest) {
         bagCost: parseFloat(bagCost) || 40
       };
 
-      console.log("📊 Gross Margin Input:", grossMarginInput);
       grossMargin = calculateGrossMarginFromFarmerData(grossMarginInput);
-      console.log("💰 Gross Margin Result:", grossMargin);
     } catch (error) {
       console.error("Error calculating gross margin:", error);
     }
 
-    // ========== SAVE TO FIREBASE ==========
+    const recommendations = generateRecommendations({
+      hasSoilTest: hasDoneSoilTest === "Yes",
+      soilAnalysis,
+      fertilizerPlan,
+      crop: primaryCrop,
+      crops: cropsArray,
+      farmerData: {
+        usePlantingFertilizer,
+        useTopdressingFertilizer,
+        conservationPractices,
+        commonPests,
+        commonDiseases,
+        managementLevel: "Medium",
+        actualYield: parseFloat(actualYield) || parseFloat(averageHarvest) || 27,
+        pricePerUnit: parseFloat(pricePerUnit) || 6750,
+        totalCosts: grossMargin?.totalCosts || 52290,
+        country: country || 'kenya',
+        limePricePerBag: calciticLimePricePerBag ? parseFloat(calciticLimePricePerBag) : 300,
+        recCalciticLime: recCalciticLime ? parseFloat(recCalciticLime) : 0
+      }
+    });
+
     const sessionRef = db.collection("farmer_sessions").doc();
     const sessionId = sessionRef.id;
 
@@ -249,6 +248,7 @@ export async function POST(request: NextRequest) {
       subCounty,
       ward,
       village,
+      country: country || 'kenya',
       totalFarmSize: totalFarmSize ? parseFloat(totalFarmSize) : null,
       cultivatedAcres: farmSize,
       waterSources: waterSources ? waterSources.split(',') : [],
@@ -301,6 +301,9 @@ export async function POST(request: NextRequest) {
 
       conservationPractices,
 
+      limePricePerBag: calciticLimePricePerBag ? parseFloat(calciticLimePricePerBag) : null,
+      recCalciticLime: recCalciticLime ? parseFloat(recCalciticLime) : null,
+
       soilTest: hasDoneSoilTest === "Yes" ? {
         testDate: soilTestDate,
         ph: soilTestPH ? parseFloat(soilTestPH) : null,
@@ -318,6 +321,7 @@ export async function POST(request: NextRequest) {
         sodium: soilTestNa ? parseFloat(soilTestNa) : null,
         sodiumRating: soilTestNaRating,
         targetYield: targetYield ? parseFloat(targetYield) : null,
+        recCalciticLime: recCalciticLime ? parseFloat(recCalciticLime) : null,
         recPlantingFertilizer: recPlantingFertilizer || null,
         recPlantingQuantity: recPlantingQuantity ? parseFloat(recPlantingQuantity) : null,
         recTopdressingFertilizer: recTopdressingFertilizer || null,
@@ -343,7 +347,6 @@ export async function POST(request: NextRequest) {
       recommendations: recommendations.list,
       financialAdvice: recommendations.financialAdvice,
 
-      // ✅ CRITICAL: Save gross margin analysis
       grossMarginAnalysis: grossMargin,
 
       createdAt: new Date().toISOString(),
@@ -352,7 +355,7 @@ export async function POST(request: NextRequest) {
     };
 
     await sessionRef.set(farmerSession);
-    console.log(`✅ Saved farmer session ${sessionId}`);
+    console.log(`Saved farmer session ${sessionId}`);
 
     return NextResponse.json({
       success: true,
@@ -360,7 +363,7 @@ export async function POST(request: NextRequest) {
       grossMarginAnalysis: grossMargin,
       financialAdvice: recommendations.financialAdvice,
       sessionId: sessionId,
-      welcomeMessage: `🌾 Welcome ${farmerName || "Farmer"}! I've prepared your recommendations.`
+      welcomeMessage: `Welcome ${farmerName || "Farmer"}! I've prepared your recommendations.`
     }, { status: 200 });
 
   } catch (error: any) {
@@ -375,6 +378,6 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     status: "operational",
-    message: "🌾 Farmer Session Generation API"
+    message: "Farmer Session Generation API"
   });
 }

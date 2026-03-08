@@ -1,4 +1,4 @@
-// lib/voice/VoiceService.ts - COMPLETE FIXED VERSION WITH ECHO CANCELLATION
+// lib/voice/VoiceService.ts - COMPLETE FIXED VERSION WITH ECHO CANCELLATION & FARMER NAME
 "use client";
 
 import { toast } from "sonner";
@@ -26,6 +26,7 @@ interface VoiceServiceConfig {
   language?: string;
   speechRate?: number;
   speechVolume?: number;
+  farmerName?: string;
 }
 
 export class VoiceService {
@@ -47,8 +48,10 @@ export class VoiceService {
   private useHumanization: boolean = true;
   private isMicrophoneActive: boolean = false;
   private manualStop: boolean = false;
+  private farmerName: string = "";
+  private nameUsageCount: number = 0; // ADDED: Counter for name usage frequency
 
-  // ============ NEW: Echo cancellation flags ============
+  // Echo cancellation flags
   private isAISpeaking: boolean = false;
   private lastUserTranscript: string = "";
   private postSpeechTimeout: NodeJS.Timeout | null = null;
@@ -67,15 +70,16 @@ export class VoiceService {
     this.interviewId = config.interviewId;
     this.userId = config.userId;
     this.type = config.type;
+    this.farmerName = config.farmerName || "Farmer";
 
-    console.log("🎤 VoiceService: Initialized");
+    console.log(`VoiceService: Initialized for farmer: ${this.farmerName}`);
 
     this.speechToText = new SpeechToText();
     this.textToSpeech = new TextToSpeech({
       language: config.language || 'en-US',
-      rate: config.speechRate || 0.9,
+      rate: config.speechRate || 0.85, // SLOWER (was 0.8)
       volume: config.speechVolume || 0.9,
-      pitch: 1.05
+      pitch: 1.1
     });
 
     if (this.speechToText) {
@@ -83,9 +87,8 @@ export class VoiceService {
       this.speechToText.setLanguage(config.language || 'en-US');
       this.speechToText.setInterviewMode(true);
 
-      console.log("🌐 VoiceService: SpeechToText initialized");
+      console.log("VoiceService: SpeechToText initialized");
 
-      // Immediate permission check
       setTimeout(() => {
         this.speechToText?.checkMicrophonePermissions().then(granted => {
           if (!granted) {
@@ -96,14 +99,82 @@ export class VoiceService {
     }
   }
 
-  // ============ ENHANCED: Handle user transcript with AI speech filtering ============
-  private handleUserTranscript = (text: string, isFinal: boolean): void => {
-    console.log(`📝 Transcript: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}", isFinal: ${isFinal}`);
+  // Method to set farmer name
+  public setFarmerName(name: string): void {
+    this.farmerName = name;
+    this.nameUsageCount = 0; // Reset counter
+    console.log(`Farmer name set to: ${name}`);
+  }
 
-    // ============ NEW: Filter out AI speech ============
-    const lowerText = text.toLowerCase();
+  // Personalize text with farmer name - REDUCED FREQUENCY
+  private personalizeText(text: string): string {
+    if (!this.farmerName) return text;
+
+    this.nameUsageCount++;
+
+    // Use name only every 3rd time
+    const nameToUse = this.nameUsageCount % 3 === 0 ? this.farmerName : 'you';
+    const possessiveName = this.nameUsageCount % 3 === 0 ? `${this.farmerName}'s` : 'your';
+
+    let personalized = text
+      .replace(/\b(?:farmer|user)\b/gi, nameToUse)
+      .replace(/\byour\b/gi, possessiveName)
+      .replace(/\byou\b/gi, nameToUse);
+
+    return personalized;
+  }
+
+  // Business-focused voice messages - WITHOUT EMOJIS
+  private addBusinessFlavor(text: string): string {
+    const businessPhrases = [
+      `Remember, this is your business. `,
+      `Think profit. `,
+      `Produce more with less. `,
+      `More money in your pocket. `,
+      `This is your enterprise. `,
+      `Every shilling counts. `,
+      `Make every shilling work for you. `,
+      `Your farm is an investment. `,
+      `Maximize your returns. `,
+    ];
+
+    if (text.includes('investment') || text.includes('cost') || text.includes('profit') ||
+        text.includes('margin') || text.includes('recommendation')) {
+      const randomPhrase = businessPhrases[Math.floor(Math.random() * businessPhrases.length)];
+      return randomPhrase + text;
+    }
+
+    return text;
+  }
+
+  // Clean text of emojis and formatting
+  private cleanText(text: string): string {
+    return text
+      .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
+      .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
+      .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
+      .replace(/[\u{2600}-\u{26FF}]/gu, '')
+      .replace(/[\u{2700}-\u{27BF}]/gu, '')
+      .replace(/\*\*\*/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/#{1,6}\s?/g, '')
+      .replace(/_/g, '')
+      .replace(/~/g, '')
+      .replace(/`/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Handle user transcript with AI speech filtering
+  private handleUserTranscript = (text: string, isFinal: boolean): void => {
+    console.log(`Transcript: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}", isFinal: ${isFinal}`);
+
+    const cleanedText = this.cleanText(text);
+    const lowerText = cleanedText.toLowerCase();
+
     const isLikelyAISpeech =
-      this.isAISpeaking || // AI is currently speaking
+      this.isAISpeaking ||
       lowerText.includes('recommendation') ||
       lowerText.includes('soil testing') ||
       lowerText.includes('terracing') ||
@@ -118,26 +189,23 @@ export class VoiceService {
       lowerText.includes('hmm') ||
       lowerText.includes('interesting') ||
       lowerText.includes('monitor for pests') ||
-      lowerText.includes('download agricultural apps') ||
-      text === this.lastUserTranscript; // Prevent duplicates
+      lowerText === this.lastUserTranscript;
 
     if (isLikelyAISpeech) {
-      console.log("🚫 Ignoring likely AI speech:", text.substring(0, 50));
+      console.log("Ignoring likely AI speech");
       return;
     }
 
-    // This is real user speech - update transcript
-    console.log("🎤 User speech detected:", text.substring(0, 50));
-    this.lastUserTranscript = text;
-    this.updateState({ transcript: text });
+    console.log("User speech detected");
+    this.lastUserTranscript = cleanedText;
+    this.updateState({ transcript: cleanedText });
 
     if (!this.isActive || !this.isMicrophoneActive) {
-      console.log("⏸️ Not active, but transcript saved:", text.substring(0, 30));
       return;
     }
 
     if (isFinal) {
-      console.log("✅ Final transcript captured");
+      console.log("Final transcript captured");
     }
   };
 
@@ -150,11 +218,11 @@ export class VoiceService {
 
   public setInterviewQuestions(questions: string[]): void {
     this.interviewQuestions = questions;
-    console.log("📋 Set", questions.length, "questions");
+    console.log("Set", questions.length, "questions");
   }
 
   public async startInterview(): Promise<void> {
-    console.log("🎬 Starting interview");
+    console.log("Starting interview");
 
     if (this.interviewQuestions.length === 0) {
       throw new Error("No interview questions set");
@@ -164,38 +232,38 @@ export class VoiceService {
     this.manualStop = false;
     this.currentQuestionIndex = 0;
     this.messages = [];
+    this.nameUsageCount = 0;
     this.updateState({
       isProcessing: true,
       transcript: ""
     });
 
     try {
-      await this.speak("Interview starting...");
+      await this.speak(`Welcome! Let's start your farm interview. Remember, this is your business.`);
       await this.delay(1000);
       await this.askCurrentQuestion();
     } catch (error: any) {
-      console.error("❌ Failed to start:", error);
+      console.error("Failed to start:", error);
       this.handleError(error.message);
     }
   }
 
   private async askCurrentQuestion(): Promise<void> {
-    console.log(`📢 askCurrentQuestion: index=${this.currentQuestionIndex}, total=${this.interviewQuestions.length}, isActive=${this.isActive}`);
+    console.log(`askCurrentQuestion: index=${this.currentQuestionIndex}, total=${this.interviewQuestions.length}`);
 
     if (!this.isActive) {
-      console.log("⏸️ Not active, returning");
+      console.log("Not active, returning");
       return;
     }
 
     if (this.currentQuestionIndex >= this.interviewQuestions.length) {
-      console.log("🎯🎯🎯 COMPLETION CONDITION MET! 🎯🎯🎯");
-      console.log(`   Index: ${this.currentQuestionIndex}, Total: ${this.interviewQuestions.length}`);
+      console.log("COMPLETION CONDITION MET");
       await this.completeInterview();
       return;
     }
 
     const question = this.interviewQuestions[this.currentQuestionIndex];
-    console.log(`❓ Asking question ${this.currentQuestionIndex + 1}:`, question.substring(0, 50));
+    console.log(`Asking question ${this.currentQuestionIndex + 1}`);
 
     const questionMessage: VoiceMessage = {
       role: "assistant",
@@ -211,22 +279,20 @@ export class VoiceService {
     await this.startListening();
   }
 
-  // ============ ENHANCED: Start listening with AI speaking check ============
+  // Start listening with AI speaking check
   private async startListening(): Promise<void> {
-    console.log(`👂 Start listening for question ${this.currentQuestionIndex + 1}`);
+    console.log(`Start listening for question ${this.currentQuestionIndex + 1}`);
 
     if (!this.isActive || !this.speechToText) {
-      console.log("⏸️ Cannot start listening");
+      console.log("Cannot start listening");
       return;
     }
 
-    // Don't start if AI is speaking
     if (this.isAISpeaking) {
-      console.log("🔇 Not starting listening - AI is speaking");
+      console.log("Not starting listening - AI is speaking");
       return;
     }
 
-    // Stop any existing session
     try {
       if (this.speechToText.getIsListening()) {
         this.speechToText.stop();
@@ -242,23 +308,23 @@ export class VoiceService {
     this.isMicrophoneActive = true;
     this.manualStop = false;
 
-    toast.info(`🎤 Question ${this.currentQuestionIndex + 1} - Speak your answer`);
+    toast.info(`Question ${this.currentQuestionIndex + 1} - Speak your answer`);
 
     try {
       this.speechToText.clearTranscript();
       await this.speechToText.start();
-      console.log("✅ Listening started successfully");
+      console.log("Listening started successfully");
     } catch (error: any) {
-      console.error("❌ Failed to start listening:", error);
+      console.error("Failed to start listening:", error);
       this.updateState({ isListening: false });
       this.isMicrophoneActive = false;
       toast.error("Microphone access failed. Please check permissions.");
     }
   }
 
-  // ============ NEW: Public method to stop listening ============
+  // Public method to stop listening
   public stopListening(): void {
-    console.log("🛑 VoiceService: Stopping listening");
+    console.log("VoiceService: Stopping listening");
 
     if (this.autoRestartTimeout) {
       clearTimeout(this.autoRestartTimeout);
@@ -283,23 +349,21 @@ export class VoiceService {
     this.autoRestartAttempts = 0;
   }
 
-  // ============ NEW: Listen for question with AI speaking check ============
+  // Listen for question with AI speaking check
   public async listenForQuestion(): Promise<void> {
-    console.log("👂 Listening for farmer question");
+    console.log("Listening for farmer question");
 
     if (!this.isActive || !this.speechToText) {
-      console.log("⏸️ Cannot start listening");
+      console.log("Cannot start listening");
       return;
     }
 
-    // Don't start if AI is speaking
     if (this.isAISpeaking) {
-      console.log("🔇 Not starting listening - AI is speaking");
+      console.log("Not starting listening - AI is speaking");
       toast.info("Please wait for AI to finish speaking");
       return;
     }
 
-    // Stop any existing session
     try {
       if (this.speechToText.getIsListening()) {
         this.speechToText.stop();
@@ -315,14 +379,14 @@ export class VoiceService {
     this.isMicrophoneActive = true;
     this.manualStop = false;
 
-    toast.info("🎤 Listening for your question...");
+    toast.info(`Listening for your question...`);
 
     try {
       this.speechToText.clearTranscript();
       await this.speechToText.start();
-      console.log("✅ Listening started successfully");
+      console.log("Listening started successfully");
     } catch (error: any) {
-      console.error("❌ Failed to start listening:", error);
+      console.error("Failed to start listening:", error);
       this.updateState({ isListening: false });
       this.isMicrophoneActive = false;
       toast.error("Microphone access failed. Please check permissions.");
@@ -344,14 +408,13 @@ export class VoiceService {
   }
 
   public async submitAnswer(): Promise<void> {
-    console.log(`✅ Submit answer for question ${this.currentQuestionIndex + 1}`);
+    console.log(`Submit answer for question ${this.currentQuestionIndex + 1}`);
 
     if (!this.isActive) {
       toast.error("Interview not active");
       return;
     }
 
-    // Stop listening
     this.isMicrophoneActive = false;
     this.manualStop = true;
     this.speechToText?.stop();
@@ -360,44 +423,38 @@ export class VoiceService {
     const answerText = this.state.transcript.trim();
 
     if (!answerText) {
-      console.log("⚠️ No answer to submit");
+      console.log("No answer to submit");
       toast.warning("Please speak an answer first");
 
-      // Resume listening
       this.isMicrophoneActive = true;
       this.manualStop = false;
       await this.startListening();
       return;
     }
 
-    // 🔥 FIX: Prevent empty or very short answers
     if (answerText.length < 3) {
-      console.log("⚠️ Answer too short, please speak more");
-      toast.warning("Please provide a longer answer (at least 3 words)");
+      console.log("Answer too short");
+      toast.warning("Please provide a longer answer");
 
-      // Resume listening
       this.isMicrophoneActive = true;
       this.manualStop = false;
       await this.startListening();
       return;
     }
 
-    // Check word count (optional but recommended)
     const wordCount = answerText.split(/\s+/).length;
     if (wordCount < 3) {
-      console.log("⚠️ Answer too short - only", wordCount, "words");
-      toast.warning("Please provide a more detailed answer (at least 3 words)");
+      console.log("Answer too short - only", wordCount, "words");
+      toast.warning("Please provide a more detailed answer");
 
-      // Resume listening
       this.isMicrophoneActive = true;
       this.manualStop = false;
       await this.startListening();
       return;
     }
 
-    console.log(`📤 Submitting answer (${answerText.length} chars, ${wordCount} words):`, answerText.substring(0, 50));
+    console.log(`Submitting answer (${answerText.length} chars, ${wordCount} words)`);
 
-    // Save answer
     const answerMessage: VoiceMessage = {
       role: "user",
       content: answerText,
@@ -406,22 +463,19 @@ export class VoiceService {
     this.messages.push(answerMessage);
     this.onUpdateCallback?.(this.messages);
 
-    toast.success(`✅ Answer ${this.currentQuestionIndex + 1} submitted`);
+    toast.success(`Thanks! Answer submitted`);
 
-    await this.speak("Thank you.");
+    await this.speak(`Thank you. Good answer.`);
     await this.delay(800);
 
-    // Move to next question
     this.currentQuestionIndex++;
-
-    // Clear transcript AFTER saving
     this.updateState({ transcript: "" });
 
     await this.askCurrentQuestion();
   }
 
   public async skipQuestion(): Promise<void> {
-    console.log(`⏭️ Skip question ${this.currentQuestionIndex + 1}`);
+    console.log(`Skip question ${this.currentQuestionIndex + 1}`);
 
     if (!this.isActive) return;
 
@@ -438,9 +492,9 @@ export class VoiceService {
     this.messages.push(skipMessage);
     this.onUpdateCallback?.(this.messages);
 
-    toast.info(`⏭️ Question ${this.currentQuestionIndex + 1} skipped`);
+    toast.info(`Question ${this.currentQuestionIndex + 1} skipped`);
 
-    await this.speak("Question skipped.");
+    await this.speak(`No problem. Moving on.`);
     await this.delay(800);
 
     this.currentQuestionIndex++;
@@ -449,22 +503,10 @@ export class VoiceService {
   }
 
   private async completeInterview(): Promise<void> {
-    console.log("🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁");
-    console.log("🏁 COMPLETE INTERVIEW CALLED! 🏁");
-    console.log("🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁🏁");
-    console.log("📊 State:", {
-      isActive: this.isActive,
-      interviewId: this.interviewId,
-      userId: this.userId,
-      currentQuestionIndex: this.currentQuestionIndex,
-      totalQuestions: this.interviewQuestions.length,
-      messagesCount: this.messages.length,
-      userMessages: this.messages.filter(m => m.role === 'user').length,
-      hasCallback: !!this.onCompleteCallback
-    });
+    console.log("COMPLETE INTERVIEW CALLED");
 
     if (!this.isActive) {
-      console.log("⏸️ Not active, cannot complete");
+      console.log("Not active, cannot complete");
       return;
     }
 
@@ -479,10 +521,10 @@ export class VoiceService {
       isProcessing: true
     });
 
-    await this.speak("Interview completed.");
+    await this.speak(`Great job! Interview completed. Now let's look at how to put more money in your pocket with your farm enterprise.`);
 
     const userAnswers = this.messages.filter(m => m.role === 'user');
-    console.log(`📊 Interview completed with ${userAnswers.length} answers`);
+    console.log(`Interview completed with ${userAnswers.length} answers`);
 
     const completionData = {
       success: true,
@@ -496,103 +538,77 @@ export class VoiceService {
       fallback: false
     };
 
-    console.log("📦 Completion data prepared:", completionData);
-
-    // 🔥 CRITICAL: Call the callback IMMEDIATELY with loud logging
     if (this.onCompleteCallback) {
-      console.log("📞📞📞 CALLING ONCOMPLETE CALLBACK! 📞📞📞");
-      console.log("   Callback function exists, executing now...");
+      console.log("CALLING ONCOMPLETE CALLBACK");
       this.onCompleteCallback(completionData);
-      console.log("✅ ONCOMPLETE CALLBACK EXECUTED");
-    } else {
-      console.error("❌❌❌ NO ONCOMPLETE CALLBACK REGISTERED! ❌❌❌");
-      console.error("   This is why Agent.tsx never receives completion!");
-
-      // Try again after a delay (in case callback is registered late)
-      console.log("⏰ Will retry callback in 500ms...");
-      setTimeout(() => {
-        if (this.onCompleteCallback) {
-          console.log("📞📞📞 CALLING ONCOMPLETE CALLBACK (DELAYED)! 📞📞📞");
-          this.onCompleteCallback(completionData);
-          console.log("✅ DELAYED CALLBACK EXECUTED");
-        } else {
-          console.error("❌❌❌ STILL NO CALLBACK AFTER DELAY! ❌❌❌");
-          console.error("   Check that Agent.tsx registers onComplete BEFORE startInterview");
-        }
-      }, 500);
+      console.log("ONCOMPLETE CALLBACK EXECUTED");
     }
 
     this.updateState({ isProcessing: false });
-    console.log("✅ Interview completion process finished");
+    console.log("Interview completion process finished");
   }
 
-  // ============ ENHANCED: speak method with AI speaking flag ============
+  // speak method with AI speaking flag
   private async speak(text: string): Promise<void> {
     if (!this.textToSpeech) {
-      console.log("🤖 AI:", text);
+      console.log("AI:", text);
       return;
     }
 
-    // Set AI speaking flag
-    this.isAISpeaking = true;
+    const cleanedText = this.cleanText(text);
+    let personalizedText = this.personalizeText(cleanedText);
+    personalizedText = this.addBusinessFlavor(personalizedText);
 
-    // Stop listening while speaking
+    this.isAISpeaking = true;
     this.stopListening();
 
     this.updateState({ isSpeaking: true });
 
     try {
-      await this.textToSpeech.speak(text);
+      await this.textToSpeech.speak(personalizedText);
     } catch (error) {
-      console.log("🤖 AI (fallback):", text);
+      console.log("AI (fallback):", personalizedText);
     } finally {
       this.updateState({ isSpeaking: false });
       this.isAISpeaking = false;
-
-      // Schedule restart of listening after AI finishes
       this.schedulePostSpeechListening();
     }
   }
 
-  // ============ ENHANCED: Streaming speak method with AI speaking flag ============
+  // Streaming speak method with AI speaking flag
   public async speakStreaming(text: string): Promise<void> {
     if (!this.textToSpeech) {
-      console.log("🤖 AI:", text);
+      console.log("AI:", text);
       return;
     }
 
-    // Set AI speaking flag
-    this.isAISpeaking = true;
+    const cleanedText = this.cleanText(text);
+    let personalizedText = this.personalizeText(cleanedText);
+    personalizedText = this.addBusinessFlavor(personalizedText);
 
-    // Stop listening while speaking
+    this.isAISpeaking = true;
     this.stopListening();
 
     this.updateState({ isSpeaking: true });
 
     try {
-      // Split into sentences for natural streaming
-      const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+      const sentences = personalizedText.match(/[^.!?]+[.!?]+/g) || [personalizedText];
 
       for (const sentence of sentences) {
-        if (!this.isActive && this.type !== "review") break; // Allow streaming even when not in active mode for recommendations
-
+        if (!this.isActive && this.type !== "review") break;
         await this.textToSpeech.speak(sentence);
-
-        // Small pause between sentences
-        await this.delay(300);
+        await this.delay(500);
       }
     } catch (error) {
-      console.log("🤖 AI (fallback):", text);
+      console.log("AI (fallback):", personalizedText);
     } finally {
       this.updateState({ isSpeaking: false });
       this.isAISpeaking = false;
-
-      // Schedule restart of listening after AI finishes
       this.schedulePostSpeechListening();
     }
   }
 
-  // ============ NEW: Schedule listening after AI speech ============
+  // Schedule listening after AI speech
   private schedulePostSpeechListening(): void {
     if (this.postSpeechTimeout) {
       clearTimeout(this.postSpeechTimeout);
@@ -600,7 +616,7 @@ export class VoiceService {
 
     this.postSpeechTimeout = setTimeout(() => {
       if (!this.isAISpeaking && this.isActive && !this.manualStop) {
-        console.log("🎤 Restarting listening after AI speech");
+        console.log("Restarting listening after AI speech");
         if (this.type === "review" || this.currentQuestionIndex < this.interviewQuestions.length) {
           this.startListening().catch(err => {
             console.error("Failed to restart listening:", err);
@@ -608,40 +624,38 @@ export class VoiceService {
         }
       }
       this.postSpeechTimeout = null;
-    }, 1000); // 1 second delay to prevent catching echo
+    }, 1500);
   }
 
-  // ============ NEW: Speak recommendations one by one ============
+  // Speak recommendations one by one
   public async speakRecommendations(recommendations: string[]): Promise<void> {
     if (!recommendations || recommendations.length === 0) return;
 
-    // Speak intro
-    await this.speakStreaming("I have prepared some personalized recommendations for your farm. Let me read them to you.");
-    await this.delay(1000);
+    await this.speakStreaming(`I have prepared personalized recommendations for your farm enterprise. Let me read them to you.`);
+    await this.delay(1500);
 
-    // Speak each recommendation with a pause
     for (let i = 0; i < recommendations.length; i++) {
       const rec = recommendations[i];
       await this.speakStreaming(`Recommendation ${i + 1}: ${rec}`);
-      await this.delay(800);
+      await this.delay(1000);
     }
 
-    await this.speakStreaming("You can now ask me any questions about your farm. Just speak clearly and press the submit button.");
+    await this.speakStreaming(`You can now ask me any questions about your farm. Remember, produce more with less - put more money in your pocket.`);
   }
 
-  // ============ NEW: Start farmer session ============
+  // Start farmer session
   public async startFarmerSession(sessionData: any): Promise<void> {
-    console.log("🌾 Starting farmer session");
+    console.log(`Starting farmer session for ${this.farmerName}`);
 
     this.isActive = true;
     this.manualStop = false;
     this.messages = [];
+    this.nameUsageCount = 0;
     this.updateState({
       isProcessing: false,
       transcript: ""
     });
 
-    // Just set active state - recommendations will be spoken by Agent
     this.updateState({ isSpeaking: false, isListening: false });
   }
 
@@ -655,20 +669,19 @@ export class VoiceService {
   }
 
   private handleError(error: string): void {
-    console.error("❌ Error:", error);
+    console.error("Error:", error);
     this.state.error = error;
     this.isActive = false;
     this.isMicrophoneActive = false;
   }
 
   public stop(): void {
-    console.log("🛑 Stopping");
+    console.log("Stopping");
     this.isActive = false;
     this.isMicrophoneActive = false;
     this.manualStop = true;
     this.isAISpeaking = false;
 
-    // Clear timeouts
     if (this.autoRestartTimeout) {
       clearTimeout(this.autoRestartTimeout);
       this.autoRestartTimeout = null;
@@ -701,12 +714,12 @@ export class VoiceService {
   }
 
   public onComplete(callback: (data: any) => void): void {
-    console.log("📞 onComplete callback REGISTERED in VoiceService");
+    console.log("onComplete callback REGISTERED in VoiceService");
     this.onCompleteCallback = callback;
   }
 
   public destroy(): void {
-    console.log("🗑️ Destroying");
+    console.log("Destroying");
     this.stop();
     this.speechToText?.destroy();
     this.textToSpeech?.destroy();
@@ -717,11 +730,9 @@ export class VoiceService {
     this.interviewQuestions = [];
   }
 
-  // ============ NEW: Getter for AI speaking state ============
   public getIsAISpeaking(): boolean {
     return this.isAISpeaking;
   }
 }
 
-// ✅ CRITICAL: This line MUST be here!
 export default VoiceService;
