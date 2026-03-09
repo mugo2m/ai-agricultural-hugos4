@@ -1,9 +1,10 @@
-// lib/voice/VoiceService.ts - COMPLETE FIXED VERSION WITH ECHO CANCELLATION & FARMER NAME
+// lib/voice/VoiceService.ts - ADD LANGUAGE SUPPORT
 "use client";
 
 import { toast } from "sonner";
 import SpeechToText from "./speechToText";
 import TextToSpeech from "./textToSpeech";
+import { getLanguageFromCountry } from "@/lib/config/language";
 
 export interface VoiceMessage {
   role: "user" | "assistant";
@@ -24,6 +25,7 @@ interface VoiceServiceConfig {
   userId: string;
   type: "practice" | "review";
   language?: string;
+  country?: string; // ADDED: country for language detection
   speechRate?: number;
   speechVolume?: number;
   farmerName?: string;
@@ -49,9 +51,10 @@ export class VoiceService {
   private isMicrophoneActive: boolean = false;
   private manualStop: boolean = false;
   private farmerName: string = "";
-  private nameUsageCount: number = 0; // ADDED: Counter for name usage frequency
+  private country: string = "";
+  private language: string = 'en-US';
+  private nameUsageCount: number = 0;
 
-  // Echo cancellation flags
   private isAISpeaking: boolean = false;
   private lastUserTranscript: string = "";
   private postSpeechTimeout: NodeJS.Timeout | null = null;
@@ -71,23 +74,27 @@ export class VoiceService {
     this.userId = config.userId;
     this.type = config.type;
     this.farmerName = config.farmerName || "Farmer";
+    this.country = config.country || 'kenya';
 
-    console.log(`VoiceService: Initialized for farmer: ${this.farmerName}`);
+    // Set language based on country or provided language
+    this.language = config.language || getLanguageFromCountry(this.country);
+
+    console.log(`VoiceService: Initialized for farmer: ${this.farmerName} (Country: ${this.country}, Language: ${this.language})`);
 
     this.speechToText = new SpeechToText();
     this.textToSpeech = new TextToSpeech({
-      language: config.language || 'en-US',
-      rate: config.speechRate || 0.85, // SLOWER (was 0.8)
-      volume: config.speechVolume || 0.9,
+      language: this.language,
+      rate: config.speechRate || 0.75,
+      volume: config.speechVolume || 1.0,
       pitch: 1.1
     });
 
     if (this.speechToText) {
-      this.speechToText.onTranscript(this.handleUserTranscript.bind(this));
-      this.speechToText.setLanguage(config.language || 'en-US');
+      this.speechToText.onResult(this.handleUserTranscript.bind(this));
+      this.speechToText.setLanguage(this.language);
       this.speechToText.setInterviewMode(true);
 
-      console.log("VoiceService: SpeechToText initialized");
+      console.log(`VoiceService: SpeechToText initialized with language: ${this.language}`);
 
       setTimeout(() => {
         this.speechToText?.checkMicrophonePermissions().then(granted => {
@@ -99,32 +106,41 @@ export class VoiceService {
     }
   }
 
-  // Method to set farmer name
+  // Method to set country and update language
+  public setCountry(country: string): void {
+    this.country = country;
+    this.language = getLanguageFromCountry(country);
+
+    if (this.speechToText) {
+      this.speechToText.setLanguage(this.language);
+    }
+    if (this.textToSpeech) {
+      this.textToSpeech.setLanguage(this.language);
+    }
+
+    console.log(`VoiceService: Country set to ${country}, language updated to ${this.language}`);
+  }
+
   public setFarmerName(name: string): void {
     this.farmerName = name;
-    this.nameUsageCount = 0; // Reset counter
+    this.nameUsageCount = 0;
     console.log(`Farmer name set to: ${name}`);
   }
 
-  // Personalize text with farmer name - REDUCED FREQUENCY
   private personalizeText(text: string): string {
     if (!this.farmerName) return text;
 
     this.nameUsageCount++;
-
-    // Use name only every 3rd time
-    const nameToUse = this.nameUsageCount % 3 === 0 ? this.farmerName : 'you';
-    const possessiveName = this.nameUsageCount % 3 === 0 ? `${this.farmerName}'s` : 'your';
+    const useName = this.nameUsageCount % 3 === 0;
 
     let personalized = text
-      .replace(/\b(?:farmer|user)\b/gi, nameToUse)
-      .replace(/\byour\b/gi, possessiveName)
-      .replace(/\byou\b/gi, nameToUse);
+      .replace(/\b(?:farmer|user)\b/gi, useName ? this.farmerName : 'the farmer')
+      .replace(/\byour\b/gi, useName ? `the ${this.farmerName}'s` : 'your')
+      .replace(/\byou\b/gi, useName ? this.farmerName : 'you');
 
     return personalized;
   }
 
-  // Business-focused voice messages - WITHOUT EMOJIS
   private addBusinessFlavor(text: string): string {
     const businessPhrases = [
       `Remember, this is your business. `,
@@ -147,7 +163,6 @@ export class VoiceService {
     return text;
   }
 
-  // Clean text of emojis and formatting
   private cleanText(text: string): string {
     return text
       .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
@@ -166,7 +181,6 @@ export class VoiceService {
       .trim();
   }
 
-  // Handle user transcript with AI speech filtering
   private handleUserTranscript = (text: string, isFinal: boolean): void => {
     console.log(`Transcript: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}", isFinal: ${isFinal}`);
 
@@ -279,7 +293,6 @@ export class VoiceService {
     await this.startListening();
   }
 
-  // Start listening with AI speaking check
   private async startListening(): Promise<void> {
     console.log(`Start listening for question ${this.currentQuestionIndex + 1}`);
 
@@ -313,7 +326,7 @@ export class VoiceService {
     try {
       this.speechToText.clearTranscript();
       await this.speechToText.start();
-      console.log("Listening started successfully");
+      console.log(`Listening started successfully with language: ${this.language}`);
     } catch (error: any) {
       console.error("Failed to start listening:", error);
       this.updateState({ isListening: false });
@@ -322,7 +335,6 @@ export class VoiceService {
     }
   }
 
-  // Public method to stop listening
   public stopListening(): void {
     console.log("VoiceService: Stopping listening");
 
@@ -349,7 +361,6 @@ export class VoiceService {
     this.autoRestartAttempts = 0;
   }
 
-  // Listen for question with AI speaking check
   public async listenForQuestion(): Promise<void> {
     console.log("Listening for farmer question");
 
@@ -384,7 +395,7 @@ export class VoiceService {
     try {
       this.speechToText.clearTranscript();
       await this.speechToText.start();
-      console.log("Listening started successfully");
+      console.log(`Listening started successfully with language: ${this.language}`);
     } catch (error: any) {
       console.error("Failed to start listening:", error);
       this.updateState({ isListening: false });
@@ -548,7 +559,6 @@ export class VoiceService {
     console.log("Interview completion process finished");
   }
 
-  // speak method with AI speaking flag
   private async speak(text: string): Promise<void> {
     if (!this.textToSpeech) {
       console.log("AI:", text);
@@ -575,7 +585,6 @@ export class VoiceService {
     }
   }
 
-  // Streaming speak method with AI speaking flag
   public async speakStreaming(text: string): Promise<void> {
     if (!this.textToSpeech) {
       console.log("AI:", text);
@@ -608,7 +617,6 @@ export class VoiceService {
     }
   }
 
-  // Schedule listening after AI speech
   private schedulePostSpeechListening(): void {
     if (this.postSpeechTimeout) {
       clearTimeout(this.postSpeechTimeout);
@@ -627,7 +635,6 @@ export class VoiceService {
     }, 1500);
   }
 
-  // Speak recommendations one by one
   public async speakRecommendations(recommendations: string[]): Promise<void> {
     if (!recommendations || recommendations.length === 0) return;
 
@@ -643,7 +650,6 @@ export class VoiceService {
     await this.speakStreaming(`You can now ask me any questions about your farm. Remember, produce more with less - put more money in your pocket.`);
   }
 
-  // Start farmer session
   public async startFarmerSession(sessionData: any): Promise<void> {
     console.log(`Starting farmer session for ${this.farmerName}`);
 
@@ -651,6 +657,12 @@ export class VoiceService {
     this.manualStop = false;
     this.messages = [];
     this.nameUsageCount = 0;
+
+    // Update country if available in session data
+    if (sessionData?.country) {
+      this.setCountry(sessionData.country);
+    }
+
     this.updateState({
       isProcessing: false,
       transcript: ""

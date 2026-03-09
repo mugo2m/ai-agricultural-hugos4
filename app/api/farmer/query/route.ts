@@ -17,10 +17,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`🌾 Farmer query: "${question}"`);
 
-    // Generate answer using logic-based Q&A engine
+    // Generate answer using logic-based Q&A engine – now returns structured object
     const answer = generateAnswer(question, sessionData);
+    console.log("📦 Answer generated:", answer); // helpful for debugging
 
-    // Save to Firestore
+    // Save to Firestore – store the structured answer object
     try {
       const queryRef = db.collection("farmer_sessions").doc(sessionId).collection("queries").doc();
       await queryRef.set({
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
         sessionId,
         userId,
         question,
-        answer,
+        answer, // now stores the structured object { key, params }
         timestamp: new Date().toISOString()
       });
 
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      answer
+      answer // send the structured object to the client
     });
 
   } catch (error: any) {
@@ -62,12 +63,13 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     status: "operational",
-    message: "🌾 Farmer Query API (Logic-Based)",
+    message: "🌾 Farmer Query API (Logic-Based, Structured Output)",
     features: [
       "Template-based answers",
       "No AI costs",
       "Instant responses",
-      "57 crops supported"
+      "57 crops supported",
+      "Structured output for i18n"
     ]
   });
 }

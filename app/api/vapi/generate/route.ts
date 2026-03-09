@@ -214,7 +214,8 @@ export async function POST(request: NextRequest) {
       console.error("Error calculating gross margin:", error);
     }
 
-    const recommendations = generateRecommendations({
+    // Get both legacy and structured recommendations
+    const recommendationsOutput = generateRecommendations({
       hasSoilTest: hasDoneSoilTest === "Yes",
       soilAnalysis,
       fertilizerPlan,
@@ -344,8 +345,14 @@ export async function POST(request: NextRequest) {
 
       useCertifiedSeed: useCertifiedSeed === "yes",
       smartphone: false,
-      recommendations: recommendations.list,
-      financialAdvice: recommendations.financialAdvice,
+
+      // Legacy string fields (for backward compatibility)
+      recommendations: recommendationsOutput.list,
+      financialAdvice: recommendationsOutput.financialAdvice,
+
+      // NEW structured fields for i18n
+      structuredList: recommendationsOutput.structuredList,
+      structuredFinancialAdvice: recommendationsOutput.structuredFinancialAdvice,
 
       grossMarginAnalysis: grossMargin,
 
@@ -359,9 +366,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      recommendations: recommendations.list,
+      // Send both legacy and new fields in the response
+      recommendations: recommendationsOutput.list,
+      structuredList: recommendationsOutput.structuredList,
+      structuredFinancialAdvice: recommendationsOutput.structuredFinancialAdvice,
       grossMarginAnalysis: grossMargin,
-      financialAdvice: recommendations.financialAdvice,
+      financialAdvice: recommendationsOutput.financialAdvice,
       sessionId: sessionId,
       welcomeMessage: `Welcome ${farmerName || "Farmer"}! I've prepared your recommendations.`
     }, { status: 200 });

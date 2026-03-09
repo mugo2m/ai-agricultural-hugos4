@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { X, Loader2, Smartphone, Check, AlertCircle, CreditCard } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 
 interface MPESAPaymentModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export function MPESAPaymentModal({
   interviewId,
   userId
 }: MPESAPaymentModalProps) {
+  const { t } = useTranslation();
   const [phoneNumber, setPhoneNumber] = useState("+254");
   const [isLoading, setIsLoading] = useState(false);
   const [isPaymentInitiated, setIsPaymentInitiated] = useState(false);
@@ -154,7 +156,7 @@ export function MPESAPaymentModal({
             pollingRef.current = setTimeout(pollPayment, 6000);
           } else {
             setPaymentStatus("failed");
-            toast.error("Payment verification timeout. Please try again.");
+            toast.error(t('payment_timeout'));
             setIsLoading(false);
             stopAllPolling();
           }
@@ -170,7 +172,7 @@ export function MPESAPaymentModal({
           setPaymentStatus("success");
           setPaymentDetails(data);
 
-          toast.success("✅ Payment confirmed! Starting interview...");
+          toast.success(t('payment_confirmed_toast'));
 
           setTimeout(() => {
             onSuccess();
@@ -182,7 +184,7 @@ export function MPESAPaymentModal({
         if (attempts >= maxAttempts) {
           // Timeout
           setPaymentStatus("failed");
-          toast.error("⏰ Payment timeout. Please check your phone and try again.");
+          toast.error(t('payment_timeout_check_phone'));
           setIsLoading(false);
           stopAllPolling();
           return;
@@ -196,7 +198,7 @@ export function MPESAPaymentModal({
           pollingRef.current = setTimeout(pollPayment, 6000);
         } else {
           setPaymentStatus("failed");
-          toast.error("Payment verification failed. Please try again.");
+          toast.error(t('payment_verification_failed'));
           setIsLoading(false);
           stopAllPolling();
         }
@@ -210,7 +212,7 @@ export function MPESAPaymentModal({
   // ============ PAYMENT INITIATION ============
   const handlePayNow = async () => {
     if (!isValid) {
-      toast.error("Please enter a valid Kenyan phone number (e.g., +254712345678)");
+      toast.error(t('valid_kenyan_phone'));
       return;
     }
 
@@ -219,7 +221,7 @@ export function MPESAPaymentModal({
 
     if (existingPayment?.hasPaid) {
       // User already has an unused payment
-      toast.success("✅ You already have an unused payment! Starting interview...");
+      toast.success(t('unused_payment_found'));
       setPaymentDetails(existingPayment);
       setIsPaymentInitiated(true);
       setPaymentStatus("success");
@@ -233,7 +235,7 @@ export function MPESAPaymentModal({
 
     if (existingPayment?.paymentExistsButUsed) {
       // Payment exists but has been used
-      toast.info("💰 Previous payment used. Creating new payment...");
+      toast.info(t('previous_payment_used'));
     }
 
     setIsLoading(true);
@@ -268,11 +270,11 @@ export function MPESAPaymentModal({
         data = responseText ? JSON.parse(responseText) : {};
       } catch (parseError) {
         console.error("Failed to parse JSON:", responseText);
-        throw new Error("Invalid response from server");
+        throw new Error(t('invalid_server_response'));
       }
 
       if (!response.ok) {
-        throw new Error(data.message || `Payment failed: ${response.status}`);
+        throw new Error(data.message || t('payment_failed', { status: response.status }));
       }
 
       if (data.success) {
@@ -281,20 +283,20 @@ export function MPESAPaymentModal({
 
         toast.success(
           <div className="flex flex-col">
-            <span className="font-bold">📱 MPESA Request Sent!</span>
-            <span className="text-sm">Check your phone and enter PIN</span>
+            <span className="font-bold">{t('mpesa_request_sent')}</span>
+            <span className="text-sm">{t('check_phone_and_enter_pin')}</span>
           </div>
         );
 
         // Start polling for payment confirmation
         startPaymentPolling(data.paymentId || interviewId);
       } else {
-        throw new Error(data.message || "Payment initiation failed");
+        throw new Error(data.message || t('payment_initiation_failed'));
       }
     } catch (error: any) {
       console.error("Payment error:", error);
       setPaymentStatus("failed");
-      toast.error(`Payment failed: ${error.message}`);
+      toast.error(t('payment_failed_message', { message: error.message }));
       setIsLoading(false);
       stopAllPolling();
     }
@@ -367,8 +369,8 @@ export function MPESAPaymentModal({
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-2xl font-bold">Pay for Interview</h2>
-              <p className="text-sm opacity-90 mt-1">KES {cost} per attempt • MPESA</p>
+              <h2 className="text-2xl font-bold">{t('pay_for_interview')}</h2>
+              <p className="text-sm opacity-90 mt-1">{t('cost_per_attempt', { cost })}</p>
             </div>
             <button
               onClick={onClose}
@@ -380,10 +382,10 @@ export function MPESAPaymentModal({
           </div>
           <div className="mt-2 flex items-center gap-2">
             <div className="bg-white text-blue-600 px-3 py-1 rounded-full text-sm font-bold">
-              KES {cost} - Real MPESA
+              {t('cost_display', { cost })} - {t('real_mpesa')}
             </div>
             <span className="text-sm bg-white bg-opacity-20 px-2 py-1 rounded">
-              Pay per attempt
+              {t('pay_per_attempt')}
             </span>
           </div>
         </div>
@@ -394,24 +396,24 @@ export function MPESAPaymentModal({
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
               <span className="text-blue-600">🎤</span>
-              AI Interview Practice
+              {t('ai_interview_practice')}
             </h3>
             <ul className="space-y-2 text-gray-700">
               <li className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Voice + AI Feedback</span>
+                <span>{t('voice_feedback')}</span>
               </li>
               <li className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Detailed Analysis</span>
+                <span>{t('detailed_analysis')}</span>
               </li>
               <li className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Personalized Questions</span>
+                <span>{t('personalized_questions')}</span>
               </li>
               <li className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Progress Tracking</span>
+                <span>{t('progress_tracking')}</span>
               </li>
             </ul>
           </div>
@@ -420,19 +422,19 @@ export function MPESAPaymentModal({
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
             <div className="flex justify-between items-center">
               <div>
-                <div className="text-sm text-gray-600">Total Amount</div>
-                <div className="text-3xl font-bold text-blue-700">KES {cost}</div>
-                <div className="text-sm text-gray-600 mt-1">Per interview attempt</div>
+                <div className="text-sm text-gray-600">{t('total_amount')}</div>
+                <div className="text-3xl font-bold text-blue-700">{t('currency_symbol')} {cost}</div>
+                <div className="text-sm text-gray-600 mt-1">{t('per_interview_attempt')}</div>
               </div>
               <div className="text-right">
-                <div className="text-sm text-green-600 font-semibold">✓ Instant Access</div>
-                <div className="text-xs text-gray-600">After payment</div>
+                <div className="text-sm text-green-600 font-semibold">✓ {t('instant_access')}</div>
+                <div className="text-xs text-gray-600">{t('after_payment')}</div>
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-blue-200">
               <div className="flex items-center gap-2 text-sm text-blue-700">
                 <CreditCard className="w-4 h-4" />
-                <span>Each retake requires new KES {cost} payment</span>
+                <span>{t('retake_payment', { cost })}</span>
               </div>
             </div>
           </div>
@@ -442,21 +444,21 @@ export function MPESAPaymentModal({
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Smartphone className="inline w-4 h-4 mr-1" />
-                MPESA Phone Number
+                {t('mpesa_phone_number')}
               </label>
 
               {/* Phone Preview */}
               <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <div className="text-xs text-gray-500 mb-1">You're entering:</div>
+                <div className="text-xs text-gray-500 mb-1">{t('youre_entering')}</div>
                 <div className="text-lg font-mono">
                   {formatPhoneDisplay(phoneNumber)}
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
                   <span className="text-gray-500">+254</span>
-                  <span className="ml-1 text-gray-700">(Country Code)</span>
+                  <span className="ml-1 text-gray-700">{t('country_code')}</span>
                   <span className="mx-2">•</span>
                   <span className="text-gray-900 font-medium">{phoneNumber.slice(4) || '______'}</span>
-                  <span className="ml-1 text-gray-700">(Your Number)</span>
+                  <span className="ml-1 text-gray-700">{t('your_number')}</span>
                 </div>
               </div>
 
@@ -470,7 +472,7 @@ export function MPESAPaymentModal({
                   type="tel"
                   value={phoneNumber}
                   onChange={handlePhoneChange}
-                  placeholder="712 345 678"
+                  placeholder={t('phone_placeholder')}
                   className="w-full pl-16 pr-4 py-4 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-200 transition-all text-lg font-bold text-gray-900 bg-white"
                   disabled={isLoading}
                   style={{
@@ -493,7 +495,7 @@ export function MPESAPaymentModal({
               {/* Instructions */}
               <div className="mt-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Format:</span>
+                  <span className="text-xs text-gray-500">{t('format_label')}</span>
                   <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
                     +254 7XX XXX XXX
                   </span>
@@ -507,9 +509,9 @@ export function MPESAPaymentModal({
                         <Check className="w-4 h-4 text-green-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-green-800">Valid MPESA number</p>
+                        <p className="text-sm font-medium text-green-800">{t('valid_mpesa_number')}</p>
                         <p className="text-xs text-green-700">
-                          Ready for payment: <span className="font-mono font-bold">{formatted}</span>
+                          {t('ready_for_payment')}: <span className="font-mono font-bold">{formatted}</span>
                         </p>
                       </div>
                     </div>
@@ -519,15 +521,15 @@ export function MPESAPaymentModal({
                         <AlertCircle className="w-4 h-4 text-amber-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-amber-800">Complete phone number</p>
+                        <p className="text-sm font-medium text-amber-800">{t('complete_phone_number')}</p>
                         <p className="text-xs text-amber-700">
-                          Enter {9 - (phoneNumber.length - 4)} more digits starting with 7
+                          {t('enter_more_digits', { count: 9 - (phoneNumber.length - 4) })}
                         </p>
                       </div>
                     </div>
                   ) : (
                     <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-700">Enter your MPESA-registered phone number</p>
+                      <p className="text-sm text-blue-700">{t('enter_mpesa_phone')}</p>
                     </div>
                   )}
                 </div>
@@ -538,7 +540,7 @@ export function MPESAPaymentModal({
                     phoneNumber.length === 13 ? 'text-green-600' :
                     phoneNumber.length > 4 ? 'text-amber-600' : 'text-gray-500'
                   }`}>
-                    {Math.max(0, phoneNumber.length - 4)}/9 digits
+                    {Math.max(0, phoneNumber.length - 4)}/9 {t('digits')}
                   </span>
                 </div>
               </div>
@@ -575,10 +577,10 @@ export function MPESAPaymentModal({
                       "text-gray-800"
                     }`}>
                       {paymentStatus === "processing"
-                        ? `Waiting for Payment (${checkAttempts}/20)`
+                        ? t('waiting_for_payment', { attempts: checkAttempts, max: 20 })
                         : paymentStatus === "success"
-                        ? "Payment Confirmed!"
-                        : "Processing Payment..."}
+                        ? t('payment_confirmed')
+                        : t('processing_payment')}
                     </p>
                     <p className={`text-sm ${
                       paymentStatus === "processing" ? "text-yellow-700" :
@@ -586,14 +588,14 @@ export function MPESAPaymentModal({
                       "text-gray-700"
                     }`}>
                       {paymentStatus === "processing"
-                        ? "Please check your phone and enter MPESA PIN"
+                        ? t('check_phone_and_enter_pin')
                         : paymentStatus === "success"
-                        ? "Redirecting to interview..."
-                        : "Your payment is being processed"}
+                        ? t('redirecting_to_interview')
+                        : t('payment_being_processed')}
                     </p>
                     <div className="mt-2">
                       <p className="text-xs text-gray-600">
-                        Payment to: <span className="font-mono font-bold">{formatted}</span>
+                        {t('payment_to')}: <span className="font-mono font-bold">{formatted}</span>
                       </p>
                     </div>
 
@@ -602,16 +604,16 @@ export function MPESAPaymentModal({
                       <div className="mt-3 pt-3 border-t">
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div>
-                            <span className="text-gray-500">Amount:</span>
-                            <span className="ml-1 font-bold">KES {cost}</span>
+                            <span className="text-gray-500">{t('amount')}:</span>
+                            <span className="ml-1 font-bold">{t('currency_symbol')} {cost}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500">Type:</span>
-                            <span className="ml-1 font-medium">Per attempt</span>
+                            <span className="text-gray-500">{t('type')}:</span>
+                            <span className="ml-1 font-medium">{t('per_attempt')}</span>
                           </div>
                           {paymentDetails.transactionId && (
                             <div className="col-span-2">
-                              <span className="text-gray-500">Reference:</span>
+                              <span className="text-gray-500">{t('reference')}:</span>
                               <span className="ml-1 font-mono">{paymentDetails.transactionId.substring(0, 12)}...</span>
                             </div>
                           )}
@@ -625,8 +627,8 @@ export function MPESAPaymentModal({
                 {paymentStatus === "processing" && (
                   <div className="mt-4">
                     <div className="flex justify-between text-xs text-gray-600 mb-1">
-                      <span>Checking payment...</span>
-                      <span>{checkAttempts}/20 attempts</span>
+                      <span>{t('checking_payment')}</span>
+                      <span>{checkAttempts}/20 {t('attempts')}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
@@ -647,7 +649,7 @@ export function MPESAPaymentModal({
               className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium"
               disabled={isLoading || paymentStatus === "processing"}
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               onClick={handlePayNow}
@@ -661,15 +663,15 @@ export function MPESAPaymentModal({
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Processing...
+                  {t('processing')}
                 </span>
               ) : isPaymentInitiated ? (
                 <span className="flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Payment Initiated
+                  {t('payment_initiated')}
                 </span>
               ) : (
-                `Pay KES ${cost}`
+                t('pay_amount', { cost })
               )}
             </button>
           </div>
@@ -681,19 +683,19 @@ export function MPESAPaymentModal({
                 <CreditCard className="w-4 h-4 text-blue-600" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-blue-800 mb-2">Payment Details</p>
+                <p className="font-medium text-blue-800 mb-2">{t('payment_details_title')}</p>
                 <div className="space-y-2 text-sm text-gray-700">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
-                    <span><strong>KES {cost} per attempt</strong> - each interview attempt</span>
+                    <span>{t('payment_detail_per_attempt', { cost })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
-                    <span><strong>No subscriptions</strong> - pay only when you practice</span>
+                    <span>{t('payment_detail_no_subscription')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
-                    <span><strong>Retakes require new payment</strong> - fresh KES {cost} each time</span>
+                    <span>{t('payment_detail_retake', { cost })}</span>
                   </div>
                 </div>
               </div>
@@ -707,27 +709,26 @@ export function MPESAPaymentModal({
                 <span className="text-red-600 font-bold">⚠️</span>
               </div>
               <div>
-                <p className="font-bold text-red-700 mb-2">IMPORTANT:</p>
+                <p className="font-bold text-red-700 mb-2">{t('important')}</p>
                 <p className="text-sm text-gray-800 mb-2">
-                  This is a <strong className="text-red-600">REAL payment system</strong>.
-                  After clicking "Pay KES {cost}":
+                  {t('real_payment_warning')}
                 </p>
                 <ul className="text-sm text-gray-700 space-y-1 pl-1">
                   <li className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                    <span><strong>MPESA STK Push</strong> will be sent to your phone</span>
+                    <span>{t('payment_step_1')}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                    <span>You <strong>MUST</strong> enter your <strong>MPESA PIN</strong> on your phone</span>
+                    <span>{t('payment_step_2')}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                    <span>Interview starts <strong>immediately</strong> after payment confirmation</span>
+                    <span>{t('payment_step_3')}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                    <span><strong>Payment consumed on use</strong> - retakes require new payment</span>
+                    <span>{t('payment_step_4')}</span>
                   </li>
                 </ul>
               </div>

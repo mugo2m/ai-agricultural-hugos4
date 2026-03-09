@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from 'react-i18next';
 
 interface VoiceToggleProps {
   onVoiceToggle?: (enabled: boolean) => void;
@@ -9,6 +10,7 @@ interface VoiceToggleProps {
 }
 
 export function VoiceToggle({ onVoiceToggle, initialEnabled = false }: VoiceToggleProps) {
+  const { t } = useTranslation();
   const [voiceEnabled, setVoiceEnabled] = useState(initialEnabled);
   const [isSupported, setIsSupported] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
@@ -94,7 +96,7 @@ export function VoiceToggle({ onVoiceToggle, initialEnabled = false }: VoiceTogg
 
   const toggleVoice = () => {
     if (!isSupported) {
-      alert(`Voice features work best in Google Chrome or Microsoft Edge. You're using ${browserName}. Please switch to Chrome or Edge for full voice functionality.`);
+      alert(t('voice_unsupported_alert', { browser: browserName }));
       return;
     }
 
@@ -124,9 +126,9 @@ export function VoiceToggle({ onVoiceToggle, initialEnabled = false }: VoiceTogg
             </svg>
           </div>
           <div>
-            <h4 className="font-semibold text-gray-900">Voice Interview Mode</h4>
+            <h4 className="font-semibold text-gray-900">{t('voice_interview_mode')}</h4>
             <p className="text-sm text-gray-500">
-              Practice with voice responses and feedback
+              {t('voice_interview_description')}
             </p>
           </div>
         </div>
@@ -140,22 +142,20 @@ export function VoiceToggle({ onVoiceToggle, initialEnabled = false }: VoiceTogg
               : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
           } ${isChecking ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          {isChecking ? 'Checking...' : voiceEnabled ? 'Voice ON' : 'Voice OFF'}
+          {isChecking ? t('checking') : voiceEnabled ? t('voice_on') : t('voice_off')}
         </button>
       </div>
 
       {isChecking ? (
         <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
           <p className="text-sm text-blue-700">
-            Checking voice support and permissions...
+            {t('checking_voice_support')}
           </p>
         </div>
       ) : !isSupported ? (
         <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
           <p className="text-sm text-yellow-700">
-            <strong>⚠️ Limited voice support in {browserName}:</strong> For full voice functionality,
-            please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>.
-            You can still use text-based interviews in {browserName}.
+            <strong>{t('limited_voice_support', { browser: browserName })}</strong> {t('voice_support_details', { browser: browserName })}
           </p>
         </div>
       ) : voiceEnabled ? (
@@ -165,11 +165,11 @@ export function VoiceToggle({ onVoiceToggle, initialEnabled = false }: VoiceTogg
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
             <div>
-              <p className="text-sm font-medium text-green-800">✅ Voice mode active</p>
+              <p className="text-sm font-medium text-green-800">{t('voice_active')}</p>
               <p className="text-sm text-green-700 mt-1">
                 {browserName === "Chrome" || browserName === "Edge"
-                  ? "You can use voice commands for interview setup and practice."
-                  : "Using simulated voice mode. For real voice recognition, try Chrome or Edge."}
+                  ? t('voice_active_full')
+                  : t('voice_active_simulated')}
               </p>
             </div>
           </div>
@@ -179,15 +179,15 @@ export function VoiceToggle({ onVoiceToggle, initialEnabled = false }: VoiceTogg
       <div className="mt-2 pt-2 border-t border-gray-200">
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="text-center p-2 bg-gray-50 rounded">
-            <div className="font-medium text-gray-700">Browser</div>
+            <div className="font-medium text-gray-700">{t('browser_label')}</div>
             <div className="font-semibold text-gray-800">
               {browserName}
             </div>
           </div>
           <div className="text-center p-2 bg-gray-50 rounded">
-            <div className="font-medium text-gray-700">Voice Support</div>
+            <div className="font-medium text-gray-700">{t('voice_support_label')}</div>
             <div className={`font-semibold ${isSupported ? 'text-green-600' : 'text-yellow-600'}`}>
-              {isSupported ? 'Full' : 'Limited'}
+              {isSupported ? t('full_support') : t('limited_support')}
             </div>
           </div>
         </div>
