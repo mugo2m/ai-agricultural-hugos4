@@ -328,15 +328,30 @@ export class FertilizerCalculator {
 
       const totalPlants = calculateTotalPlants(plantsPerAcre, farmSize);
 
-      const dapPerAcre = plantingRecsPerAcre.find(r => r.brand.includes('DAP'))?.amountKg || 0;
-      const ureaPerAcre = topdressingRecsPerAcre.find(r => r.brand.includes('UREA'))?.amountKg || 0;
-      const mopPerAcre = topdressingRecsPerAcre.find(r => r.brand.includes('MOP'))?.amountKg || 0;
+      // Identify fertilizers by type for per-plant calculation
+      const dapPerAcre = plantingRecsPerAcre.find(r =>
+        r.brand.includes('DAP') || r.npk.includes('18-46') || r.npk.includes('DAP')
+      )?.amountKg || 0;
+
+      const ureaPerAcre = topdressingRecsPerAcre.find(r =>
+        r.brand.includes('UREA') || r.npk.includes('46-0-0')
+      )?.amountKg || 0;
+
+      const mopPerAcre = topdressingRecsPerAcre.find(r =>
+        r.brand.includes('MOP') || r.npk.includes('0-0-60')
+      )?.amountKg || 0;
+
+      // For perennial crops, adjust calculation
+      const isPerennial = ['mangoes', 'avocados', 'oranges', 'coffee', 'tea', 'macadamia', 'cocoa', 'bananas'].includes(
+        recommendations.plantingFertilizer.toLowerCase() // This should come from crop context
+      );
 
       const perPlant = calculateFertilizerPerPlant(
         dapPerAcre * farmSize,
         ureaPerAcre * farmSize,
         mopPerAcre * farmSize,
-        totalPlants
+        totalPlants,
+        isPerennial
       );
 
       perPlantInfo = {
@@ -372,7 +387,7 @@ export class FertilizerCalculator {
     };
   }
 
-  // Extract nutrients from fertilizer formulation
+  // Extract nutrients from fertilizer formulation - UPDATED with crop-specific parsing
   extractNutrientsFromRecommendations(rec: {
     plantingFertilizer: string;
     plantingQuantity: number;
@@ -382,10 +397,14 @@ export class FertilizerCalculator {
     potassiumQuantity: number;
   }): NutrientRequirement {
 
-    const parseFertilizer = (name: string, quantity: number) => {
+    // Enhanced parser with crop-specific fertilizer recognition
+    const parseFertilizer = (name: string, quantity: number, cropHint?: string) => {
       if (!name || quantity === 0) return { n: 0, p: 0, k: 0 };
 
-      const match = name.match(/(\d+)\.?(\d+)?\.?(\d+)?/);
+      const lowerName = name.toLowerCase();
+
+      // Check for NPK pattern first (e.g., 17-17-17, 20-10-10)
+      const match = name.match(/(\d+)[\s-]?(\d+)[\s-]?(\d+)/);
       if (match) {
         const n = parseInt(match[1]) || 0;
         const p = parseInt(match[2]) || 0;
@@ -398,7 +417,7 @@ export class FertilizerCalculator {
         };
       }
 
-      const lowerName = name.toLowerCase();
+      // Common fertilizer types
       if (lowerName.includes('urea')) {
         return { n: 0.46 * quantity, p: 0, k: 0 };
       }
@@ -411,13 +430,90 @@ export class FertilizerCalculator {
       if (lowerName.includes('mop') || lowerName.includes('muriate')) {
         return { n: 0, p: 0, k: 0.6 * quantity };
       }
+      if (lowerName.includes('sop')) {
+        return { n: 0, p: 0, k: 0.5 * quantity };
+      }
+      if (lowerName.includes('tsp')) {
+        return { n: 0, p: 0.46 * quantity, k: 0 };
+      }
+      if (lowerName.includes('ssp')) {
+        return { n: 0, p: 0.2 * quantity, k: 0 };
+      }
+      if (lowerName.includes('npk')) {
+        // Try to extract numbers from NPK string
+        const npkMatch = lowerName.match(/npk[\s-]*(\d+)[\s-]*(\d+)[\s-]*(\d+)/);
+        if (npkMatch) {
+          const n = parseInt(npkMatch[1]) || 0;
+          const p = parseInt(npkMatch[2]) || 0;
+          const k = parseInt(npkMatch[3]) || 0;
+          return {
+            n: (n / 100) * quantity,
+            p: (p / 100) * quantity,
+            k: (k / 100) * quantity
+          };
+        }
+      }
+
+      // Crop-specific fertilizer defaults (for when farmer just says "planting fertilizer")
+      const cropSpecificFertilizers: Record<string, { n: number; p: number; k: number }> = {
+        // New crops
+        rice: { n: 0.18, p: 0.46, k: 0 }, // DAP equivalent
+        mangoes: { n: 0.18, p: 0.46, k: 0 }, // DAP at planting
+        pineapples: { n: 0.15, p: 0.15, k: 0.15 }, // Compound fertilizer
+        watermelons: { n: 0.2, p: 0.2, k: 0.2 }, // NPK 20:20:20
+        carrots: { n: 0.27, p: 0, k: 0 }, // CAN only
+        chillies: { n: 0.18, p: 0.46, k: 0 }, // DAP
+        spinach: { n: 0.27, p: 0, k: 0 }, // CAN
+        pigeonpeas: { n: 0.18, p: 0.46, k: 0 }, // DAP
+        bambaranuts: { n: 0, p: 0.46, k: 0 }, // TSP only
+        yams: { n: 0.18, p: 0.46, k: 0 }, // DAP
+        taro: { n: 0.18, p: 0.46, k: 0 }, // DAP
+        okra: { n: 0.18, p: 0.46, k: 0 }, // DAP
+        tea: { n: 0.25, p: 0.05, k: 0.05 }, // NPK 25:5:5
+        macadamia: { n: 0.17, p: 0.17, k: 0.17 }, // NPK 17:17:17
+        cocoa: { n: 0.2, p: 0.1, k: 0.1 }, // NPK 20:10:10
+
+        // Existing crops (for reference)
+        maize: { n: 0.18, p: 0.46, k: 0 }, // DAP
+        beans: { n: 0.18, p: 0.46, k: 0 }, // DAP
+        onions: { n: 0.18, p: 0.46, k: 0 }, // DAP
+        tomatoes: { n: 0.18, p: 0.46, k: 0 }, // DAP
+        potatoes: { n: 0.18, p: 0.46, k: 0 }, // DAP
+        cabbages: { n: 0.18, p: 0.46, k: 0 }, // DAP
+      };
+
+      // If the fertilizer name matches a crop name, use crop-specific defaults
+      if (cropHint && cropSpecificFertilizers[cropHint]) {
+        const cropFert = cropSpecificFertilizers[cropHint];
+        return {
+          n: cropFert.n * quantity,
+          p: cropFert.p * quantity,
+          k: cropFert.k * quantity
+        };
+      }
 
       return { n: 0, p: 0, k: 0 };
     };
 
-    const planting = parseFertilizer(rec.plantingFertilizer, rec.plantingQuantity);
-    const topdressing = parseFertilizer(rec.topdressingFertilizer, rec.topdressingQuantity);
-    const potassium = parseFertilizer(rec.potassiumFertilizer, rec.potassiumQuantity);
+    // Try to extract crop hint from fertilizer names
+    const getCropHint = (fertilizerName: string): string | undefined => {
+      const lowerName = fertilizerName.toLowerCase();
+      const crops = [
+        'maize', 'beans', 'rice', 'mangoes', 'pineapples', 'watermelons',
+        'carrots', 'chillies', 'spinach', 'pigeonpeas', 'bambaranuts',
+        'yams', 'taro', 'okra', 'tea', 'macadamia', 'cocoa', 'onions',
+        'tomatoes', 'potatoes', 'cabbages', 'avocados'
+      ];
+      return crops.find(crop => lowerName.includes(crop));
+    };
+
+    const cropHint = getCropHint(rec.plantingFertilizer) ||
+                     getCropHint(rec.topdressingFertilizer) ||
+                     getCropHint(rec.potassiumFertilizer);
+
+    const planting = parseFertilizer(rec.plantingFertilizer, rec.plantingQuantity, cropHint);
+    const topdressing = parseFertilizer(rec.topdressingFertilizer, rec.topdressingQuantity, cropHint);
+    const potassium = parseFertilizer(rec.potassiumFertilizer, rec.potassiumQuantity, cropHint);
 
     return {
       n: planting.n + topdressing.n + potassium.n,
@@ -429,18 +525,19 @@ export class FertilizerCalculator {
 
   // Generate recommendation text
   generateRecommendationText(result: any, cropType: string, targetYield?: number, country: string = 'kenya'): string {
-    let text = `PRECISION FERTILIZER PLAN BASED ON YOUR SOIL TEST\n\n`;
+    let text = `PRECISION FERTILIZER PLAN FOR YOUR ${cropType.toUpperCase()} ENTERPRISE\n\n`;
 
     if (result.farmSize) {
       text += `Your farm size: ${result.farmSize} acre(s)\n`;
     }
 
     if (result.totalCost) {
-      text += `Total investment: ${this.formatCurrencyForDisplay(result.totalCost, country)} for your entire farm\n\n`;
+      text += `Total fertilizer investment: ${this.formatCurrencyForDisplay(result.totalCost, country)} for your entire farm\n\n`;
     }
 
+    // Planting fertilizers
     if (result.plantingRecommendations?.length > 0) {
-      text += `PLANTING FERTILIZERS (apply at planting)\n`;
+      text += `🌱 PLANTING FERTILIZERS (apply at planting)\n`;
       result.plantingRecommendations.forEach((rec: any) => {
         const bagsNeeded = Math.floor(rec.amountKg / 50);
         const extraKg = rec.amountKg % 50;
@@ -457,15 +554,17 @@ export class FertilizerCalculator {
           bagText = `${extraKg}kg open`;
         }
 
-        text += `Buy ${rec.amountKg} kg of ${rec.brand} (${rec.npk})\n`;
-        text += `This is ${bagText}\n`;
-        text += `Cost: ${this.formatCurrencyForDisplay(Math.round(totalCost), country)}\n`;
-        text += `Provides: ${(rec.provides.n).toFixed(1)} kg N, ${(rec.provides.p).toFixed(1)} kg P, ${(rec.provides.k).toFixed(1)} kg K\n\n`;
+        text += `\n• Buy ${rec.amountKg} kg of ${rec.brand} (${rec.npk})\n`;
+        text += `  This is ${bagText}\n`;
+        text += `  Cost: ${this.formatCurrencyForDisplay(Math.round(totalCost), country)}\n`;
+        text += `  Provides: ${(rec.provides.n).toFixed(1)} kg N, ${(rec.provides.p).toFixed(1)} kg P, ${(rec.provides.k).toFixed(1)} kg K\n`;
       });
+      text += '\n';
     }
 
+    // Top dressing fertilizers
     if (result.topDressingRecommendations?.length > 0) {
-      text += `TOP DRESSING FERTILIZERS (apply 3-4 weeks after planting)\n`;
+      text += `🌿 TOP DRESSING FERTILIZERS (apply 3-4 weeks after planting)\n`;
       result.topDressingRecommendations.forEach((rec: any) => {
         const bagsNeeded = Math.floor(rec.amountKg / 50);
         const extraKg = rec.amountKg % 50;
@@ -482,41 +581,46 @@ export class FertilizerCalculator {
           bagText = `${extraKg}kg open`;
         }
 
-        text += `Buy ${rec.amountKg} kg of ${rec.brand} (${rec.npk})\n`;
-        text += `This is ${bagText}\n`;
-        text += `Cost: ${this.formatCurrencyForDisplay(Math.round(totalCost), country)}\n`;
+        text += `\n• Buy ${rec.amountKg} kg of ${rec.brand} (${rec.npk})\n`;
+        text += `  This is ${bagText}\n`;
+        text += `  Cost: ${this.formatCurrencyForDisplay(Math.round(totalCost), country)}\n`;
 
         if (rec.provides.n > 0) {
-          text += `Provides: ${(rec.provides.n).toFixed(1)} kg N\n\n`;
+          text += `  Provides: ${(rec.provides.n).toFixed(1)} kg N\n`;
         } else {
-          text += `Provides: ${(rec.provides.k).toFixed(1)} kg K\n\n`;
+          text += `  Provides: ${(rec.provides.k).toFixed(1)} kg K\n`;
         }
       });
+      text += '\n';
     }
 
-    text += `TOTAL FERTILIZER INVESTMENT: ${this.formatCurrencyForDisplay(result.totalCost, country)} for your ${result.farmSize || 1} acre farm\n\n`;
+    // Summary
+    text += `📊 SUMMARY\n`;
+    text += `Total fertilizer investment: ${this.formatCurrencyForDisplay(result.totalCost, country)}\n`;
+    text += `Total nutrients provided: ${(result.totalNutrientsProvided?.n || 0).toFixed(1)} kg N, ${(result.totalNutrientsProvided?.p || 0).toFixed(1)} kg P, ${(result.totalNutrientsProvided?.k || 0).toFixed(1)} kg K\n\n`;
 
+    // Per-plant information
     if (result.perPlant) {
       const pp = result.perPlant;
 
-      text += `---\n\n`;
-      text += `PLANT POPULATION\n`;
-      text += `Based on your spacing, you have approximately ${pp.totalPlants.toLocaleString()} plants on your ${result.farmSize} acre farm.\n\n`;
+      text += `🌱 PER-PLANT APPLICATION GUIDE\n`;
+      text += `Plant population: ${pp.totalPlants.toLocaleString()} plants on your farm\n\n`;
 
-      text += `FERTILIZER PER PLANT\n`;
-      text += `DAP: ${pp.dapGrams} grams\n`;
-      text += `UREA: ${pp.ureaGrams} grams\n`;
-      text += `MOP: ${pp.mopGrams} grams\n`;
-      text += `TOTAL: ${pp.totalGrams} grams\n\n`;
+      text += `Fertilizer per plant:\n`;
+      text += `• DAP: ${pp.dapGrams} grams per plant\n`;
+      text += `• UREA: ${pp.ureaGrams} grams per plant\n`;
+      text += `• MOP: ${pp.mopGrams} grams per plant\n`;
+      text += `• TOTAL: ${pp.totalGrams} grams per plant\n\n`;
 
-      text += `MEASUREMENT GUIDE\n`;
-      text += `${pp.dapGrams} g: ${pp.dapGuide}\n`;
-      text += `${pp.ureaGrams} g: ${pp.ureaGuide}\n`;
-      text += `${pp.mopGrams} g: ${pp.mopGuide}\n`;
-      text += `${pp.totalGrams} g: ${pp.totalGuide}\n\n`;
+      text += `Measurement guide:\n`;
+      text += `• ${pp.dapGrams} g: ${pp.dapGuide}\n`;
+      text += `• ${pp.ureaGrams} g: ${pp.ureaGuide}\n`;
+      text += `• ${pp.mopGrams} g: ${pp.mopGuide}\n`;
+      text += `• ${pp.totalGrams} g: ${pp.totalGuide}\n\n`;
     }
 
-    text += `Gross margin will be calculated based on your actual yield and costs.\n`;
+    // Business tip
+    text += `💼 BUSINESS TIP: Every Ksh 1 invested in fertilizer returns Ksh 3-5 in higher yields when combined with good agronomic practices!\n`;
 
     return text;
   }

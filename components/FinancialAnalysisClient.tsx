@@ -55,7 +55,7 @@ export default function FinancialAnalysisClient({
   const [transportDetails, setTransportDetails] = useState<any>({});
   const [bagDetails, setBagDetails] = useState<any>({});
 
-  // Soil test data for summary
+  // Soil test data for summary (we keep state but won't use it)
   const [soilTest, setSoilTest] = useState<any>(null);
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export default function FinancialAnalysisClient({
       setSellingPrice(sessionData.pricePerUnit || 0);
       setYield(sessionData.actualYield || sessionData.grossMarginAnalysis?.bags || 27);
 
-      // Get soil test data
+      // Get soil test data (still needed for cost calculations? If not, you can remove)
       if (sessionData.soilTest) {
         setSoilTest(sessionData.soilTest);
       }
@@ -245,7 +245,7 @@ export default function FinancialAnalysisClient({
     return `${(value || 0).toFixed(1)}%`;
   };
 
-  // Helper function to get rating color
+  // Helper function to get rating color (still used? If you remove soil test, you may not need it)
   const getRatingColor = (rating: string) => {
     switch(rating?.toLowerCase()) {
       case 'very low': return 'text-red-600 bg-red-100';
@@ -320,106 +320,7 @@ export default function FinancialAnalysisClient({
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
-        {/* SOIL TEST SUMMARY SECTION */}
-        {soilTest && (
-          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6 shadow-xl border-2 border-purple-300 mb-8">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="p-2 bg-purple-100 rounded-full">
-                <Beaker className="w-6 h-6 text-purple-700" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-purple-800">{t('soil_test_analysis_title')}</h2>
-                <p className="text-purple-600">{t('know_your_soil', { farmerName })}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* pH */}
-              {soilTest.ph && (
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <p className="text-xs text-gray-500">{t('ph')}</p>
-                  <p className="text-lg font-bold">{soilTest.ph}</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${getRatingColor(soilTest.phRating)}`}>
-                    {soilTest.phRating || 'N/A'}
-                  </span>
-                </div>
-              )}
-
-              {/* Phosphorus */}
-              {soilTest.phosphorus && (
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <p className="text-xs text-gray-500">{t('phosphorus')}</p>
-                  <p className="text-lg font-bold">{soilTest.phosphorus} ppm</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${getRatingColor(soilTest.phosphorusRating)}`}>
-                    {soilTest.phosphorusRating || 'N/A'}
-                  </span>
-                </div>
-              )}
-
-              {/* Potassium */}
-              {soilTest.potassium && (
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <p className="text-xs text-gray-500">{t('potassium')}</p>
-                  <p className="text-lg font-bold">{soilTest.potassium} ppm</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${getRatingColor(soilTest.potassiumRating)}`}>
-                    {soilTest.potassiumRating || 'N/A'}
-                  </span>
-                </div>
-              )}
-
-              {/* Nitrogen */}
-              {soilTest.totalNitrogen && (
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <p className="text-xs text-gray-500">{t('nitrogen')}</p>
-                  <p className="text-lg font-bold">{soilTest.totalNitrogen}%</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${getRatingColor(soilTest.totalNitrogenRating)}`}>
-                    {soilTest.totalNitrogenRating || 'N/A'}
-                  </span>
-                </div>
-              )}
-
-              {/* Calcium */}
-              {soilTest.calcium && (
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <p className="text-xs text-gray-500">{t('calcium')}</p>
-                  <p className="text-lg font-bold">{soilTest.calcium} ppm</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${getRatingColor(soilTest.calciumRating)}`}>
-                    {soilTest.calciumRating || 'N/A'}
-                  </span>
-                </div>
-              )}
-
-              {/* Magnesium */}
-              {soilTest.magnesium && (
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <p className="text-xs text-gray-500">{t('magnesium')}</p>
-                  <p className="text-lg font-bold">{soilTest.magnesium} ppm</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${getRatingColor(soilTest.magnesiumRating)}`}>
-                    {soilTest.magnesiumRating || 'N/A'}
-                  </span>
-                </div>
-              )}
-
-              {/* Organic Matter */}
-              {soilTest.organicMatter && (
-                <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <p className="text-xs text-gray-500">{t('organic_matter')}</p>
-                  <p className="text-lg font-bold">{soilTest.organicMatter}%</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${getRatingColor(soilTest.organicMatterRating)}`}>
-                    {soilTest.organicMatterRating || 'N/A'}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 p-3 bg-purple-100 rounded-lg">
-              <p className="text-sm text-purple-800 flex items-center gap-2">
-                <Award className="w-4 h-4" />
-                {t('soil_business_insight', { symbol: currency.symbol })}
-              </p>
-            </div>
-          </div>
-        )}
+        {/* SOIL TEST SUMMARY SECTION – REMOVED */}
 
         {/* Revenue Card with Selling Price */}
         <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-xl mb-8">

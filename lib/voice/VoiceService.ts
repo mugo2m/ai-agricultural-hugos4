@@ -1,4 +1,4 @@
-// lib/voice/VoiceService.ts - ADD LANGUAGE SUPPORT
+// lib/voice/VoiceService.ts - Browser TTS only (no Gooey)
 "use client";
 
 import { toast } from "sonner";
@@ -25,7 +25,7 @@ interface VoiceServiceConfig {
   userId: string;
   type: "practice" | "review";
   language?: string;
-  country?: string; // ADDED: country for language detection
+  country?: string;
   speechRate?: number;
   speechVolume?: number;
   farmerName?: string;
@@ -169,7 +169,6 @@ export class VoiceService {
       .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
       .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
       .replace(/[\u{2600}-\u{26FF}]/gu, '')
-      .replace(/[\u{2700}-\u{27BF}]/gu, '')
       .replace(/\*\*\*/g, '')
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')
@@ -658,7 +657,6 @@ export class VoiceService {
     this.messages = [];
     this.nameUsageCount = 0;
 
-    // Update country if available in session data
     if (sessionData?.country) {
       this.setCountry(sessionData.country);
     }

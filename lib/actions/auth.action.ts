@@ -169,48 +169,54 @@ export async function createPhoneAccount(params: CreatePhoneAccountParams) {
   }
 }
 
-// Sign in with phone and PIN
+// Sign in with phone and PIN (with timing logs)
 export async function signInWithPhone(params: SignInWithPhoneParams) {
+  console.time('signin-with-phone-total');
   try {
     if (!isFirebaseAvailable()) {
+      console.timeEnd('signin-with-phone-total');
       return { success: false, message: "System error" };
     }
 
     const { phone, pin } = params;
 
-    // Validate PIN is exactly 4 digits
     if (!/^\d{4}$/.test(pin)) {
+      console.timeEnd('signin-with-phone-total');
       return { success: false, message: "PIN must be exactly 4 digits" };
     }
 
-    // Find user by phone number
+    console.time('firestore-query');
     const userSnapshot = await db.collection("users")
       .where("phone", "==", phone)
       .limit(1)
       .get();
+    console.timeEnd('firestore-query');
 
     if (userSnapshot.empty) {
+      console.timeEnd('signin-with-phone-total');
       return { success: false, message: "Phone number not registered" };
     }
 
     const userDoc = userSnapshot.docs[0];
     const userData = userDoc.data();
 
-    // Verify PIN matches
     if (userData.pin !== pin) {
+      console.timeEnd('signin-with-phone-total');
       return { success: false, message: "Invalid PIN" };
     }
 
-    // Return user data with the padded password format
+    // If you have any other async operations, wrap them with timers too
+
+    console.timeEnd('signin-with-phone-total');
     return {
       success: true,
       message: "Phone verified",
       userId: userDoc.id,
       email: userData.email,
-      // Return the padded PIN for client-side sign-in
       password: `pin_${pin}`
     };
   } catch (error: any) {
+    console.timeEnd('signin-with-phone-total');
     console.error("Phone signin error:", error);
     return { success: false, message: error.message || "Failed to sign in" };
   }

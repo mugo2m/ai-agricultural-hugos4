@@ -694,15 +694,164 @@
   "qa_harvest_tomatoes": "{{farmerName}}, MAXIMIZE YOUR TOMATO ENTERPRISE RETURNS:\n\nPick at color break (green to pink) for distant markets\nFully ripe for local markets\nHandle carefully to avoid bruising",
   "qa_harvest_generic": "{{farmerName}}, harvest your {{crop}} ENTERPRISE at the right maturity for best quality. Handle carefully to reduce losses.",
 
+  "use_kg_warning": "⚠️ Please use KILOGRAMS, not bags!",
+  "bags_to_kg_hint": "Example: {{example}}",
+  "bags_to_kg_example": "If you harvested 60 bags of 90kg, enter 5400 kg",
+  "yield_seems_low_warning": "⚠️ Yield seems very low",
+  "yield_seems_low_detail": "{{yield}} kg is very low. Did you mean {{bags}} bags ({{converted}} kg)?",
+  "yield_seems_low_confirm": "⚠️ {{yield}} kg seems very low. Did you mean {{bags}} bags? That would be {{converted}} kg. Continue anyway?",
+  "yield_too_high": "⚠️ Yield seems too high",
+  "yield_too_high_detail": "Maximum expected is {{max}} kg. Please verify.",
+  "price_too_low": "Price seems too low",
+  "price_per_kg_expected": "Expected price for {{crop}} is Ksh 40-80 per kg",
+  "price_very_high": "⚠️ Price is very high",
+  "price_high_verify": "Please verify your price per kg is correct",
+  "target_yield_low": "Target yield of {{target}} kg seems low. Continue?",
+  "enter_yield_kg_placeholder": "e.g., 5400 kg",
+  "enter_price_kg_placeholder": "e.g., 50",
+  "enter_target_yield_kg": "e.g., 8000 kg",
+  "ack_actual_yield_kg": "Thank you. Your yield is {{answer}} kilograms.",
+  "ack_price_per_kg": "Thank you. Your price is {{answer}} shillings per kilogram.",
+  "ack_target_yield_kg": "Thank you. Your target yield is {{answer}} kilograms.",
+  "gap_avocados": "Seed: Use certified avocado seedlings. Varieties: Hass, Fuerte, Pinkerton\nSpacing: 5m x 5m (174 trees per acre) for standard varieties\nSoil: Well-drained, deep soil with pH 5.5-6.5\nPlanting: Plant at start of rains, dig 60cm x 60cm x 60cm holes\nFertilizer: Apply DAP at planting, CAN annually\nWatering: Young trees need regular watering, mature trees are drought-tolerant\nMaturity: 3-4 years for grafted trees\nYield: 100-300 kg per tree (17,000-52,000 kg per acre) with good management",
+
+
+  "chemical_status_active": "✅ Actively available",
+  "chemical_status_restricted": "⚠️ RESTRICTED - Check local regulations",
+  "chemical_status_banned": "❌ BANNED in some regions",
+  "chemical_status_check": "🔍 Check local availability",
+
+  "chemical_note_tanzania_ban": "BANNED in Tanzania (Jan 2026). Check local regulations before use.",
+  "chemical_note_lambda_cyhalothrin": "Supply tight, prices rising; check availability",
+  "chemical_note_dimethoate": "Restricted in East Africa; verify local registration",
+  "chemical_note_diazinon": "May be restricted in some countries; check locally",
+  "chemical_note_avaunt": "May be discontinued in some regions; check local availability",
+
+  "organic_option_neem": "🌱 Neem oil - organic alternative",
+  "organic_option_bt": "🌱 Bacillus thuringiensis - organic bio-pesticide",
+  "organic_option_traps": "🌱 Pheromone traps - chemical-free monitoring",
+  "organic_option_ash": "🌱 Wood ash - FREE organic control",
+  "organic_option_soap": "🌱 Soap solution - homemade organic spray",
+  "organic_option_copper": "🌱 Copper oxychloride - OMRI approved",
+  "organic_option_sulfur": "🌱 Wettable sulfur - organic-approved",
+  "organic_option_ladybirds": "🐞 Ladybirds - natural predators (FREE!)",
+
+  "business_note_early_detection": "Early detection saves Ksh 5,000+ per acre!",
+  "business_note_hermetic_bags": "Hermetic bags protect grain - 2,600% ROI!",
+  "business_note_resistant_varieties": "Resistant varieties cost the same as susceptible ones!",
+  "business_note_ash_free": "Ash application is FREE!",
+
   "qa_water": "{{farmerName}}, here's how to MAXIMIZE your WATER INVESTMENT:\n\n• Water early morning or late evening to reduce evaporation\n• Use drip irrigation where possible to save water (saves 40% on water bills!)\n• Mulch around plants to retain soil moisture (FREE!)\n• During dry spells, water deeply but less frequently\n• For rainfed farming, plant with the first rains\n• Consider rainwater harvesting structures - pays for itself in 2 seasons!",
 
   "qa_margin_with_data": "{{farmerName}}, here's the BOTTOM LINE for your {{crop}} ENTERPRISE:\n\n💰 REVENUE: {{revenue}}\n📉 TOTAL COSTS: {{totalCosts}}\n💵 GROSS MARGIN: {{grossMargin}}\n📊 ROI: {{roi}}%\n\n{{roiMessageKey}}",
   "qa_margin_roi_excellent": "🔥 EXCELLENT! Every {{currencySymbol}} 1 invested returns {{returnPerInvested}}!",
   "qa_margin_roi_medium": "👍 Good, {{farmerName}}! But we can do better.",
+  "soil_test_grouped": "{{title}}\n\n{{content}}\n\nBUSINESS INSIGHT: Every {{symbol}} 1 invested in soil correction returns {{symbol}} 3-5 in higher yields!\nTEST SOIL YEARLY to track improvements and adjust inputs.",
+  "calcitic_lime_grouped": "{{title}}\n\n{{need}}\n{{bags}}\n{{cost}}\n\n{{why}}\n\n{{application}}\n{{wait}}\n\n{{business}}\n{{yearly}}",
+  "fertilizer_header_grouped": "{{title}}\n\n{{farmSize}}\n{{totalInvestment}}",
+  "planting_fertilizers_grouped": "{{content}}",
+  "topdressing_fertilizers_grouped": "{{content}}",
+  "plant_population_grouped": "{{content}}",
+  "gross_margin_grouped": "{{content}}",
+  "gap_grouped": "{{title}}\n\n{{gapText}}\n\n{{remember}}",
+  "disease_management_grouped": "{{content}}",
+  "pest_management_grouped": "{{content}}",
+  "conservation_grouped": "{{content}}",
+  "business_grouped": "{{content}}",
   "qa_margin_roi_low": "⚠️ {{farmerName}}, we need to improve this return!",
   "qa_margin_generic": "{{farmerName}}, here's how to calculate your GROSS MARGIN:\n\nGross Margin = (Yield × Price) - (Seed + Fertilizer + Labour + Transport + Bags)\n\nTrack ALL your costs to know your true profit! This is the difference between farming and running a PROFITABLE ENTERPRISE.",
 
   "qa_business": "{{farmerName}}, FARMING AS A BUSINESS - LISTEN UP! 👂\n\n1. KNOW YOUR COSTS: Track EVERY input - seeds, fertilizer, labour, transport, bags\n2. BUY IN BULK: Save 20-30% with larger packs ({{symbol}}2,000-{{symbol}}5,000 saved!)\n3. FORM FARMER GROUPS: Bulk purchases, shared transport, collective marketing\n4. EXPONENTIAL PHASE: Every 1 {{symbol}} invested returns 3-5 {{symbol}} profit!\n\n💥 PRODUCE MORE WITH LESS, {{farmerName}}!\n💰 PUT MORE MONEY IN YOUR POCKET!\n🚀 THIS IS YOUR BUSINESS - MAKE IT PROFITABLE!\n\nBOTTOM LINE: You're not just farming, {{farmerName}} - you're running an ENTERPRISE!",
+    "gap_onions": "Seed: Use 0.7-0.8kg certified onion seed per acre (for nursery). Varieties: Red Creole, Bombay Red, Texas Grano\nSpacing: 15cm x 7.5cm. Transplant when pencil-thick\nSoil: Well-drained, fertile soil with pH 6.0-7.0\nFertilizer: Apply DAP at transplanting, CAN at 3-4 weeks\nWatering: Keep soil consistently moist\nMaturity: 3-4 months\nYield: 8-15 bags per acre with good management",
+
+  "chemical_status_active": "✅ Actively available",
+  "chemical_status_restricted": "⚠️ RESTRICTED - Check local regulations",
+  "chemical_status_banned": "❌ BANNED in some regions",
+  "chemical_status_check": "🔍 Check local availability",
+
+  "chemical_note_tanzania_ban": "BANNED in Tanzania (Jan 2026). Check local regulations before use.",
+  "chemical_note_lambda_cyhalothrin": "Supply tight, prices rising; check availability",
+  "chemical_note_dimethoate": "Restricted in East Africa; verify local registration",
+  "chemical_note_diazinon": "May be restricted in some countries; check locally",
+  "chemical_note_avaunt": "May be discontinued in some regions; check local availability",
+
+  "organic_option_neem": "🌱 Neem oil - organic alternative",
+  "organic_option_bt": "🌱 Bacillus thuringiensis - organic bio-pesticide",
+  "organic_option_traps": "🌱 Pheromone traps - chemical-free monitoring",
+  "organic_option_ash": "🌱 Wood ash - FREE organic control",
+  "organic_option_soap": "🌱 Soap solution - homemade organic spray",
+  "organic_option_copper": "🌱 Copper oxychloride - OMRI approved",
+  "organic_option_sulfur": "🌱 Wettable sulfur - organic-approved",
+  "organic_option_ladybirds": "🐞 Ladybirds - natural predators (FREE!)",
+  "organic_option_marigold": "🌱 Marigold rotation - natural nematode control",
+  "organic_option_neem_cake": "🌱 Neem cake - soil amendment",
+  "organic_option_row_covers": "🌱 Floating row covers - physical barrier",
+  "organic_option_trapping": "🌱 Trap crops - pest diversion",
+  "organic_option_handpicking": "👐 Handpicking - FREE manual control",
+  "organic_option_bird_perches": "🐦 Bird perches - attract insectivorous birds",
+
+  "business_note_early_detection": "Early detection saves Ksh 5,000+ per acre!",
+  "business_note_hermetic_bags": "Hermetic bags protect grain - 2,600% ROI!",
+  "business_note_resistant_varieties": "Resistant varieties cost the same as susceptible ones!",
+  "business_note_ash_free": "Ash application is FREE!",
+  "business_note_raised_beds": "Raised beds are FREE prevention for root rots!",
+  "business_note_rotation": "Crop rotation costs nothing but time!",
+  "business_note_traps": "Pheromone traps cost Ksh 500/acre - cheaper than spraying!",
+  "business_note_harvest_frequency": "Frequent harvesting reduces pest pressure by 60%!",
+  "business_note_shade_management": "Proper shade reduces pest infestation by 40-60%!",
+
+  "gap_rice": "Seed: Use certified rice seed. Varieties: Komboka, IR54, BW196, Basmati\nSpacing: 20cm x 20cm (transplanted) or 25cm rows (direct seeded)\nSoil: Clay loam soil with good water retention, pH 5.5-6.5\nPlanting: Transplant 3-4 week seedlings at 2-3 per hill\nWater: Maintain 5-10cm water depth during growing season\nFertilizer: Apply DAP at planting, CAN at tillering\nMaturity: 3-4 months for early maturing, 5-6 for traditional\nYield: 3,000-6,000 kg per acre with good management",
+
+  "gap_mangoes": "Seed: Use grafted mango seedlings. Varieties: Apple, Kent, Tommy Atkins, Van Dyke\nSpacing: 8m x 8m (68 trees per acre) for standard varieties\nSoil: Deep, well-drained soil with pH 5.5-7.5\nPlanting: Plant at start of rains, dig 60cm x 60cm x 60cm holes\nFertilizer: Apply DAP at planting, CAN annually, manure 20kg/tree\nWatering: Young trees need regular watering, mature trees drought-tolerant\nPruning: Prune after harvest to maintain shape and air circulation\nMaturity: 3-4 years for grafted trees\nYield: 100-300 kg per tree (6,800-20,000 kg per acre) with good management",
+
+  "gap_pineapples": "Seed: Use crowns, slips or suckers from disease-free plants. Varieties: Smooth Cayenne, MD2\nSpacing: 30cm x 60cm (double rows) or 45cm x 45cm (single rows) - 10,000-15,000 plants per acre\nSoil: Well-drained sandy loam with pH 4.5-5.5\nPlanting: Plant at start of rains, remove lower leaves, treat with fungicide\nFertilizer: Apply NPK at planting, side-dress every 3 months\nWatering: Moderate watering, drought-tolerant once established\nMaturity: 18-24 months\nYield: 20,000-40,000 kg per acre with good management",
+
+  "gap_watermelons": "Seed: Use certified hybrid seed. Varieties: Crimson Sweet, Sugar Baby, Charleston Gray\nSpacing: 2m x 1m (2,000 plants per acre) for trailing varieties\nSoil: Well-drained sandy loam with pH 6.0-7.0\nPlanting: Plant 2-3 seeds per hill, thin to 1 plant, direct seed or transplant\nFertilizer: Apply DAP at planting, CAN at vining and flowering\nWatering: Regular watering during fruit set and development\nPollination: Bees essential - avoid insecticides during flowering\nMaturity: 2-3 months\nYield: 10,000-20,000 kg per acre with good management",
+
+  "gap_carrots": "Seed: Use certified carrot seed. Varieties: Nantes, Chantenay, Amsterdam Forcing\nSpacing: 30cm rows, thin to 5-8cm between plants (80,000-100,000 plants per acre)\nSoil: Deep, loose sandy loam with pH 6.0-6.8 - rocks cause forked roots!\nPlanting: Direct seed, keep soil moist until germination\nFertilizer: Apply DAP at planting, avoid fresh manure (forked roots)\nWatering: Regular even watering - fluctuations cause cracking\nMaturity: 2-3 months\nYield: 8,000-15,000 kg per acre with good management",
+
+  "gap_chillies": "Seed: Use certified hybrid seed. Varieties: Cayenne, Bird's Eye, Habanero, Paprika\nSpacing: 60cm x 45cm (10,000-12,000 plants per acre)\nSoil: Well-drained loam with pH 6.0-7.0\nPlanting: Transplant 4-6 week seedlings, harden off before planting\nFertilizer: Apply DAP at planting, CAN at flowering, potassium for fruit development\nWatering: Regular even watering, mulch to conserve moisture\nStaking: Stake tall varieties to prevent lodging\nMaturity: 2-3 months for green, 3-4 for ripe\nYield: 5,000-10,000 kg per acre with good management",
+
+  "gap_spinach": "Seed: Use certified spinach seed. Varieties: New Zealand, Fordhook Giant, Bloomsdale\nSpacing: 30cm rows, thin to 15cm between plants (40,000-50,000 plants per acre)\nSoil: Fertile loam with pH 6.5-7.5\nPlanting: Direct seed or transplant, keep soil moist\nFertilizer: Apply DAP at planting, CAN after each harvest\nWatering: Regular watering, avoid water stress (bolting)\nHarvesting: Cut outer leaves, leave growing point\nMaturity: 6-8 weeks, multiple harvests\nYield: 8,000-12,000 kg per acre with good management",
+
+  "gap_pigeonpeas": "Seed: Use certified pigeon pea seed. Varieties: ICPL 87091, KAT 60/8\nSpacing: 75cm x 30cm (15,000-20,000 plants per acre) for short duration\nSoil: Well-drained soils, drought-tolerant\nPlanting: Direct seed at start of rains, 2-3 seeds per hill, thin to 1\nFertilizer: Apply DAP at planting, no nitrogen needed (fixes own)\nWatering: Drought-tolerant, water during flowering for better yield\nMaturity: 4-9 months depending on variety\nYield: 800-1,500 kg per acre with good management",
+
+  "gap_bambaranuts": "Seed: Use certified bambara groundnut seed. Varieties: Local landraces\nSpacing: 45cm x 20cm (30,000-40,000 plants per acre)\nSoil: Well-drained sandy loam, drought-tolerant\nPlanting: Direct seed at start of rains, 2 seeds per hill\nFertilizer: No nitrogen needed (fixes own), apply phosphorus\nWatering: Drought-tolerant, water during flowering for better yield\nMaturity: 3-4 months\nYield: 800-1,200 kg per acre with good management",
+
+  "gap_yams": "Seed: Use clean yam setts (seed tubers). Varieties: White yam, Yellow yam, Water yam\nSpacing: 1m x 1m (4,000 plants per acre) for standard varieties\nSoil: Deep, well-drained loam with high organic matter, pH 5.5-6.5\nPlanting: Plant setts at start of rains, 5-10cm deep\nStaking: Stake vines to improve yield and reduce disease\nFertilizer: Apply DAP at planting, CAN at vining, potassium for tuber development\nWatering: Regular watering during tuber formation\nMaturity: 7-12 months\nYield: 10,000-20,000 kg per acre with good management",
+
+  "gap_taro": "Seed: Use clean taro cormels. Varieties: Dasheen, Eddoe\nSpacing: 60cm x 45cm (12,000-15,000 plants per acre)\nSoil: Moist, fertile soil with good drainage, pH 5.5-6.5\nPlanting: Plant cormels at start of rains, 5-10cm deep\nFertilizer: Apply DAP at planting, CAN at 2-3 months\nWatering: Keep soil consistently moist, can grow in wetlands\nMaturity: 6-12 months\nYield: 8,000-15,000 kg per acre with good management",
+
+  "gap_okra": "Seed: Use certified okra seed. Varieties: Clemson Spineless, Pusa Sawani\nSpacing: 60cm x 30cm (15,000-20,000 plants per acre)\nSoil: Well-drained loam with pH 6.0-7.0\nPlanting: Direct seed or transplant, soak seeds overnight\nFertilizer: Apply DAP at planting, CAN at flowering\nWatering: Regular watering during pod development\nHarvesting: Harvest every 2-3 days when pods are tender\nMaturity: 2-3 months\nYield: 6,000-10,000 kg per acre with good management",
+
+  "gap_tea": "Seed: Use clonal tea cuttings. Varieties: TRFK 31/37, TRFK 306, TRFK 6/8\nSpacing: 1.2m x 0.75m (4,500 plants per acre) for high density\nSoil: Deep, well-drained acidic soil with pH 4.5-5.5\nPlanting: Plant at start of rains, maintain 40-50% shade\nFertilizer: Apply NPK 25:5:5 annually, split applications\nPruning: Prune every 3-4 years to maintain plucking table\nPlucking: Pluck every 7-14 days, 2 leaves and a bud\nMaturity: 3-4 years to first harvest\nYield: 2,000-4,000 kg made tea per acre with good management",
+
+  "gap_macadamia": "Seed: Use grafted macadamia seedlings. Varieties: KRG 1-4, Murang'a 20\nSpacing: 8m x 8m (68 trees per acre) for standard varieties\nSoil: Deep, well-drained soil with pH 5.5-6.5\nPlanting: Plant at start of rains, dig 60cm x 60cm x 60cm holes\nFertilizer: Apply NPK at planting, CAN annually, manure 20kg/tree\nWatering: Young trees need regular watering, mature trees drought-tolerant\nPruning: Prune to single leader, remove low branches\nMaturity: 4-5 years for grafted trees\nYield: 50-100 kg nuts per tree (3,400-6,800 kg per acre) with good management",
+
+  "gap_cocoa": "Seed: Use hybrid cocoa seedlings. Varieties: Upper Amazon hybrids\nSpacing: 3m x 3m (484 trees per acre) for standard planting\nSoil: Deep, fertile soil with high organic matter, pH 6.0-7.0\nShade: Maintain 40-50% shade using banana or Gliricidia\nPlanting: Plant at start of rains, dig 60cm x 60cm x 60cm holes\nFertilizer: Apply NPK at planting, CAN annually\nPruning: Prune to maintain shape and air circulation\nHarvesting: Harvest pods when ripe (color change)\nMaturity: 3-4 years for hybrid trees\nYield: 500-1,500 kg dry beans per acre with good management",
+
+  "nutrient_deficiency_title": "🔍 NUTRIENT DEFICIENCY DIAGNOSIS",
+  "nutrient_deficiency_subtitle": "Identify problems by looking at your plants",
+  "deficiency_question": "What symptoms do you see on your plants?",
+  "deficiency_symptom_placeholder": "e.g., yellow leaves, purple color, burned edges",
+  "deficiency_location_question": "Where are the symptoms?",
+  "deficiency_location_options": ["Older leaves (bottom)", "Younger leaves (top)", "Whole plant", "Fruits/flowers only"],
+  "deficiency_check_now": "Check your plants now",
+  "deficiency_possible": "Possible nutrient deficiencies:",
+  "deficiency_nutrient": "Nutrient: {{nutrient}} ({{symbol}})",
+  "deficiency_description": "Description: {{description}}",
+  "deficiency_visual": "Visual signs:",
+  "deficiency_correction": "Recommended correction:",
+  "deficiency_fertilizer": "Fertilizer: {{fertilizer}}",
+  "deficiency_rate": "Rate: {{rate}}",
+  "deficiency_application": "Application: {{application}}",
+  "deficiency_organic": "Organic options: {{options}}",
+  "deficiency_not_found": "No matching deficiencies found. Try different symptoms.",
+  "deficiency_consult": "Consult your local agricultural extension officer for confirmation.",
+  "business_note_early_detection": "Early detection saves Ksh 5,000+ per acre in yield losses!",
+
+
+
 
   "qa_default": "{{farmerName}}, thanks for asking about \"{{question}}\".\n\nBased on your farm data for your {{crop}} ENTERPRISE in {{county}}:\n\n• Follow good agricultural practices to maximize returns\n• Maintain soil fertility - it's your biggest asset\n• Monitor regularly for pests and diseases (early detection saves {{symbol}}10,000+!)\n• Track ALL costs to know your true profit margin\n\nFor more specific information to grow your business, ask about: fertilizer, pests, spacing, harvest, seed rate, varieties, or gross margins.\n\nRemember {{farmerName}}, every shilling counts! 🚀"
 }

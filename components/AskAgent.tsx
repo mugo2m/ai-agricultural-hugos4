@@ -1,4 +1,4 @@
-// components/AskAgent.tsx - Fully translated with structured recommendations
+// components/AskAgent.tsx - Clean version with requested sections removed
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -219,7 +219,7 @@ const AskAgent = ({
   const prepareForSpeech = (text: string): string => {
     let speechText = cleanText(text);
 
-    // Currency replacements
+    // Currency replacements (same as before)
     switch(currency.code) {
       case 'ZAR':
         speechText = speechText.replace(/R\s/g, 'South African Rand ');
@@ -359,7 +359,7 @@ const AskAgent = ({
     };
   }, [farmerName, sessionData, recognitionLanguage, t]);
 
-  // Synchronized streaming function
+  // Synchronized streaming function - UPDATED with faster rate and female-only voices
   const streamAnswerWithVoice = async (fullText: string, isFinancial: boolean = false) => {
     if (!voiceEnabled || !window.speechSynthesis) {
       setMessages(prev => [...prev, {
@@ -380,28 +380,41 @@ const AskAgent = ({
     wordsRef.current = words;
 
     const utterance = new SpeechSynthesisUtterance(speechText);
-    utterance.rate = 0.75;
+    utterance.rate = 1.0; // Faster speech (was 0.75)
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
     utterance.lang = recognitionLanguage;
 
+    // Female voice names (common across browsers)
+    const femaleVoiceNames = [
+      'Jenny', 'Aria', 'Sonia', 'Samantha', 'Zira', 'Libby', 'Hazel',
+      'Susan', 'Kate', 'Google UK English Female', 'Microsoft Jenny',
+      'Microsoft Aria', 'Microsoft Sonia', 'Microsoft Zira', 'Microsoft Libby',
+      'Rafiki' // Swahili female voice
+    ];
+
     const voices = window.speechSynthesis.getVoices();
     const matchingVoices = voices.filter(v => v.lang === recognitionLanguage);
     let preferredVoice;
+
     if (matchingVoices.length > 0) {
+      // First try to find a female voice in the matching language
       preferredVoice = matchingVoices.find(v =>
-        v.name.includes('Jenny') || v.name.includes('Aria') ||
-        v.name.includes('Sonia') || v.name.includes('Samantha') ||
-        v.name.includes('Vivienne')
-      ) || matchingVoices[0];
-    } else {
-      preferredVoice = voices.find(v =>
-        v.name.includes('Google UK') || v.name.includes('Google') ||
-        v.name.includes('Samantha') || v.name.includes('Microsoft Jenny') ||
-        v.name.includes('Microsoft Aria') || v.name.includes('Microsoft Sonia') ||
-        v.name.includes('Microsoft Vivienne')
+        femaleVoiceNames.some(name => v.name.includes(name))
       );
+
+      // If no female voice found in matching language, take any voice in that language
+      if (!preferredVoice) {
+        preferredVoice = matchingVoices[0];
+        console.log('No female voice found for language, using:', preferredVoice.name);
+      }
+    } else {
+      // Fallback to any voice, preferring female
+      preferredVoice = voices.find(v =>
+        femaleVoiceNames.some(name => v.name.includes(name))
+      ) || voices[0];
     }
+
     if (preferredVoice) {
       utterance.voice = preferredVoice;
       console.log(`Using voice: ${preferredVoice.name} (${preferredVoice.lang})`);
@@ -598,7 +611,7 @@ const AskAgent = ({
           timestamp: Date.now()
         }]);
       } else {
-        throw new Error("Unexpected response format");
+        throw new Error("Unexpected answer format");
       }
 
     } catch (error) {
@@ -668,6 +681,27 @@ const AskAgent = ({
     { text: t('market'), icon: <Award className="w-4 h-4" />, color: 'from-purple-400 to-pink-400' }
   ];
 
+  // Handle grouped recommendations
+  const renderRecommendationText = (item: StructuredItem, idx: number) => {
+    // Resolve any nested translation keys inside params
+    const resolvedParams = resolveNestedTranslations(item.params || {});
+
+    // Special handling for gap_grouped which contains a nested gapKey
+    if (item.key === 'gap_grouped' && resolvedParams.gapKey) {
+      const gapText = t(resolvedParams.gapKey, {});
+      resolvedParams.gapText = gapText;
+    }
+
+    const text = t(item.key, resolvedParams);
+
+    return (
+      <div key={idx} className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-white">
+        <span className="font-bold mr-2">{idx + 1}.</span>
+        <span className="text-sm whitespace-pre-line">{text}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-6 p-4 min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl">
       {/* Header */}
@@ -718,66 +752,26 @@ const AskAgent = ({
         </div>
       </div>
 
-      {/* Voice Toggle */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-5 shadow-xl border-2 border-white/30">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-lg text-white flex items-center gap-2">
-            <Mic className="w-5 h-5" />
-            {t('voice_mode')}
-            <span className="text-sm bg-white/20 px-2 py-1 rounded-full">{t('beta')}</span>
-          </h3>
+      {/* Compact Voice Toggle */}
+      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-3 shadow-xl border-2 border-white/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Mic className="w-5 h-5 text-white" />
+            <span className="font-semibold text-white">{t('voice_mode')}</span>
+            <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">{t('beta')}</span>
+          </div>
           <VoiceToggle onVoiceToggle={handleVoiceToggle} initialEnabled={voiceEnabled} />
         </div>
         {isSpeaking && (
-          <div className="flex items-center gap-2 text-white bg-white/20 p-2 rounded-xl animate-pulse">
-            <Volume2 className="w-4 h-4" />
-            <span>{t('ai_speaking')} {wordProgress}</span>
+          <div className="mt-1 text-xs text-white/80 flex items-center gap-1">
+            <Volume2 className="w-3 h-3 animate-pulse" />
+            <span>{t('speaking')} {wordProgress}</span>
           </div>
         )}
-        <div className="text-xs text-white/60 mt-1 text-center">
-          {t('language')}: {recognitionLanguage}
-        </div>
+        <div className="mt-1 text-xs text-white/60 text-right">{t('language')}: {recognitionLanguage}</div>
       </div>
 
-      {/* Financial Summary Card */}
-      {showFinancial && sessionData?.grossMarginAnalysis && (
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-5 shadow-xl border-2 border-white/30">
-          <h3 className="font-bold text-lg text-white flex items-center gap-2 mb-3">
-            <DollarSign className="w-5 h-5" />
-            {t('your_farm_enterprise_financial_snapshot')}
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-              <p className="text-white/80 text-xs">{t('low_input_gm')}</p>
-              <p className="text-white font-bold text-lg">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.low?.grossMargin || 44190, currency)}</p>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-              <p className="text-white/80 text-xs">{t('medium_input_gm')}</p>
-              <p className="text-white font-bold text-lg">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.medium?.grossMargin || 217710, currency)}</p>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-              <p className="text-white/80 text-xs">{t('high_input_gm')}</p>
-              <p className="text-white font-bold text-lg">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.high?.grossMargin || 433680, currency)}</p>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3">
-              <p className="text-white/80 text-xs">{t('your_level')}</p>
-              <p className="text-white font-bold text-lg">{sessionData.managementLevel || "Medium"}</p>
-            </div>
-          </div>
-          {structuredFinancialAdvice ? (
-            <p className="text-white/90 text-sm mt-3 bg-white/10 p-2 rounded-lg whitespace-pre-line">
-              {t(structuredFinancialAdvice.key, structuredFinancialAdvice.params)}
-            </p>
-          ) : sessionData.financialAdvice && (
-            <p className="text-white/90 text-sm mt-3 bg-white/10 p-2 rounded-lg">
-              {sessionData.financialAdvice.substring(0, 100)}...
-            </p>
-          )}
-          <p className="text-white/80 text-xs mt-2">{t('every_symbol_invested', { symbol: currency.symbol })}</p>
-        </div>
-      )}
-
-      {/* Recommendations Panel */}
+      {/* Recommendations Panel - Direct access, no extra sections */}
       {showRecommendations && (
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-5 shadow-xl border-2 border-white/30">
           <h3 className="font-bold text-lg text-white flex items-center gap-2 mb-3">
@@ -786,14 +780,7 @@ const AskAgent = ({
           </h3>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {structuredList.length > 0 ? (
-              structuredList.map((item, idx) => (
-                <div key={idx} className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-white">
-                  <span className="font-bold mr-2">{idx + 1}.</span>
-                  <span className="text-sm whitespace-pre-line">
-                    {t(item.key, item.params)}
-                  </span>
-                </div>
-              ))
+              structuredList.map((item, idx) => renderRecommendationText(item, idx))
             ) : (
               oldRecommendations.map((rec, idx) => (
                 <div key={idx} className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-white">
@@ -843,8 +830,8 @@ const AskAgent = ({
         </button>
       </div>
 
-      {/* Messages Area */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-xl border-2 border-emerald-200 min-h-[400px] max-h-[500px] overflow-y-auto">
+      {/* Messages Area - Expanded */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-xl border-2 border-emerald-200 min-h-[400px] max-h-[600px] overflow-y-auto">
         <div className="space-y-4">
           {messages.map((msg, index) => (
             <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in`}>
@@ -997,41 +984,6 @@ const AskAgent = ({
             </button>
           ))
         )}
-      </div>
-
-      {/* Farm stats footer */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-3 shadow-lg">
-        <div className="flex justify-around text-white text-sm">
-          <div className="flex items-center gap-1">
-            <Sprout className="w-4 h-4" />
-            <span>{sessionData?.crops?.map((c: string) => `${c}`).join(", ")}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <MapPin className="w-4 h-4" />
-            <span>{sessionData?.county}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Globe className="w-4 h-4" />
-            <span>{sessionData?.country || 'Kenya'}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Rocket className="w-4 h-4" />
-            <span>
-              {structuredList.length > 0
-                ? t('tips_count', { count: structuredList.length })
-                : t('tips_count', { count: oldRecommendations.length })}
-            </span>
-          </div>
-          {sessionData?.grossMarginAnalysis && (
-            <div className="flex items-center gap-1">
-              <DollarSign className="w-4 h-4" />
-              <span>{t('gm_available')}</span>
-            </div>
-          )}
-        </div>
-        <div className="text-center text-white/70 text-xs mt-2">
-          {t('test_soil_yearly_knowledge')}
-        </div>
       </div>
     </div>
   );

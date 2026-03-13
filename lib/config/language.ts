@@ -10,6 +10,7 @@ export interface CountryLanguage {
 export const COUNTRY_LANGUAGE_MAP: Record<string, CountryLanguage> = {
   // East Africa
   kenya: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
+  kikuyu: { code: 'ki', name: 'Kikuyu', ttsSupported: true }, // for internal use
   uganda: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
   tanzania: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
   rwanda: { code: 'fr-FR', name: 'French', ttsSupported: true },

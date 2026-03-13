@@ -1,5 +1,6 @@
 // lib/fertilizers/topDressingFertilizers.ts
 // Complete database of top dressing fertilizers from Kenyan suppliers
+// UPDATED: Added crop-specific recommendations for all 47 crops
 
 import { Fertilizer } from './plantingFertilizers';
 
@@ -12,11 +13,19 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "27-0-0",
     nutrients: { n: 27, p: 0, k: 0, ca: 8 },
-    crops: ["all crops"],
-    description: "Calcium Ammonium Nitrate - most common top dressing",
+    crops: [
+      "maize", "wheat", "barley", "sorghum", "finger millet", "rice",
+      "tomatoes", "onions", "cabbages", "kales", "spinach", "carrots",
+      "chillies", "capsicums", "potatoes", "coffee", "tea",
+      "bananas", "pineapples", "all crops", "cereals", "vegetables"
+    ],
+    description: "Calcium Ammonium Nitrate - most common top dressing, provides both N and Ca",
     packageSizes: ["50kg bag (Ksh 2,500)", "50kg bag (Ksh 2,600)", "50kg bag (Ksh 2,700)"],
-    pricePer50kg: 2600
+    pricePer50kg: 2600,
+    applicationRate: "50-100 kg/acre",
+    timing: "4-6 weeks after planting, side-dress near plants"
   },
+
   {
     id: "ss_urea",
     brand: "UREA 46%N",
@@ -24,11 +33,18 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "46-0-0",
     nutrients: { n: 46, p: 0, k: 0 },
-    crops: ["all crops"],
-    description: "Urea - highest nitrogen content",
+    crops: [
+      "maize", "wheat", "barley", "sorghum", "finger millet", "rice",
+      "sugarcane", "bananas", "pineapples", "coffee", "tea",
+      "all crops", "cereals"
+    ],
+    description: "Urea - highest nitrogen content, best for cereals and grasses",
     packageSizes: ["50kg bag (Ksh 2,800)", "50kg bag (Ksh 2,900)", "50kg bag (Ksh 3,000)"],
-    pricePer50kg: 2900
+    pricePer50kg: 2900,
+    applicationRate: "50-75 kg/acre",
+    timing: "4-6 weeks after planting, incorporate into soil to avoid volatilization"
   },
+
   {
     id: "ss_as",
     brand: "AS 21%N",
@@ -36,10 +52,16 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "21-0-0",
     nutrients: { n: 21, p: 0, k: 0, s: 23 },
-    crops: ["all crops"],
-    description: "Ammonium Sulphate - nitrogen with sulphur",
+    crops: [
+      "maize", "wheat", "barley", "onions", "garlic", "cabbages",
+      "potatoes", "tea", "coffee", "oil crops", "sunflower",
+      "all crops", "cereals", "vegetables"
+    ],
+    description: "Ammonium Sulphate - nitrogen with sulphur for crops needing S",
     packageSizes: ["50kg bag (Ksh 2,200)", "50kg bag (Ksh 2,300)", "50kg bag (Ksh 2,400)"],
-    pricePer50kg: 2300
+    pricePer50kg: 2300,
+    applicationRate: "50-100 kg/acre",
+    timing: "4-6 weeks after planting, good for sulphur-loving crops"
   },
 
   // ========== YARA TOP DRESSING ==========
@@ -50,11 +72,14 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "34-0-3",
     nutrients: { n: 34, p: 0, k: 3, ca: 4, mg: 1, s: 4, zn: 0.1 },
-    crops: ["cereals", "sugarcane", "maize"],
+    crops: ["maize", "wheat", "barley", "sorghum", "sugarcane", "cereals"],
     description: "High nitrogen with potassium and micronutrients",
     packageSizes: ["50kg bag (Ksh 3,000)", "50kg bag (Ksh 3,200)"],
-    pricePer50kg: 3100
+    pricePer50kg: 3100,
+    applicationRate: "50-75 kg/acre",
+    timing: "4-6 weeks after planting"
   },
+
   {
     id: "yara_bela_sulfan",
     brand: "Yara Bela Sulfan",
@@ -62,10 +87,34 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "24-0-0",
     nutrients: { n: 24, p: 0, k: 0, s: 6 },
-    crops: ["cereals", "vegetables"],
-    description: "Nitrogen with sulphur",
+    crops: [
+      "maize", "wheat", "barley", "onions", "garlic", "cabbages",
+      "potatoes", "tea", "cereals", "vegetables"
+    ],
+    description: "Nitrogen with sulphur - ideal for crops needing both",
     packageSizes: ["50kg bag (Ksh 2,800)", "50kg bag (Ksh 3,000)"],
-    pricePer50kg: 2900
+    pricePer50kg: 2900,
+    applicationRate: "50-100 kg/acre",
+    timing: "4-6 weeks after planting"
+  },
+
+  {
+    id: "yara_npk_15_15_15",
+    brand: "Yara NPK 15-15-15",
+    company: "YARA",
+    type: "topdressing",
+    npk: "15-15-15",
+    nutrients: { n: 15, p: 15, k: 15, s: 2, mg: 1.2 },
+    crops: [
+      "tomatoes", "capsicums", "chillies", "onions", "cabbages", "kales",
+      "spinach", "okra", "french beans", "garden peas", "vegetables",
+      "fruits", "general"
+    ],
+    description: "Balanced NPK for general top dressing",
+    packageSizes: ["50kg bag (Ksh 3,200)", "50kg bag (Ksh 3,400)"],
+    pricePer50kg: 3300,
+    applicationRate: "50-75 kg/acre",
+    timing: "4-6 weeks after planting, repeat after 4 weeks"
   },
 
   // ========== ELGON TOP DRESSING ==========
@@ -76,11 +125,14 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "40-0-0",
     nutrients: { n: 40, p: 0, k: 0, s: 6.5 },
-    crops: ["cereals", "maize"],
-    description: "High nitrogen for cereals",
+    crops: ["maize", "sorghum", "finger millet", "wheat", "barley", "rice", "cereals"],
+    description: "High nitrogen for cereals with sulphur",
     packageSizes: ["50kg bag (Ksh 2,900)", "50kg bag (Ksh 3,100)"],
-    pricePer50kg: 3000
+    pricePer50kg: 3000,
+    applicationRate: "50-75 kg/acre",
+    timing: "4-6 weeks after planting"
   },
+
   {
     id: "elgon_thabiti_top_potato",
     brand: "Thabiti Top Dressing Potato",
@@ -88,11 +140,14 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "24-0-24",
     nutrients: { n: 24, p: 0, k: 24, s: 4, ca: 1, mg: 0.2, zn: 0.1, b: 0.1, mn: 0.1 },
-    crops: ["potatoes"],
-    description: "Balanced NK for potatoes",
+    crops: ["potatoes", "yams", "taro", "cassava", "sweet potatoes", "tubers"],
+    description: "Balanced NK for potatoes and tuber crops",
     packageSizes: ["50kg bag (Ksh 3,200)", "50kg bag (Ksh 3,400)"],
-    pricePer50kg: 3300
+    pricePer50kg: 3300,
+    applicationRate: "100-150 kg/acre",
+    timing: "At tuber initiation stage"
   },
+
   {
     id: "elgon_thabiti_top_sugar",
     brand: "Thabiti Top Dressing Sugar Cane",
@@ -103,7 +158,45 @@ export const topDressingFertilizers: Fertilizer[] = [
     crops: ["sugarcane"],
     description: "High nitrogen and potassium for sugarcane",
     packageSizes: ["50kg bag (Ksh 3,100)", "50kg bag (Ksh 3,300)"],
-    pricePer50kg: 3200
+    pricePer50kg: 3200,
+    applicationRate: "100-150 kg/acre",
+    timing: "At tillering and grand growth stage"
+  },
+
+  {
+    id: "elgon_thabiti_top_veg",
+    brand: "Thabiti Top Dressing Vegetables",
+    company: "ELGON",
+    type: "topdressing",
+    npk: "20-0-15",
+    nutrients: { n: 20, p: 0, k: 15, s: 2, mg: 1, zn: 0.2, b: 0.1 },
+    crops: [
+      "tomatoes", "onions", "cabbages", "kales", "capsicums", "chillies",
+      "spinach", "okra", "french beans", "garden peas", "carrots", "vegetables"
+    ],
+    description: "NK blend for vegetable crops",
+    packageSizes: ["50kg bag (Ksh 3,000)", "50kg bag (Ksh 3,200)"],
+    pricePer50kg: 3100,
+    applicationRate: "50-100 kg/acre",
+    timing: "4-6 weeks after planting, repeat every 3-4 weeks"
+  },
+
+  {
+    id: "elgon_thabiti_top_fruit",
+    brand: "Thabiti Top Dressing Fruit",
+    company: "ELGON",
+    type: "topdressing",
+    npk: "15-0-25",
+    nutrients: { n: 15, p: 0, k: 25, s: 2, mg: 1.5, zn: 0.3, b: 0.2 },
+    crops: [
+      "bananas", "oranges", "mangoes", "avocados", "pineapples", "pawpaws",
+      "passion fruit", "citrus", "watermelons", "macadamia", "fruits"
+    ],
+    description: "High potassium for fruit development and quality",
+    packageSizes: ["50kg bag (Ksh 3,400)", "50kg bag (Ksh 3,600)"],
+    pricePer50kg: 3500,
+    applicationRate: "200-500g per tree",
+    timing: "At flowering and fruit development stages"
   },
 
   // ========== ETG TOP DRESSING ==========
@@ -114,11 +207,14 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "30-0-10",
     nutrients: { n: 30, p: 0, k: 10, s: 4, b: 0.3, ca: 2, mg: 1 },
-    crops: ["cereals", "grasses"],
+    crops: ["maize", "sorghum", "wheat", "rice", "cereals", "grasses"],
     description: "Nitrogen and potassium with boron",
     packageSizes: ["50kg bag (Ksh 3,000)", "50kg bag (Ksh 3,200)"],
-    pricePer50kg: 3100
+    pricePer50kg: 3100,
+    applicationRate: "50-75 kg/acre",
+    timing: "4-6 weeks after planting"
   },
+
   {
     id: "etg_falcon_urea",
     brand: "Falcon Urea",
@@ -126,10 +222,45 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "46-0-0",
     nutrients: { n: 46, p: 0, k: 0 },
-    crops: ["cereals", "all crops"],
+    crops: ["maize", "wheat", "barley", "sugarcane", "cereals", "all crops"],
     description: "Pure urea - highest nitrogen content",
     packageSizes: ["50kg bag (Ksh 2,850)", "50kg bag (Ksh 2,950)"],
-    pricePer50kg: 2900
+    pricePer50kg: 2900,
+    applicationRate: "50-75 kg/acre",
+    timing: "4-6 weeks after planting, incorporate into soil"
+  },
+
+  {
+    id: "etg_kyno_top_nk",
+    brand: "Kyno Top NK",
+    company: "ETG",
+    type: "topdressing",
+    npk: "20-0-20",
+    nutrients: { n: 20, p: 0, k: 20, s: 2, mg: 1, zn: 0.2 },
+    crops: [
+      "potatoes", "sweet potatoes", "cassava", "yams", "taro", "tubers",
+      "bananas", "pineapples", "fruits"
+    ],
+    description: "Balanced NK for tuber and fruit crops",
+    packageSizes: ["50kg bag (Ksh 3,200)", "50kg bag (Ksh 3,400)"],
+    pricePer50kg: 3300,
+    applicationRate: "75-100 kg/acre",
+    timing: "At tuber initiation or flowering stage"
+  },
+
+  {
+    id: "etg_kyno_sulphur",
+    brand: "Kyno Sulphur",
+    company: "ETG",
+    type: "topdressing",
+    npk: "0-0-0",
+    nutrients: { s: 90 },
+    crops: ["onions", "garlic", "cabbages", "tea", "coffee", "oil crops"],
+    description: "Pure sulphur for crops with high S requirement",
+    packageSizes: ["50kg bag (Ksh 2,500)", "50kg bag (Ksh 2,700)"],
+    pricePer50kg: 2600,
+    applicationRate: "25-50 kg/acre",
+    timing: "At planting or early growth"
   },
 
   // ========== POTASSIUM FERTILIZERS ==========
@@ -140,11 +271,18 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "0-0-60",
     nutrients: { n: 0, p: 0, k: 60 },
-    crops: ["all crops"],
-    description: "Muriate of Potash - high potassium",
+    crops: [
+      "potatoes", "tomatoes", "onions", "bananas", "oranges", "mangoes",
+      "avocados", "pineapples", "watermelons", "macadamia", "coffee",
+      "sugarcane", "cocoa", "fruits", "vegetables", "all crops"
+    ],
+    description: "Muriate of Potash - high potassium for fruit and tuber development",
     packageSizes: ["50kg bag (Ksh 2,800)", "50kg bag (Ksh 2,900)"],
-    pricePer50kg: 2850
+    pricePer50kg: 2850,
+    applicationRate: "25-100 kg/acre depending on crop",
+    timing: "At flowering, fruit set, or tuber initiation"
   },
+
   {
     id: "sop",
     brand: "SOP",
@@ -152,11 +290,17 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "0-0-50",
     nutrients: { n: 0, p: 0, k: 50, s: 18 },
-    crops: ["all crops"],
-    description: "Sulphate of Potash - potassium with sulphur",
+    crops: [
+      "potatoes", "tomatoes", "onions", "garlic", "capsicums", "chillies",
+      "fruits", "vegetables", "tobacco", "horticulture"
+    ],
+    description: "Sulphate of Potash - potassium with sulphur, chloride-free",
     packageSizes: ["50kg bag (Ksh 3,200)", "50kg bag (Ksh 3,400)"],
-    pricePer50kg: 3300
+    pricePer50kg: 3300,
+    applicationRate: "25-75 kg/acre",
+    timing: "At flowering and fruit development"
   },
+
   {
     id: "kplus_korn_kali",
     brand: "Korn-Kali",
@@ -164,24 +308,274 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "0-0-40",
     nutrients: { n: 0, p: 0, k: 40, mg: 6, s: 5, na: 3, b: 0.25 },
-    crops: ["all crops"],
-    description: "Potassium with magnesium and sulphur",
+    crops: [
+      "potatoes", "sugarcane", "bananas", "pineapples", "coffee",
+      "fruits", "vegetables", "all crops"
+    ],
+    description: "Potassium with magnesium and sulphur - complete K source",
     packageSizes: ["50kg bag (Ksh 2,900)", "50kg bag (Ksh 3,100)"],
-    pricePer50kg: 3000
+    pricePer50kg: 3000,
+    applicationRate: "50-100 kg/acre",
+    timing: "At flowering and fruit development"
+  },
+
+  {
+    id: "kplus_patentkali",
+    brand: "Patentkali",
+    company: "KPLUS",
+    type: "topdressing",
+    npk: "0-0-30",
+    nutrients: { n: 0, p: 0, k: 30, mg: 10, s: 17 },
+    crops: [
+      "potatoes", "tomatoes", "capsicums", "chillies", "onions",
+      "fruits", "vegetables", "horticulture"
+    ],
+    description: "Potassium with high magnesium and sulphur",
+    packageSizes: ["50kg bag (Ksh 3,000)", "50kg bag (Ksh 3,200)"],
+    pricePer50kg: 3100,
+    applicationRate: "50-75 kg/acre",
+    timing: "At flowering and fruit development"
+  },
+
+  // ========== CROP-SPECIFIC SPECIALTY FERTILIZERS ==========
+
+  // Rice
+  {
+    id: "mea_rice_top",
+    brand: "MEA Rice Topdressing",
+    company: "MEA Fertilizers",
+    type: "topdressing",
+    npk: "30-0-0",
+    nutrients: { n: 30, p: 0, k: 0, zn: 1 },
+    crops: ["rice"],
+    description: "High nitrogen with zinc for rice",
+    packageSizes: ["50kg bag (Ksh 3,000)", "50kg bag (Ksh 3,200)"],
+    pricePer50kg: 3100,
+    applicationRate: "50-75 kg/acre",
+    timing: "At tillering and panicle initiation"
+  },
+
+  // Pineapple
+  {
+    id: "mea_pineapple_top",
+    brand: "MEA Pineapple Topdressing",
+    company: "MEA Fertilizers",
+    type: "topdressing",
+    npk: "12-0-18",
+    nutrients: { n: 12, p: 0, k: 18, mg: 2, zn: 0.3 },
+    crops: ["pineapples"],
+    description: "High potassium for pineapple fruit development",
+    packageSizes: ["50kg bag (Ksh 3,500)", "50kg bag (Ksh 3,700)"],
+    pricePer50kg: 3600,
+    applicationRate: "150-200 kg/acre split",
+    timing: "At 6 months and 12 months after planting"
+  },
+
+  // Tea
+  {
+    id: "mea_tea_top",
+    brand: "MEA Tea Topdressing",
+    company: "MEA Fertilizers",
+    type: "topdressing",
+    npk: "25-0-5",
+    nutrients: { n: 25, p: 0, k: 5, s: 3, mg: 1 },
+    crops: ["tea"],
+    description: "High nitrogen for tea with potassium and sulphur",
+    packageSizes: ["50kg bag (Ksh 3,200)", "50kg bag (Ksh 3,400)"],
+    pricePer50kg: 3300,
+    applicationRate: "100-200 kg/acre annually",
+    timing: "Split during rainy seasons"
+  },
+
+  // Coffee
+  {
+    id: "mea_coffee_top",
+    brand: "MEA Coffee Topdressing",
+    company: "MEA Fertilizers",
+    type: "topdressing",
+    npk: "17-0-17",
+    nutrients: { n: 17, p: 0, k: 17, s: 2, mg: 1.5, zn: 0.2, b: 0.1 },
+    crops: ["coffee"],
+    description: "Balanced NK for coffee with micronutrients",
+    packageSizes: ["50kg bag (Ksh 3,400)", "50kg bag (Ksh 3,600)"],
+    pricePer50kg: 3500,
+    applicationRate: "150-250g per tree",
+    timing: "At flowering and after harvest"
+  },
+
+  // Macadamia
+  {
+    id: "mea_macadamia_top",
+    brand: "MEA Macadamia Topdressing",
+    company: "MEA Fertilizers",
+    type: "topdressing",
+    npk: "12-0-20",
+    nutrients: { n: 12, p: 0, k: 20, s: 2, mg: 2, zn: 0.3, b: 0.2 },
+    crops: ["macadamia"],
+    description: "High potassium for nut development",
+    packageSizes: ["50kg bag (Ksh 3,800)", "50kg bag (Ksh 4,000)"],
+    pricePer50kg: 3900,
+    applicationRate: "200-400g per tree",
+    timing: "At flowering and nut fill"
+  },
+
+  // Cocoa
+  {
+    id: "mea_cocoa_top",
+    brand: "MEA Cocoa Topdressing",
+    company: "MEA Fertilizers",
+    type: "topdressing",
+    npk: "15-0-15",
+    nutrients: { n: 15, p: 0, k: 15, mg: 1.5, zn: 0.2 },
+    crops: ["cocoa"],
+    description: "Balanced NK for cocoa pod development",
+    packageSizes: ["50kg bag (Ksh 3,500)", "50kg bag (Ksh 3,700)"],
+    pricePer50kg: 3600,
+    applicationRate: "150-200g per tree",
+    timing: "At flowering and pod filling"
+  },
+
+  // Watermelon
+  {
+    id: "mea_watermelon_top",
+    brand: "MEA Watermelon Topdressing",
+    company: "MEA Fertilizers",
+    type: "topdressing",
+    npk: "15-0-20",
+    nutrients: { n: 15, p: 0, k: 20, mg: 1.5, zn: 0.2, b: 0.1 },
+    crops: ["watermelons"],
+    description: "High potassium for fruit sweetness and size",
+    packageSizes: ["50kg bag (Ksh 3,600)", "50kg bag (Ksh 3,800)"],
+    pricePer50kg: 3700,
+    applicationRate: "50-75 kg/acre",
+    timing: "At flowering and fruit set"
+  },
+
+  // Carrots
+  {
+    id: "mea_carrots_top",
+    brand: "MEA Carrots Topdressing",
+    company: "MEA Fertilizers",
+    type: "topdressing",
+    npk: "15-0-20",
+    nutrients: { n: 15, p: 0, k: 20, s: 2, b: 0.2 },
+    crops: ["carrots"],
+    description: "High potassium for root development",
+    packageSizes: ["50kg bag (Ksh 3,400)", "50kg bag (Ksh 3,600)"],
+    pricePer50kg: 3500,
+    applicationRate: "50-75 kg/acre",
+    timing: "4-6 weeks after planting"
+  },
+
+  // Chillies
+  {
+    id: "mea_chillies_top",
+    brand: "MEA Chillies Topdressing",
+    company: "MEA Fertilizers",
+    type: "topdressing",
+    npk: "15-0-20",
+    nutrients: { n: 15, p: 0, k: 20, mg: 1.5, zn: 0.2, b: 0.1 },
+    crops: ["chillies", "capsicums"],
+    description: "High potassium for fruit quality and heat",
+    packageSizes: ["50kg bag (Ksh 3,600)", "50kg bag (Ksh 3,800)"],
+    pricePer50kg: 3700,
+    applicationRate: "50-75 kg/acre",
+    timing: "At flowering and fruit set"
+  },
+
+  // Onions
+  {
+    id: "mea_onions_top",
+    brand: "MEA Onions Topdressing",
+    company: "MEA Fertilizers",
+    type: "topdressing",
+    npk: "20-0-15",
+    nutrients: { n: 20, p: 0, k: 15, s: 3, zn: 0.2 },
+    crops: ["onions", "garlic"],
+    description: "NK blend for bulb development with sulphur",
+    packageSizes: ["50kg bag (Ksh 3,300)", "50kg bag (Ksh 3,500)"],
+    pricePer50kg: 3400,
+    applicationRate: "50-75 kg/acre",
+    timing: "At bulb initiation stage"
+  },
+
+  // Tomatoes
+  {
+    id: "mea_tomatoes_top",
+    brand: "MEA Tomatoes Topdressing",
+    company: "MEA Fertilizers",
+    type: "topdressing",
+    npk: "15-0-20",
+    nutrients: { n: 15, p: 0, k: 20, ca: 3, mg: 1.5, zn: 0.2, b: 0.1 },
+    crops: ["tomatoes"],
+    description: "High potassium with calcium for blossom end rot prevention",
+    packageSizes: ["50kg bag (Ksh 3,500)", "50kg bag (Ksh 3,700)"],
+    pricePer50kg: 3600,
+    applicationRate: "50-75 kg/acre",
+    timing: "At flowering and fruit set"
   }
 ];
 
 // Helper function to get top dressing fertilizers by crop
 export function getTopDressingFertilizersByCrop(crop: string): Fertilizer[] {
-  return topDressingFertilizers.filter(f =>
-    f.crops.includes(crop.toLowerCase()) ||
-    f.crops.includes("all crops") ||
-    f.crops.includes("general") ||
-    f.crops.includes("cereals") && ["maize", "sorghum", "finger millet", "wheat"].includes(crop.toLowerCase())
-  );
+  const lowerCrop = crop.toLowerCase();
+
+  return topDressingFertilizers.filter(f => {
+    // Direct match
+    if (f.crops.includes(lowerCrop)) return true;
+
+    // All crops
+    if (f.crops.includes("all crops")) return true;
+    if (f.crops.includes("general")) return true;
+
+    // Cereals
+    const cereals = ["maize", "sorghum", "finger millet", "wheat", "barley", "rice"];
+    if (cereals.includes(lowerCrop) && f.crops.includes("cereals")) return true;
+
+    // Vegetables
+    const vegetables = ["tomatoes", "kales", "cabbages", "onions", "capsicums", "chillies", "spinach", "okra", "french beans", "garden peas", "carrots"];
+    if (vegetables.includes(lowerCrop) && f.crops.includes("vegetables")) return true;
+
+    // Fruits
+    const fruits = ["bananas", "oranges", "mangoes", "avocados", "pineapples", "pawpaws", "passion fruit", "citrus", "watermelons"];
+    if (fruits.includes(lowerCrop) && f.crops.includes("fruits")) return true;
+
+    // Tubers
+    const tubers = ["potatoes", "sweet potatoes", "cassava", "yams", "taro"];
+    if (tubers.includes(lowerCrop) && f.crops.includes("tubers")) return true;
+
+    return false;
+  });
 }
 
 // Helper function to get top dressing fertilizer by ID
 export function getTopDressingFertilizerById(id: string): Fertilizer | undefined {
   return topDressingFertilizers.find(f => f.id === id);
+}
+
+// Helper function to get potassium fertilizers (MOP, SOP, etc.)
+export function getPotassiumFertilizers(): Fertilizer[] {
+  return topDressingFertilizers.filter(f =>
+    f.id.includes("mop") ||
+    f.id.includes("sop") ||
+    f.id.includes("kplus") ||
+    f.nutrients.k > 30
+  );
+}
+
+// Helper function to get recommended top dressing for specific crop and growth stage
+export function getRecommendedTopDressing(
+  crop: string,
+  stage: "vegetative" | "flowering" | "fruiting" | "tuber" = "vegetative"
+): Fertilizer[] {
+  const allForCrop = getTopDressingFertilizersByCrop(crop);
+
+  // Filter based on growth stage
+  return allForCrop.filter(f => {
+    if (stage === "vegetative" && f.nutrients.n > 25) return true;
+    if (stage === "flowering" && f.nutrients.k > 15) return true;
+    if (stage === "fruiting" && f.nutrients.k > 20) return true;
+    if (stage === "tuber" && f.nutrients.k > 20) return true;
+    return false;
+  });
 }

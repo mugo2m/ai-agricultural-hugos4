@@ -596,6 +596,53 @@
   "gross_margin_current_level": "Votre niveau actuel : {{level}}",
   "gross_margin_bottom_line": "CONCLUSION",
   "gross_margin_extra_profit": "Passer de {{from}} à Élevé pourrait mettre {{amount}} supplémentaire dans votre poche",
+"gap_avocados": "Semences : Utilisez des plants d'avocatiers certifiés. Variétés : Hass, Fuerte, Pinkerton\nEspacement : 5 m x 5 m (174 arbres par acre) pour les variétés standard\nSol : Sol profond et bien drainé avec pH 5,5-6,5\nPlantation : Plantez au début des pluies, creusez des trous de 60 cm x 60 cm x 60 cm\nEngrais : Appliquez DAP à la plantation, CAN annuellement\nArrosage : Les jeunes arbres ont besoin d'arrosages réguliers, les arbres matures sont résistants à la sécheresse\nMaturité : 3-4 ans pour les arbres greffés\nRendement : 100-300 kg par arbre (17 000-52 000 kg par acre) avec une bonne gestion",
+
+  "chemical_status_active": "✅ Disponible activement",
+  "chemical_status_restricted": "⚠️ RESTREINT - Vérifiez la réglementation locale",
+  "chemical_status_banned": "❌ INTERDIT dans certaines régions",
+  "chemical_status_check": "🔍 Vérifiez la disponibilité locale",
+
+  "chemical_note_tanzania_ban": "INTERDIT en Tanzanie (janv. 2026). Vérifiez la réglementation locale avant utilisation.",
+  "chemical_note_lambda_cyhalothrin": "Offre limitée, prix en hausse; vérifiez la disponibilité",
+  "chemical_note_dimethoate": "Restreint en Afrique de l'Est; vérifiez l'enregistrement local",
+  "chemical_note_diazinon": "Peut être restreint dans certains pays; vérifiez localement",
+  "chemical_note_avaunt": "Peut être discontinué dans certaines régions; vérifiez la disponibilité locale",
+
+  "organic_option_neem": "🌱 Huile de neem - alternative biologique",
+  "organic_option_bt": "🌱 Bacillus thuringiensis - bio-pesticide biologique",
+  "organic_option_traps": "🌱 Pièges à phéromones - surveillance sans produits chimiques",
+  "organic_option_ash": "🌱 Cendre de bois - contrôle biologique GRATUIT",
+  "organic_option_soap": "🌱 Solution savonneuse - spray biologique fait maison",
+  "organic_option_copper": "🌱 Oxyde de cuivre - approuvé OMRI",
+  "organic_option_sulfur": "🌱 Soufre mouillable - approuvé biologique",
+  "organic_option_ladybirds": "🐞 Coccinelles - prédateurs naturels (GRATUIT!)",
+
+  "business_note_early_detection": "La détection précoce économise plus de 5 000 Ksh par acre!",
+  "business_note_hermetic_bags": "Les sacs hermétiques protègent le grain - ROI de 2 600%!",
+  "business_note_resistant_varieties": "Les variétés résistantes coûtent le même prix que les variétés sensibles!",
+  "business_note_ash_free": "L'application de cendre est GRATUITE!",
+
+  "use_kg_warning": "⚠️ Veuillez utiliser les KILOGRAMMES, pas les sacs!",
+  "bags_to_kg_hint": "Exemple: {{example}}",
+  "bags_to_kg_example": "Si vous avez récolté 60 sacs de 90kg, entrez 5400 kg",
+  "yield_seems_low_warning": "⚠️ Le rendement semble très faible",
+  "yield_seems_low_detail": "{{yield}} kg est très faible. Vouliez-vous dire {{bags}} sacs ({{converted}} kg)?",
+  "yield_seems_low_confirm": "⚠️ {{yield}} kg semble très faible. Vouliez-vous dire {{bags}} sacs? Cela ferait {{converted}} kg. Continuer quand même?",
+  "yield_too_high": "⚠️ Le rendement semble trop élevé",
+  "yield_too_high_detail": "Le maximum attendu est de {{max}} kg. Veuillez vérifier.",
+  "price_too_low": "Le prix semble trop bas",
+  "price_per_kg_expected": "Le prix attendu pour {{crop}} est de 40-80 FCFA par kg",
+  "price_very_high": "⚠️ Le prix est très élevé",
+  "price_high_verify": "Veuillez vérifier que votre prix par kg est correct",
+  "target_yield_low": "L'objectif de rendement de {{target}} kg semble faible. Continuer?",
+  "enter_yield_kg_placeholder": "ex: 5400 kg",
+  "enter_price_kg_placeholder": "ex: 50",
+  "enter_target_yield_kg": "ex: 8000 kg",
+  "ack_actual_yield_kg": "Merci. Votre rendement est de {{answer}} kilogrammes.",
+  "ack_price_per_kg": "Merci. Votre prix est de {{answer}} francs par kilogramme.",
+  "ack_target_yield_kg": "Merci. Votre objectif de rendement est de {{answer}} kilogrammes.",
+
 
   "gap_title": "BONNES PRATIQUES AGRICOLES POUR VOTRE ENTREPRISE DE {{crop}}",
   "gap_maize": "Semences : Utilisez 10 kg de semences de maïs certifiées par acre. Variétés : H614, H629, PHB 3253\nPréparation du sol : Préparez avant les pluies. Labourez deux fois pour un lit de semences fin.\nPlantation : Plantez au début des pluies, espacement 75 cm x 25 cm, profondeur 5 cm.\nDésherbage : 1er désherbage à 2-3 semaines, 2ème à 5-6 semaines.\nFertilisation de couverture : Appliquez au stade genou quand le sol est humide.\nMaturité : 3-6 mois selon la variété.\nRendement : 25-40 sacs par acre avec une bonne gestion.",
@@ -643,11 +690,117 @@
   "business_buy_bulk_dap": "DAP : Sac de 50 kg {{single}} -> Achetez 10 sacs {{ten}} (économisez {{saved}})",
   "business_buy_bulk_can": "CAN : Sac de 50 kg {{single}} -> Achetez 10 sacs {{ten}} (économisez {{saved}})",
   "business_form_groups_title": "3. FORMEZ DES GROUPES D'AGRICULTEURS",
+   "soil_test_grouped": "{{title}}\n\n{{content}}\n\nPERSPECTIVE COMMERCIALE : Chaque {{symbol}} 1 investi dans la correction du sol rapporte {{symbol}} 3-5 de rendements plus élevés !\nANALYSEZ LE SOL CHAQUE ANNÉE pour suivre les progrès et ajuster les intrants.",
+  "calcitic_lime_grouped": "{{title}}\n\n{{need}}\n{{bags}}\n{{cost}}\n\n{{why}}\n\n{{application}}\n{{wait}}\n\n{{business}}\n{{yearly}}",
+  "fertilizer_header_grouped": "{{title}}\n\n{{farmSize}}\n{{totalInvestment}}",
+  "planting_fertilizers_grouped": "{{content}}",
+  "topdressing_fertilizers_grouped": "{{content}}",
+  "plant_population_grouped": "{{content}}",
+  "gross_margin_grouped": "{{content}}",
+  "gap_grouped": "{{title}}\n\n{{gapText}}\n\n{{remember}}",
+  "disease_management_grouped": "{{content}}",
+  "pest_management_grouped": "{{content}}",
+  "conservation_grouped": "{{content}}",
+  "business_grouped": "{{content}}",
+  "disease_management_grouped": "{{content}}",
+  "pest_management_grouped": "{{content}}",
+  "conservation_grouped": "{{content}}",
+  "business_grouped": "{{content}}",
   "business_form_groups_list": "Achats groupés d'intrants : Économisez 15-25 %",
   "business_form_groups_transport": "Transport partagé : Économisez {{saved}}/acre\nCommercialisation collective : Obtenez des prix 10-20 % plus élevés.",
   "business_exponential_title": "4. PHASE EXPONENTIELLE",
   "business_exponential": "Chaque {{symbol}} 1 supplémentaire investi rapporte {{symbol}} 3-5 de profit.\nContinuez à investir – plus d'intrants = plus de profits.",
   "business_bottom_line": "CONCLUSION : L'agriculture est une ENTREPRISE. Faites travailler chaque shilling pour vous.",
+    "gap_onions": "Semences : Utilisez 0,7-0,8 kg de semences d'oignons certifiées par acre (pour pépinière). Variétés : Red Creole, Bombay Red, Texas Grano\nEspacement : 15 cm x 7,5 cm. Repiquez quand l'épaisseur d'un crayon\nSol : Sol fertile bien drainé avec pH 6,0-7,0\nEngrais : Appliquez DAP à la transplantation, CAN à 3-4 semaines\nArrosage : Gardez le sol constamment humide\nMaturité : 3-4 mois\nRendement : 8-15 sacs par acre avec une bonne gestion",
+
+
+  "chemical_status_active": "✅ Disponible activement",
+  "chemical_status_restricted": "⚠️ RESTREINT - Vérifiez la réglementation locale",
+  "chemical_status_banned": "❌ INTERDIT dans certaines régions",
+  "chemical_status_check": "🔍 Vérifiez la disponibilité locale",
+
+  "chemical_note_tanzania_ban": "INTERDIT en Tanzanie (janv. 2026). Vérifiez la réglementation locale avant utilisation.",
+  "chemical_note_lambda_cyhalothrin": "Offre limitée, prix en hausse; vérifiez la disponibilité",
+  "chemical_note_dimethoate": "Restreint en Afrique de l'Est; vérifiez l'enregistrement local",
+  "chemical_note_diazinon": "Peut être restreint dans certains pays; vérifiez localement",
+  "chemical_note_avaunt": "Peut être discontinué dans certaines régions; vérifiez la disponibilité locale",
+
+  "organic_option_neem": "🌱 Huile de neem - alternative biologique",
+  "organic_option_bt": "🌱 Bacillus thuringiensis - bio-pesticide biologique",
+  "organic_option_traps": "🌱 Pièges à phéromones - surveillance sans produits chimiques",
+  "organic_option_ash": "🌱 Cendre de bois - contrôle biologique GRATUIT",
+  "organic_option_soap": "🌱 Solution savonneuse - spray biologique fait maison",
+  "organic_option_copper": "🌱 Oxyde de cuivre - approuvé OMRI",
+  "organic_option_sulfur": "🌱 Soufre mouillable - approuvé biologique",
+  "organic_option_ladybirds": "🐞 Coccinelles - prédateurs naturels (GRATUIT!)",
+  "organic_option_marigold": "🌱 Rotation d'œillets d'Inde - contrôle naturel des nématodes",
+  "organic_option_neem_cake": "🌱 Tourteau de neem - amendement du sol",
+  "organic_option_row_covers": "🌱 Couvertures flottantes - barrière physique",
+  "organic_option_trapping": "🌱 Cultures pièges - diversion des ravageurs",
+  "organic_option_handpicking": "👐 Cueillette manuelle - contrôle manuel GRATUIT",
+  "organic_option_bird_perches": "🐦 Perchoirs à oiseaux - attirent les oiseaux insectivores",
+
+  "business_note_early_detection": "La détection précoce économise plus de 5 000 Ksh par acre!",
+  "business_note_hermetic_bags": "Les sacs hermétiques protègent le grain - ROI de 2 600%!",
+  "business_note_resistant_varieties": "Les variétés résistantes coûtent le même prix que les variétés sensibles!",
+  "business_note_ash_free": "L'application de cendre est GRATUITE!",
+  "business_note_raised_beds": "Les planches surélevées sont une prévention GRATUITE contre les pourritures des racines!",
+  "business_note_rotation": "La rotation des cultures ne coûte que du temps!",
+  "business_note_traps": "Les pièges à phéromones coûtent 500 Ksh/acre - moins cher que la pulvérisation!",
+  "business_note_harvest_frequency": "La récolte fréquente réduit la pression des ravageurs de 60%!",
+  "business_note_shade_management": "L'ombrage approprié réduit l'infestation des ravageurs de 40 à 60%!",
+
+  "gap_rice": "Semences: Utilisez des semences de riz certifiées. Variétés: Komboka, IR54, BW196, Basmati\nEspacement: 20cm x 20cm (repiquage) ou 25cm rangs (semis direct)\nSol: Sol argileux avec bonne rétention d'eau, pH 5,5-6,5\nPlantation: Repiquez les plants de 3-4 semaines à 2-3 par poquet\nEau: Maintenez 5-10cm de profondeur d'eau pendant la saison de croissance\nEngrais: Appliquez du DAP à la plantation, du CAN au tallage\nMaturité: 3-4 mois pour les précoces, 5-6 pour les traditionnelles\nRendement: 3 000-6 000 kg par acre avec une bonne gestion",
+
+  "gap_mangoes": "Semences: Utilisez des plants de manguiers greffés. Variétés: Apple, Kent, Tommy Atkins, Van Dyke\nEspacement: 8m x 8m (68 arbres par acre) pour les variétés standard\nSol: Sol profond et bien drainé avec pH 5,5-7,5\nPlantation: Plantez au début des pluies, creusez des trous de 60cm x 60cm x 60cm\nEngrais: Appliquez du DAP à la plantation, du CAN annuellement, 20kg de fumier/arbre\nArrosage: Les jeunes arbres ont besoin d'arrosage régulier, les arbres matures résistent à la sécheresse\nTaille: Taillez après la récolte pour maintenir la forme et la circulation d'air\nMaturité: 3-4 ans pour les arbres greffés\nRendement: 100-300 kg par arbre (6 800-20 000 kg par acre) avec une bonne gestion",
+
+  "gap_pineapples": "Semences: Utilisez des couronnes, rejets ou bulbilles de plants sains. Variétés: Smooth Cayenne, MD2\nEspacement: 30cm x 60cm (doubles rangs) ou 45cm x 45cm (rangs simples) - 10 000-15 000 plants par acre\nSol: Sol sablo-limoneux bien drainé avec pH 4,5-5,5\nPlantation: Plantez au début des pluies, enlevez les feuilles inférieures, traitez avec fongicide\nEngrais: Appliquez NPK à la plantation, engrais de couverture tous les 3 mois\nArrosage: Arrosage modéré, tolérant à la sécheresse une fois établi\nMaturité: 18-24 mois\nRendement: 20 000-40 000 kg par acre avec une bonne gestion",
+
+  "gap_watermelons": "Semences: Utilisez des semences hybrides certifiées. Variétés: Crimson Sweet, Sugar Baby, Charleston Gray\nEspacement: 2m x 1m (2 000 plants par acre) pour les variétés rampantes\nSol: Sol sablo-limoneux bien drainé avec pH 6,0-7,0\nPlantation: Plantez 2-3 graines par poquet, éclaircissez à 1 plant, semis direct ou repiquage\nEngrais: Appliquez du DAP à la plantation, du CAN à la ramification et à la floraison\nArrosage: Arrosage régulier pendant la nouaison et le développement des fruits\nPollinisation: Les abeilles sont essentielles - évitez les insecticides pendant la floraison\nMaturité: 2-3 mois\nRendement: 10 000-20 000 kg par acre avec une bonne gestion",
+
+  "gap_carrots": "Semences: Utilisez des semences de carotte certifiées. Variétés: Nantes, Chantenay, Amsterdam Forcing\nEspacement: Rangs de 30cm, éclaircissez à 5-8cm entre les plants (80 000-100 000 plants par acre)\nSol: Sol sablo-limoneux profond et meuble avec pH 6,0-6,8 - les cailloux causent des racines fourchues!\nPlantation: Semis direct, gardez le sol humide jusqu'à la germination\nEngrais: Appliquez du DAP à la plantation, évitez le fumier frais (racines fourchues)\nArrosage: Arrosage régulier et uniforme - les fluctuations causent le craquelage\nMaturité: 2-3 mois\nRendement: 8 000-15 000 kg par acre avec une bonne gestion",
+
+  "gap_chillies": "Semences: Utilisez des semences hybrides certifiées. Variétés: Cayenne, Bird's Eye, Habanero, Paprika\nEspacement: 60cm x 45cm (10 000-12 000 plants par acre)\nSol: Sol limoneux bien drainé avec pH 6,0-7,0\nPlantation: Repiquez les plants de 4-6 semaines, endurecissez avant plantation\nEngrais: Appliquez du DAP à la plantation, du CAN à la floraison, du potassium pour le développement des fruits\nArrosage: Arrosage régulier et uniforme, paillez pour conserver l'humidité\nTuteurage: Tuteurez les variétés hautes pour éviter la verse\nMaturité: 2-3 mois pour les verts, 3-4 pour les mûrs\nRendement: 5 000-10 000 kg par acre avec une bonne gestion",
+
+  "gap_spinach": "Semences: Utilisez des semences d'épinard certifiées. Variétés: New Zealand, Fordhook Giant, Bloomsdale\nEspacement: Rangs de 30cm, éclaircissez à 15cm entre les plants (40 000-50 000 plants par acre)\nSol: Sol limoneux fertile avec pH 6,5-7,5\nPlantation: Semis direct ou repiquage, gardez le sol humide\nEngrais: Appliquez du DAP à la plantation, du CAN après chaque récolte\nArrosage: Arrosage régulier, évitez le stress hydrique (montaison)\nRécolte: Coupez les feuilles extérieures, laissez le point de croissance\nMaturité: 6-8 semaines, récoltes multiples\nRendement: 8 000-12 000 kg par acre avec une bonne gestion",
+
+  "gap_pigeonpeas": "Semences: Utilisez des semences de pois d'Angole certifiées. Variétés: ICPL 87091, KAT 60/8\nEspacement: 75cm x 30cm (15 000-20 000 plants par acre) pour les variétés courtes\nSol: Sols bien drainés, tolérant à la sécheresse\nPlantation: Semis direct au début des pluies, 2-3 graines par poquet, éclaircissez à 1\nEngrais: Appliquez du DAP à la plantation, pas d'azote nécessaire (fixe son propre azote)\nArrosage: Tolérant à la sécheresse, arrosez pendant la floraison pour meilleur rendement\nMaturité: 4-9 mois selon la variété\nRendement: 800-1 500 kg par acre avec une bonne gestion",
+
+  "gap_bambaranuts": "Semences: Utilisez des semences de pois bambara certifiées. Variétés: Races locales\nEspacement: 45cm x 20cm (30 000-40 000 plants par acre)\nSol: Sol sablo-limoneux bien drainé, tolérant à la sécheresse\nPlantation: Semis direct au début des pluies, 2 graines par poquet\nEngrais: Pas d'azote nécessaire (fixe son propre azote), appliquez du phosphore\nArrosage: Tolérant à la sécheresse, arrosez pendant la floraison pour meilleur rendement\nMaturité: 3-4 mois\nRendement: 800-1 200 kg par acre avec une bonne gestion",
+
+  "gap_yams": "Semences: Utilisez des semenceaux d'igname propres. Variétés: Igname blanche, Igname jaune, Igname d'eau\nEspacement: 1m x 1m (4 000 plants par acre) pour les variétés standard\nSol: Sol limoneux profond et bien drainé avec matière organique élevée, pH 5,5-6,5\nPlantation: Plantez les semenceaux au début des pluies, 5-10cm de profondeur\nTuteurage: Tuteurez les vignes pour améliorer le rendement et réduire les maladies\nEngrais: Appliquez du DAP à la plantation, du CAN à la ramification, du potassium pour le développement des tubercules\nArrosage: Arrosage régulier pendant la formation des tubercules\nMaturité: 7-12 mois\nRendement: 10 000-20 000 kg par acre avec une bonne gestion",
+
+  "gap_taro": "Semences: Utilisez des cormelles de taro propres. Variétés: Dasheen, Eddoe\nEspacement: 60cm x 45cm (12 000-15 000 plants par acre)\nSol: Sol fertile et humide avec bon drainage, pH 5,5-6,5\nPlantation: Plantez les cormelles au début des pluies, 5-10cm de profondeur\nEngrais: Appliquez du DAP à la plantation, du CAN à 2-3 mois\nArrosage: Gardez le sol constamment humide, peut pousser en zones humides\nMaturité: 6-12 mois\nRendement: 8 000-15 000 kg par acre avec une bonne gestion",
+
+  "gap_okra": "Semences: Utilisez des semences de gombo certifiées. Variétés: Clemson Spineless, Pusa Sawani\nEspacement: 60cm x 30cm (15 000-20 000 plants par acre)\nSol: Sol limoneux bien drainé avec pH 6,0-7,0\nPlantation: Semis direct ou repiquage, faites tremper les graines toute une nuit\nEngrais: Appliquez du DAP à la plantation, du CAN à la floraison\nArrosage: Arrosage régulier pendant le développement des gousses\nRécolte: Récoltez tous les 2-3 jours quand les gousses sont tendres\nMaturité: 2-3 mois\nRendement: 6 000-10 000 kg par acre avec une bonne gestion",
+
+  "gap_tea": "Semences: Utilisez des boutures de thé clonales. Variétés: TRFK 31/37, TRFK 306, TRFK 6/8\nEspacement: 1,2m x 0,75m (4 500 plants par acre) pour haute densité\nSol: Sol acide profond et bien drainé avec pH 4,5-5,5\nPlantation: Plantez au début des pluies, maintenez 40-50% d'ombrage\nEngrais: Appliquez NPK 25:5:5 annuellement, applications fractionnées\nTaille: Taillez tous les 3-4 ans pour maintenir la table de cueillette\nCueillette: Cueillez tous les 7-14 jours, 2 feuilles et un bourgeon\nMaturité: 3-4 ans pour la première récolte\nRendement: 2 000-4 000 kg de thé fabriqué par acre avec une bonne gestion",
+
+  "gap_macadamia": "Semences: Utilisez des plants de macadamia greffés. Variétés: KRG 1-4, Murang'a 20\nEspacement: 8m x 8m (68 arbres par acre) pour les variétés standard\nSol: Sol profond et bien drainé avec pH 5,5-6,5\nPlantation: Plantez au début des pluies, creusez des trous de 60cm x 60cm x 60cm\nEngrais: Appliquez NPK à la plantation, du CAN annuellement, 20kg de fumier/arbre\nArrosage: Les jeunes arbres ont besoin d'arrosage régulier, les arbres matures résistent à la sécheresse\nTaille: Taillez pour un seul leader, enlevez les branches basses\nMaturité: 4-5 ans pour les arbres greffés\nRendement: 50-100 kg de noix par arbre (3 400-6 800 kg par acre) avec une bonne gestion",
+
+  "gap_cocoa": "Semences: Utilisez des plants de cacao hybrides. Variétés: Hybrides Upper Amazon\nEspacement: 3m x 3m (484 arbres par acre) pour plantation standard\nSol: Sol profond et fertile avec matière organique élevée, pH 6,0-7,0\nOmbrage: Maintenez 40-50% d'ombrage avec bananiers ou Gliricidia\nPlantation: Plantez au début des pluies, creusez des trous de 60cm x 60cm x 60cm\nEngrais: Appliquez NPK à la plantation, du CAN annuellement\nTaille: Taillez pour maintenir la forme et la circulation d'air\nRécolte: Récoltez les cabosses quand elles sont mûres (changement de couleur)\nMaturité: 3-4 ans pour les arbres hybrides\nRendement: 500-1 500 kg de fèves sèches par acre avec une bonne gestion",
+
+  "nutrient_deficiency_title": "🔍 DIAGNOSTIC DES CARENCES NUTRITIVES",
+  "nutrient_deficiency_subtitle": "Identifiez les problèmes en observant vos plantes",
+  "deficiency_question": "Quels symptômes voyez-vous sur vos plantes?",
+  "deficiency_symptom_placeholder": "ex: feuilles jaunes, couleur violette, bords brûlés",
+  "deficiency_location_question": "Où se situent les symptômes?",
+  "deficiency_location_options": ["Vieilles feuilles (bas)", "Jeunes feuilles (haut)", "Plante entière", "Fruits/fleurs uniquement"],
+  "deficiency_check_now": "Inspectez vos plantes maintenant",
+  "deficiency_possible": "Carences nutritives possibles:",
+  "deficiency_nutrient": "Nutriment: {{nutrient}} ({{symbol}})",
+  "deficiency_description": "Description: {{description}}",
+  "deficiency_visual": "Signes visuels:",
+  "deficiency_correction": "Correction recommandée:",
+  "deficiency_fertilizer": "Engrais: {{fertilizer}}",
+  "deficiency_rate": "Dose: {{rate}}",
+  "deficiency_application": "Application: {{application}}",
+  "deficiency_organic": "Options biologiques: {{options}}",
+  "deficiency_not_found": "Aucune carence correspondante trouvée. Essayez différents symptômes.",
+  "deficiency_consult": "Consultez votre agent de vulgarisation agricole local pour confirmation.",
+  "business_note_early_detection": "La détection précoce économise plus de 5 000 Ksh par acre de pertes de rendement!",
+
+
 
   "financial_advice": "CONSEILS DE GESTION FINANCIÈRE\n\n{{#if totalInvestment}}Votre investissement en engrais de précision est de {{totalInvestment}} pour l'ensemble de votre exploitation. Cette approche ciblée augmente généralement les rendements de 30 à 50 % avec un ROI de 200 à 300 %.\n\n{{/if}}CALCUL DE LA MARGE BRUTE\nMarge brute = (Rendement × Prix) - (Semences + Engrais + Main-d'œuvre + Transport + Sacs)\n\nCALCULEZ VOTRE MARGE BRUTE RÉELLE\nUtilisez le rendement et le prix que vous avez saisis lors de l'entretien.\nAdditionnez tous vos coûts réels :\n  Semences : Votre taux de semis × coût des semences\n  Engrais : Total kg utilisés × prix par kg\n  Main-d'œuvre : Labour + plantation + désherbage + récolte\n  Transport : Nombre de sacs × coût du transport par sac\n  Sacs : Nombre de sacs × coût par sac\n\nCONSEILS PRO\nSuivez CHAQUE coût – connaissez vos chiffres.\nComparez vos rendements avec les références de votre région.\nVisez des niveaux de gestion plus élevés pour augmenter le profit.\nRappelez-vous : Chaque {{symbol}} 1 investi devrait rapporter {{symbol}} 3-5 de profit.\nANALYSEZ LE SOL CHAQUE ANNÉE pour savoir quand des ajustements sont nécessaires.\nACHETEZ DES FORMATS ADAPTÉS À VOS BESOINS – ne gaspillez pas d'argent.\n\nC'EST VOTRE ENTREPRISE. RENDEZ-LA RENTABLE."
 }

@@ -23,7 +23,7 @@ export class TextToSpeech {
   private currentUtterance: SpeechSynthesisUtterance | null = null;
 
   private config: SpeechSynthesisConfig = {
-    rate: 0.75,
+    rate: 1.0,
     pitch: 1.1,
     volume: 0.9,
     language: 'en-US' // Default language
@@ -172,7 +172,6 @@ export class TextToSpeech {
       .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
       .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
       .replace(/[\u{2600}-\u{26FF}]/gu, '')
-      .replace(/[\u{2700}-\u{27BF}]/gu, '')
       .replace(/\*\*\*/g, '')
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')

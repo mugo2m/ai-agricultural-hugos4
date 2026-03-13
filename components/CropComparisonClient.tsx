@@ -713,44 +713,7 @@ export default function CropComparisonClient({
           </div>
         )}
 
-        {/* Podium Cards - Top 3 Crops */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Rank 2 - Silver */}
-          {rankedCrops.length >= 2 && (
-            <div className="bg-gradient-to-br from-gray-300 to-gray-400 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all order-2 md:order-1">
-              <div className="flex items-center gap-3 mb-2">
-                <Trophy className="w-8 h-8 text-gray-700" />
-                <h3 className="text-xl font-bold">{t('second_place')}</h3>
-              </div>
-              <p className="text-3xl font-bold mb-1 capitalize">{rankedCrops[1].crop}</p>
-              <p className="text-2xl font-semibold opacity-90">{formatCurrencyForDisplay(rankedCrops[1].profit, currency)}</p>
-            </div>
-          )}
-
-          {/* Rank 1 - Gold */}
-          {rankedCrops.length >= 1 && (
-            <div className="bg-gradient-to-br from-yellow-400 to-amber-500 rounded-2xl p-8 text-white shadow-xl transform hover:scale-105 transition-all order-1 md:order-2 border-4 border-yellow-300">
-              <div className="flex items-center gap-3 mb-2">
-                <Crown className="w-10 h-10 text-yellow-800" />
-                <h3 className="text-2xl font-bold">{t('most_profitable_enterprise')}</h3>
-              </div>
-              <p className="text-4xl font-bold mb-1 capitalize">{rankedCrops[0].crop}</p>
-              <p className="text-3xl font-semibold opacity-90">{formatCurrencyForDisplay(rankedCrops[0].profit, currency)}</p>
-            </div>
-          )}
-
-          {/* Rank 3 - Bronze */}
-          {rankedCrops.length >= 3 && (
-            <div className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl p-6 text-white shadow-xl transform hover:scale-105 transition-all order-3">
-              <div className="flex items-center gap-3 mb-2">
-                <Award className="w-8 h-8 text-amber-800" />
-                <h3 className="text-xl font-bold">{t('third_place')}</h3>
-              </div>
-              <p className="text-3xl font-bold mb-1 capitalize">{rankedCrops[2].crop}</p>
-              <p className="text-2xl font-semibold opacity-90">{formatCurrencyForDisplay(rankedCrops[2].profit, currency)}</p>
-            </div>
-          )}
-        </div>
+        {/* Podium Cards - REMOVED */}
 
         {/* Business Insight Card */}
         <div className="mt-8 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-6 text-white shadow-xl">

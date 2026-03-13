@@ -103,6 +103,490 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
+// ========== CROP-SPECIFIC CONVERSION FACTORS ==========
+
+export interface CropConversionFactors {
+  bagSizes: {
+    standard?: number; // kg per standard bag
+    alternatives?: { name: string; kg: number }[];
+  };
+  commonUnits: {
+    [key: string]: number; // conversion factor to kg
+  };
+  yieldRange: {
+    min: number; // kg per acre
+    max: number; // kg per acre
+    typical: number; // kg per acre
+  };
+  priceRange: {
+    min: number; // Ksh per kg
+    max: number; // Ksh per kg
+    typical: number; // Ksh per kg
+  };
+}
+
+export const cropConversionFactors: Record<string, CropConversionFactors> = {
+  // Cereals & Grains
+  maize: {
+    bagSizes: {
+      standard: 90,
+      alternatives: [
+        { name: "50kg bag", kg: 50 },
+        { name: "100kg bag", kg: 100 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "bag90": 90,
+      "bag50": 50,
+      "debe": 20, // 20-litre tin
+      "gorogoro": 2 // 2kg tin
+    },
+    yieldRange: { min: 1000, max: 5000, typical: 2500 },
+    priceRange: { min: 30, max: 60, typical: 40 }
+  },
+
+  rice: {
+    bagSizes: {
+      standard: 90,
+      alternatives: [
+        { name: "50kg bag", kg: 50 },
+        { name: "100kg bag", kg: 100 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "bag90": 90,
+      "bag50": 50
+    },
+    yieldRange: { min: 2000, max: 6000, typical: 3000 },
+    priceRange: { min: 50, max: 120, typical: 80 }
+  },
+
+  beans: {
+    bagSizes: {
+      standard: 90,
+      alternatives: [
+        { name: "50kg bag", kg: 50 },
+        { name: "100kg bag", kg: 100 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "bag90": 90,
+      "bag50": 50,
+      "debe": 20,
+      "gorogoro": 2
+    },
+    yieldRange: { min: 800, max: 2000, typical: 1200 },
+    priceRange: { min: 60, max: 120, typical: 80 }
+  },
+
+  // Fruits
+  mangoes: {
+    bagSizes: {
+      alternatives: [
+        { name: "crate", kg: 50 },
+        { name: "sack", kg: 70 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "crate": 50,
+      "sack": 70,
+      "piece": 0.3 // average mango weight
+    },
+    yieldRange: { min: 5000, max: 20000, typical: 8000 },
+    priceRange: { min: 30, max: 80, typical: 50 }
+  },
+
+  pineapples: {
+    bagSizes: {
+      alternatives: [
+        { name: "crate", kg: 40 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "crate": 40,
+      "piece": 1.5 // average pineapple weight
+    },
+    yieldRange: { min: 15000, max: 40000, typical: 20000 },
+    priceRange: { min: 30, max: 60, typical: 40 }
+  },
+
+  watermelons: {
+    bagSizes: {
+      alternatives: []
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "piece": 5 // average watermelon weight
+    },
+    yieldRange: { min: 10000, max: 30000, typical: 15000 },
+    priceRange: { min: 20, max: 50, typical: 30 }
+  },
+
+  // Vegetables
+  tomatoes: {
+    bagSizes: {
+      alternatives: [
+        { name: "crate", kg: 30 },
+        { name: "lug box", kg: 20 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "crate": 30,
+      "lug": 20
+    },
+    yieldRange: { min: 10000, max: 30000, typical: 15000 },
+    priceRange: { min: 30, max: 80, typical: 40 }
+  },
+
+  onions: {
+    bagSizes: {
+      standard: 90,
+      alternatives: [
+        { name: "50kg bag", kg: 50 },
+        { name: "sack", kg: 70 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "bag90": 90,
+      "bag50": 50,
+      "sack": 70
+    },
+    yieldRange: { min: 6000, max: 15000, typical: 8000 },
+    priceRange: { min: 40, max: 100, typical: 50 }
+  },
+
+  carrots: {
+    bagSizes: {
+      alternatives: [
+        { name: "sack", kg: 50 },
+        { name: "bunch", kg: 0.5 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "sack": 50,
+      "bunch": 0.5
+    },
+    yieldRange: { min: 8000, max: 18000, typical: 10000 },
+    priceRange: { min: 30, max: 60, typical: 40 }
+  },
+
+  chillies: {
+    bagSizes: {
+      alternatives: [
+        { name: "sack", kg: 70 },
+        { name: "crate", kg: 20 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "sack": 70,
+      "crate": 20
+    },
+    yieldRange: { min: 4000, max: 10000, typical: 6000 },
+    priceRange: { min: 60, max: 150, typical: 80 }
+  },
+
+  spinach: {
+    bagSizes: {
+      alternatives: [
+        { name: "bunch", kg: 0.3 },
+        { name: "sack", kg: 30 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "bunch": 0.3,
+      "sack": 30
+    },
+    yieldRange: { min: 6000, max: 15000, typical: 8000 },
+    priceRange: { min: 20, max: 40, typical: 25 }
+  },
+
+  okra: {
+    bagSizes: {
+      alternatives: [
+        { name: "sack", kg: 50 },
+        { name: "crate", kg: 20 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "sack": 50,
+      "crate": 20
+    },
+    yieldRange: { min: 5000, max: 12000, typical: 7000 },
+    priceRange: { min: 30, max: 60, typical: 35 }
+  },
+
+  // Legumes
+  pigeonpeas: {
+    bagSizes: {
+      standard: 90,
+      alternatives: [
+        { name: "50kg bag", kg: 50 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "bag90": 90,
+      "bag50": 50
+    },
+    yieldRange: { min: 800, max: 2000, typical: 1000 },
+    priceRange: { min: 50, max: 100, typical: 70 }
+  },
+
+  bambaranuts: {
+    bagSizes: {
+      standard: 90,
+      alternatives: [
+        { name: "50kg bag", kg: 50 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "bag90": 90,
+      "bag50": 50
+    },
+    yieldRange: { min: 600, max: 1500, typical: 800 },
+    priceRange: { min: 60, max: 120, typical: 80 }
+  },
+
+  // Tubers
+  yams: {
+    bagSizes: {
+      alternatives: [
+        { name: "sack", kg: 50 },
+        { name: "piece", kg: 2 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "sack": 50,
+      "piece": 2
+    },
+    yieldRange: { min: 8000, max: 20000, typical: 12000 },
+    priceRange: { min: 40, max: 80, typical: 50 }
+  },
+
+  taro: {
+    bagSizes: {
+      alternatives: [
+        { name: "sack", kg: 50 },
+        { name: "piece", kg: 0.5 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "sack": 50,
+      "piece": 0.5
+    },
+    yieldRange: { min: 6000, max: 15000, typical: 10000 },
+    priceRange: { min: 30, max: 60, typical: 40 }
+  },
+
+  // Cash crops
+  tea: {
+    bagSizes: {
+      standard: 50,
+      alternatives: [
+        { name: "sack", kg: 50 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "bag50": 50
+    },
+    yieldRange: { min: 1500, max: 4000, typical: 2500 },
+    priceRange: { min: 150, max: 300, typical: 200 }
+  },
+
+  coffee: {
+    bagSizes: {
+      standard: 60,
+      alternatives: [
+        { name: "50kg bag", kg: 50 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "tonne": 1000,
+      "bag60": 60,
+      "bag50": 50
+    },
+    yieldRange: { min: 1000, max: 3000, typical: 2000 },
+    priceRange: { min: 200, max: 500, typical: 300 }
+  },
+
+  cocoa: {
+    bagSizes: {
+      standard: 60,
+      alternatives: [
+        { name: "50kg bag", kg: 50 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "bag60": 60,
+      "bag50": 50
+    },
+    yieldRange: { min: 500, max: 1500, typical: 800 },
+    priceRange: { min: 200, max: 500, typical: 300 }
+  },
+
+  macadamia: {
+    bagSizes: {
+      standard: 70,
+      alternatives: [
+        { name: "50kg bag", kg: 50 }
+      ]
+    },
+    commonUnits: {
+      "kg": 1,
+      "bag70": 70,
+      "bag50": 50
+    },
+    yieldRange: { min: 2000, max: 7000, typical: 4000 },
+    priceRange: { min: 100, max: 250, typical: 150 }
+  }
+};
+
+// Helper to get crop conversion factors
+export function getCropConversionFactors(crop: string): CropConversionFactors | null {
+  const lowerCrop = crop.toLowerCase();
+  return cropConversionFactors[lowerCrop] || null;
+}
+
+// Convert any unit to kg for a specific crop
+export function convertToKg(crop: string, amount: number, unit: string): number {
+  const factors = getCropConversionFactors(crop);
+  if (!factors) return amount; // assume already kg
+
+  const lowerUnit = unit.toLowerCase();
+
+  // Check common units
+  if (factors.commonUnits[lowerUnit]) {
+    return amount * factors.commonUnits[lowerUnit];
+  }
+
+  // Check bag sizes
+  if (factors.bagSizes.standard && lowerUnit.includes('bag')) {
+    return amount * factors.bagSizes.standard;
+  }
+
+  if (factors.bagSizes.alternatives) {
+    const alt = factors.bagSizes.alternatives.find(a =>
+      lowerUnit.includes(a.name.toLowerCase())
+    );
+    if (alt) return amount * alt.kg;
+  }
+
+  return amount; // assume already kg
+}
+
+// Validate yield is within reasonable range
+export function validateYield(crop: string, yieldKg: number, acres: number = 1): {
+  valid: boolean;
+  message?: string;
+  suggested?: number;
+} {
+  const factors = getCropConversionFactors(crop);
+  if (!factors) return { valid: true };
+
+  const yieldPerAcre = yieldKg / acres;
+
+  if (yieldPerAcre < factors.yieldRange.min * 0.5) {
+    // Try to detect if they entered bags instead of kg
+    if (factors.bagSizes.standard) {
+      const bags = yieldPerAcre;
+      const converted = bags * factors.bagSizes.standard;
+      if (converted >= factors.yieldRange.min && converted <= factors.yieldRange.max) {
+        return {
+          valid: false,
+          message: `⚠️ ${yieldPerAcre} kg/acre seems very low. Did you mean ${bags.toFixed(1)} bags (${converted.toFixed(0)} kg)?`,
+          suggested: converted
+        };
+      }
+    }
+
+    return {
+      valid: false,
+      message: `⚠️ ${yieldPerAcre} kg/acre is below typical range (${factors.yieldRange.min}-${factors.yieldRange.max} kg/acre)`,
+      suggested: factors.yieldRange.typical
+    };
+  }
+
+  if (yieldPerAcre > factors.yieldRange.max * 1.5) {
+    return {
+      valid: false,
+      message: `⚠️ ${yieldPerAcre} kg/acre is above typical range (${factors.yieldRange.min}-${factors.yieldRange.max} kg/acre)`,
+      suggested: factors.yieldRange.max
+    };
+  }
+
+  return { valid: true };
+}
+
+// Validate price is within reasonable range
+export function validatePrice(crop: string, pricePerKg: number): {
+  valid: boolean;
+  message?: string;
+  suggested?: number;
+} {
+  const factors = getCropConversionFactors(crop);
+  if (!factors) return { valid: true };
+
+  if (pricePerKg < factors.priceRange.min * 0.5) {
+    // Check if they entered price per bag instead
+    if (factors.bagSizes.standard) {
+      const pricePerBag = pricePerKg;
+      const converted = pricePerBag / factors.bagSizes.standard;
+      if (converted >= factors.priceRange.min && converted <= factors.priceRange.max) {
+        return {
+          valid: false,
+          message: `⚠️ Ksh ${pricePerKg}/kg seems very low. Did you mean Ksh ${pricePerBag} per bag (Ksh ${converted.toFixed(0)}/kg)?`,
+          suggested: converted
+        };
+      }
+    }
+
+    return {
+      valid: false,
+      message: `⚠️ Ksh ${pricePerKg}/kg is below typical range (Ksh ${factors.priceRange.min}-${factors.priceRange.max}/kg)`,
+      suggested: factors.priceRange.typical
+    };
+  }
+
+  if (pricePerKg > factors.priceRange.max * 1.5) {
+    return {
+      valid: false,
+      message: `⚠️ Ksh ${pricePerKg}/kg is above typical range (Ksh ${factors.priceRange.min}-${factors.priceRange.max}/kg)`,
+      suggested: factors.priceRange.max
+    };
+  }
+
+  return { valid: true };
+}
+
 // ========== SPACING AND PLANT POPULATION HELPERS ==========
 
 export interface SpacingInput {
@@ -120,6 +604,67 @@ export function calculatePlantsPerAcre(spacing: SpacingInput): number {
   const plantM = spacing.plantCm / 100;
   const areaPerPlant = rowM * plantM;
   return Math.floor(4046.86 / areaPerPlant) * spacing.seedsPerHole;
+}
+
+/**
+ * Validate plant population for crop
+ */
+export function validatePlantPopulation(crop: string, plantsPerAcre: number): {
+  valid: boolean;
+  message?: string;
+} {
+  const ranges: Record<string, { min: number; max: number }> = {
+    // Cereals
+    maize: { min: 10000, max: 30000 },
+    rice: { min: 80000, max: 150000 },
+    beans: { min: 80000, max: 150000 },
+
+    // Fruits
+    mangoes: { min: 50, max: 200 },
+    avocados: { min: 50, max: 200 },
+    oranges: { min: 50, max: 150 },
+    pineapples: { min: 10000, max: 25000 },
+    bananas: { min: 400, max: 800 },
+
+    // Vegetables
+    tomatoes: { min: 5000, max: 15000 },
+    onions: { min: 80000, max: 150000 },
+    cabbages: { min: 8000, max: 15000 },
+    kales: { min: 8000, max: 15000 },
+    carrots: { min: 80000, max: 150000 },
+    capsicums: { min: 8000, max: 15000 },
+    chillies: { min: 8000, max: 15000 },
+
+    // Tubers
+    potatoes: { min: 15000, max: 30000 },
+    yams: { min: 3000, max: 6000 },
+    taro: { min: 10000, max: 20000 },
+
+    // Cash crops
+    coffee: { min: 600, max: 1200 },
+    tea: { min: 3000, max: 6000 },
+    macadamia: { min: 50, max: 150 },
+    cocoa: { min: 400, max: 800 }
+  };
+
+  const range = ranges[crop.toLowerCase()];
+  if (!range) return { valid: true };
+
+  if (plantsPerAcre < range.min) {
+    return {
+      valid: false,
+      message: `⚠️ ${plantsPerAcre.toLocaleString()} plants/acre is below typical range (${range.min.toLocaleString()}-${range.max.toLocaleString()})`
+    };
+  }
+
+  if (plantsPerAcre > range.max) {
+    return {
+      valid: false,
+      message: `⚠️ ${plantsPerAcre.toLocaleString()} plants/acre is above typical range (${range.min.toLocaleString()}-${range.max.toLocaleString()})`
+    };
+  }
+
+  return { valid: true };
 }
 
 /**
@@ -145,7 +690,8 @@ export function calculateFertilizerPerPlant(
   dapKg: number,
   ureaKg: number,
   mopKg: number,
-  totalPlants: number
+  totalPlants: number,
+  isPerennial: boolean = false
 ): FertilizerPerPlant {
   if (totalPlants === 0) {
     return {
@@ -156,9 +702,12 @@ export function calculateFertilizerPerPlant(
     };
   }
 
-  const dapGrams = (dapKg * 1000) / totalPlants;
-  const ureaGrams = (ureaKg * 1000) / totalPlants;
-  const mopGrams = (mopKg * 1000) / totalPlants;
+  // For perennials, spread over multiple years
+  const factor = isPerennial ? 1 : 1; // Annual crops get full amount
+
+  const dapGrams = (dapKg * 1000 * factor) / totalPlants;
+  const ureaGrams = (ureaKg * 1000 * factor) / totalPlants;
+  const mopGrams = (mopKg * 1000 * factor) / totalPlants;
 
   return {
     dapGrams: Math.round(dapGrams * 10) / 10,
@@ -174,13 +723,25 @@ export function calculateFertilizerPerPlant(
  * Get a human-readable measurement guide based on grams
  */
 export function getMeasurementGuide(grams: number): string {
-  if (grams < 1) return "👌 Tiny pinch (less than 1g)";
+  if (grams < 0.5) return "👌 Tiny pinch (less than 0.5g)";
+  if (grams < 1) return "👌 Small pinch (0.5-1g)";
   if (grams < 3) return "👌 Pinch (size of a peanut)";
-  if (grams < 6) return "🥄 1 level teaspoon";
-  if (grams < 12) return "🥄 1 level tablespoon";
-  if (grams < 25) return "🥄 2 tablespoons";
-  if (grams < 50) return "🥄 ¼ cup (4 tablespoons)";
-  return "📦 More than ¼ cup - use a measuring cup";
+  if (grams < 5) return "👌 Two-finger pinch";
+  if (grams < 7) return "🥄 1 level teaspoon (approx 5g)";
+  if (grams < 10) return "🥄 1 heaped teaspoon";
+  if (grams < 15) return "🥄 1 level tablespoon (approx 15g)";
+  if (grams < 20) return "🥄 1 heaped tablespoon";
+  if (grams < 30) return "🥄 2 tablespoons";
+  if (grams < 40) return "🥄 3 tablespoons";
+  if (grams < 50) return "🥄 4 tablespoons (¼ cup)";
+  if (grams < 75) return "🥄 ⅓ cup (about 5 tablespoons)";
+  if (grams < 100) return "🥤 ½ cup (about 8 tablespoons)";
+  if (grams < 150) return "🥤 ¾ cup";
+  if (grams < 250) return "🥛 1 cup (250ml)";
+  if (grams < 500) return "🧴 2 cups (500ml)";
+  if (grams < 750) return "🧴 3 cups (750ml)";
+  if (grams < 1000) return "🧴 1 litre (4 cups)";
+  return `📦 ${Math.round(grams / 1000)} kg (use a weighing scale)`;
 }
 
 // ========== GROSS MARGIN CALCULATOR Using Farmer's Actual Data ==========
@@ -191,6 +752,7 @@ export interface GrossMarginInput {
   actualYield: number;
   yieldUnit: string;
   pricePerUnit: number;
+  priceUnit: string;
   seedRate: number;
   seedCost: number;
   plantingFertilizerCost: number;
@@ -203,14 +765,15 @@ export interface GrossMarginInput {
   plantingLabourCost: number;
   weedingCost: number;
   harvestingCost: number;
-  transportCostPerBag: number;
+  transportCostPerUnit: number;
+  transportUnit: string;
   bagCost: number;
 }
 
 export interface GrossMarginOutput {
   crop: string;
-  bags: number;
-  pricePerBag: number;
+  yieldKg: number;
+  pricePerKg: number;
   revenue: number;
   seedCost: number;
   fertilizerCost: number;
@@ -220,25 +783,19 @@ export interface GrossMarginOutput {
   totalCosts: number;
   grossMargin: number;
   roi: number;
-  costPerBag: number;
+  costPerKg: number;
+  breakevenPrice: number;
 }
 
 export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): GrossMarginOutput {
-  // Convert yield to 90kg bags (standard for grains)
-  let totalBags = input.actualYield * input.cropAcres;
+  const crop = input.crop.toLowerCase();
 
-  if (input.yieldUnit === "kg") {
-    totalBags = (input.actualYield * input.cropAcres) / 90;
-  } else if (input.yieldUnit === "tonnes") {
-    totalBags = (input.actualYield * input.cropAcres) * 11.11;
-  } else if (input.yieldUnit === "50kg bags") {
-    totalBags = input.actualYield * input.cropAcres;
-  } else if (input.yieldUnit === "90kg bags") {
-    totalBags = input.actualYield * input.cropAcres;
-  }
+  // Convert everything to kg
+  const yieldKg = convertToKg(crop, input.actualYield * input.cropAcres, input.yieldUnit);
+  const pricePerKg = convertToKg(crop, input.pricePerUnit, input.priceUnit) / input.pricePerUnit;
 
   // Calculate revenue
-  const revenue = totalBags * input.pricePerUnit;
+  const revenue = yieldKg * pricePerKg;
 
   // Calculate seed cost
   const seedCostTotal = input.seedRate * input.cropAcres * input.seedCost;
@@ -255,13 +812,17 @@ export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): Gro
 
   const fertilizerTotal = plantingFertTotal + topdressingFertTotal + potassiumFertTotal;
 
-  // Calculate labour costs
+  // Calculate labour costs (per acre)
   const labourTotal = (input.ploughingCost + input.plantingLabourCost +
                       input.weedingCost + input.harvestingCost) * input.cropAcres;
 
-  // Calculate transport and bag costs
-  const transportTotal = totalBags * input.transportCostPerBag;
-  const bagsTotal = totalBags * input.bagCost;
+  // Calculate transport cost (convert to kg if needed)
+  const transportKg = convertToKg(crop, input.transportCostPerUnit, input.transportUnit);
+  const transportTotal = (yieldKg / 1000) * transportKg; // Assume transport cost per tonne
+
+  // Calculate bag cost
+  const bagsNeeded = Math.ceil(yieldKg / 90); // Standard 90kg bags
+  const bagsTotal = bagsNeeded * input.bagCost;
 
   // Total costs
   const totalCosts = seedCostTotal + fertilizerTotal + labourTotal + transportTotal + bagsTotal;
@@ -272,23 +833,27 @@ export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): Gro
   // ROI
   const roi = totalCosts > 0 ? (grossMargin / totalCosts) * 100 : 0;
 
-  // Cost per bag
-  const costPerBag = totalBags > 0 ? totalCosts / totalBags : 0;
+  // Cost per kg
+  const costPerKg = yieldKg > 0 ? totalCosts / yieldKg : 0;
+
+  // Breakeven price
+  const breakevenPrice = yieldKg > 0 ? totalCosts / yieldKg : 0;
 
   return {
     crop: input.crop,
-    bags: totalBags,
-    pricePerBag: input.pricePerUnit,
-    revenue,
-    seedCost: seedCostTotal,
-    fertilizerCost: fertilizerTotal,
-    labourCost: labourTotal,
-    transportCost: transportTotal,
-    bagCost: bagsTotal,
-    totalCosts,
-    grossMargin,
-    roi,
-    costPerBag
+    yieldKg: Math.round(yieldKg),
+    pricePerKg: Math.round(pricePerKg * 100) / 100,
+    revenue: Math.round(revenue),
+    seedCost: Math.round(seedCostTotal),
+    fertilizerCost: Math.round(fertilizerTotal),
+    labourCost: Math.round(labourTotal),
+    transportCost: Math.round(transportTotal),
+    bagCost: Math.round(bagsTotal),
+    totalCosts: Math.round(totalCosts),
+    grossMargin: Math.round(grossMargin),
+    roi: Math.round(roi * 10) / 10,
+    costPerKg: Math.round(costPerKg * 100) / 100,
+    breakevenPrice: Math.round(breakevenPrice * 100) / 100
   };
 }
 

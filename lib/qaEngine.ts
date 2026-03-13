@@ -34,7 +34,6 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
     const lowerCrop = crop.toLowerCase();
     const county = data?.county || 'your area';
 
-    // Map of crop-specific variety keys
     const varietyKeyMap: Record<string, string> = {
       maize: 'qa_varieties_maize',
       beans: 'qa_varieties_beans',
@@ -52,8 +51,6 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
     const key = varietyKeyMap[lowerCrop] || 'qa_varieties_generic';
     const params: any = { farmerName, crop, county };
 
-    // For maize, we also need to list the varieties (they are part of the translation)
-    // We'll pass them as an array so the translation can format a bullet list
     if (lowerCrop === 'maize') {
       params.varieties = [
         'H614: High yielding, 4-6 months, resistant to lodging',
@@ -74,7 +71,6 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
         'Chelalang: High protein, 3 months'
       ];
     }
-    // ... add other crops similarly
 
     return { key, params };
   },
@@ -86,19 +82,32 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
 
     if (data?.soilTest?.fertilizerPlan) {
       const plan = data.soilTest.fertilizerPlan;
+
+      // Helper to compute total cost for an item (same logic as in recommendation engine)
+      const computeItemCost = (item: any) => {
+        const bags = Math.floor(item.amountKg / 50);
+        const extraKg = item.amountKg % 50;
+        const total = (bags * item.pricePer50kg) + (extraKg * (item.pricePer50kg / 50));
+        return formatCurrencyForCountry(total, country);
+      };
+
+      // Planting fertilizers (e.g., DAP)
       const plantingItems = plan.planting?.map((p: any) => ({
-        name: p.selected.name,
-        amount: p.selected.amountKg,
-        bags: Math.ceil(p.selected.amountKg / 50),
-        cost: formatCurrencyForCountry(p.selected.cost || 0, country),
-        provides: Object.entries(p.selected.provides).map(([k, v]) => `${v}kg ${k}`).join(', ')
+        name: p.brand || p.name || 'Unknown',
+        amount: p.amountKg,
+        bags: Math.ceil(p.amountKg / 50),
+        cost: computeItemCost(p),
+        provides: p.provides ? Object.entries(p.provides).map(([k, v]) => `${v}kg ${k}`).join(', ') : ''
       })) || [];
+
+      // Topdressing fertilizers (UREA, MOP, etc.)
       const topdressingItems = plan.topdressing?.map((t: any) => ({
-        name: t.selected.name,
-        amount: t.selected.amountKg,
-        bags: Math.ceil(t.selected.amountKg / 50),
-        cost: formatCurrencyForCountry(t.selected.cost || 0, country)
+        name: t.brand || t.name || 'Unknown',
+        amount: t.amountKg,
+        bags: Math.ceil(t.amountKg / 50),
+        cost: computeItemCost(t)
       })) || [];
+
       const totalCost = formatCurrencyForCountry(plan.totalCost || 0, country);
 
       return {

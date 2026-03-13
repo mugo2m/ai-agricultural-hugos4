@@ -64,6 +64,11 @@ interface AgentProps {
   sessionData?: any;
 }
 
+interface StructuredItem {
+  key: string;
+  params?: Record<string, any>;
+}
+
 const Agent = ({
   userName,
   userId,
@@ -116,7 +121,7 @@ const Agent = ({
   // Get farmer name and country from session
   const farmerName = sessionData?.farmerName || userName || "Farmer";
   const farmerCountry = sessionData?.country || 'kenya';
-  const recognitionLanguage = getLanguageFromCountry(farmerCountry); // e.g., 'fr-FR' for Senegal
+  const recognitionLanguage = getLanguageFromCountry(farmerCountry);
 
   // Extract structured data from session
   useEffect(() => {
@@ -127,6 +132,23 @@ const Agent = ({
       setStructuredFinancialAdvice(sessionData.structuredFinancialAdvice);
     }
   }, [sessionData]);
+
+  // Helper to resolve nested translation keys
+  const resolveNestedTranslations = (obj: any): any => {
+    if (!obj) return obj;
+    if (Array.isArray(obj)) return obj.map(resolveNestedTranslations);
+    if (typeof obj === 'object') {
+      if (obj.key && typeof obj.key === 'string') {
+        return t(obj.key, resolveNestedTranslations(obj.params));
+      }
+      const newObj: any = {};
+      for (const [k, v] of Object.entries(obj)) {
+        newObj[k] = resolveNestedTranslations(v);
+      }
+      return newObj;
+    }
+    return obj;
+  };
 
   // Helper to get currency name for speech
   const getCurrencyName = () => {
@@ -330,7 +352,7 @@ const Agent = ({
           interviewId: interviewId || `demo-${Date.now()}`,
           userId: currentUserId,
           type: "practice",
-          speechRate: 0.75,
+          speechRate: 1.0, // Faster speech
           speechVolume: 0.8,
           country: farmerCountry,
           farmerName: farmerName
@@ -349,7 +371,7 @@ const Agent = ({
     }
   }, [voiceEnabled, farmerName, farmerCountry, t]);
 
-  // ============ KARAOKE STREAMING FIX ============
+  // ============ KARAOKE STREAMING ============
   const streamRecommendationKaraoke = async (recommendation: string, index: number) => {
     if (!voiceEnabled || !window.speechSynthesis || !voicesLoaded) {
       // Fallback: just show the whole text
@@ -370,24 +392,44 @@ const Agent = ({
     setRecommendationStreams(prev => ({ ...prev, [index]: "" })); // start empty
 
     const utterance = new SpeechSynthesisUtterance(recommendation);
-    utterance.rate = 0.75;
+    utterance.rate = 1.0; // Faster speech
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
-    utterance.lang = recognitionLanguage; // ensure correct language
+    utterance.lang = recognitionLanguage;
 
-    // Select a voice matching the language
+    // Female voice names (common across browsers)
+    const femaleVoiceNames = [
+      'Jenny', 'Aria', 'Sonia', 'Samantha', 'Zira', 'Libby', 'Hazel',
+      'Susan', 'Kate', 'Google UK English Female', 'Microsoft Jenny',
+      'Microsoft Aria', 'Microsoft Sonia', 'Microsoft Zira', 'Microsoft Libby',
+      'Rafiki' // Swahili female voice
+    ];
+
     const voices = window.speechSynthesis.getVoices();
     const matchingVoices = voices.filter(v => v.lang === recognitionLanguage);
+    let preferredVoice;
+
     if (matchingVoices.length > 0) {
-      const preferred = matchingVoices.find(v =>
-        v.name.includes('Jenny') || v.name.includes('Aria') ||
-        v.name.includes('Sonia') || v.name.includes('Samantha') ||
-        v.name.includes('Vivienne')
+      // First try to find a female voice in the matching language
+      preferredVoice = matchingVoices.find(v =>
+        femaleVoiceNames.some(name => v.name.includes(name))
       );
-      utterance.voice = preferred || matchingVoices[0];
-      console.log(`Using voice: ${utterance.voice.name} (${utterance.voice.lang})`);
+
+      // If no female voice found in matching language, take any voice in that language
+      if (!preferredVoice) {
+        preferredVoice = matchingVoices[0];
+        console.log('No female voice found for language, using:', preferredVoice.name);
+      }
     } else {
-      console.warn(`No voice found for language ${recognitionLanguage}, using default.`);
+      // Fallback to any voice, preferring female
+      preferredVoice = voices.find(v =>
+        femaleVoiceNames.some(name => v.name.includes(name))
+      ) || voices[0];
+    }
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+      console.log(`Using voice: ${preferredVoice.name} (${preferredVoice.lang})`);
     }
 
     currentUtteranceRef.current = utterance;
@@ -451,21 +493,28 @@ const Agent = ({
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.75;
+    utterance.rate = 1.0; // Faster speech
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
     utterance.lang = recognitionLanguage;
 
+    // Female voice names
+    const femaleVoiceNames = [
+      'Jenny', 'Aria', 'Sonia', 'Samantha', 'Zira', 'Libby', 'Hazel',
+      'Susan', 'Kate', 'Google UK English Female', 'Microsoft Jenny',
+      'Microsoft Aria', 'Microsoft Sonia', 'Microsoft Zira', 'Microsoft Libby',
+      'Rafiki'
+    ];
+
     const voices = window.speechSynthesis.getVoices();
     const matchingVoices = voices.filter(v => v.lang === recognitionLanguage);
+
     if (matchingVoices.length > 0) {
       const preferred = matchingVoices.find(v =>
-        v.name.includes('Jenny') || v.name.includes('Aria') ||
-        v.name.includes('Sonia') || v.name.includes('Samantha') ||
-        v.name.includes('Vivienne')
-      );
-      utterance.voice = preferred || matchingVoices[0];
-      console.log(`Using voice: ${utterance.voice.name} (${utterance.voice.lang})`);
+        femaleVoiceNames.some(name => v.name.includes(name))
+      ) || matchingVoices[0];
+      utterance.voice = preferred;
+      console.log(`Using voice: ${preferred.name} (${preferred.lang})`);
     }
 
     utterance.onend = () => {
@@ -477,8 +526,6 @@ const Agent = ({
 
     window.speechSynthesis.speak(utterance);
   };
-
-  const speakStreaming = speakWithVoice;
 
   // Auto-stream all recommendations
   const streamAllRecommendations = async () => {
@@ -617,20 +664,109 @@ const Agent = ({
     return t('start_voice_session');
   };
 
-  const getRatingColor = (rating: string) => {
-    switch(rating?.toLowerCase()) {
-      case 'very low': return 'text-red-600 bg-red-100';
-      case 'low': return 'text-orange-600 bg-orange-100';
-      case 'optimum': return 'text-green-600 bg-green-100';
-      case 'high': return 'text-blue-600 bg-blue-100';
-      case 'very high': return 'text-purple-600 bg-purple-100';
-      default: return 'text-gray-600 bg-gray-100';
+  // Handle grouped recommendations - FIXED for gap_grouped
+  const renderRecommendationText = (item: StructuredItem, idx: number) => {
+    // Special handling for gap_grouped which contains a nested gapKey
+    if (item.key === 'gap_grouped') {
+      const params = item.params || {};
+      const gapKey = params.gapKey;
+
+      if (gapKey) {
+        // Get the actual GAP text from translations
+        const gapText = t(gapKey, {});
+
+        // Build the complete text with title + gapText + remember
+        const title = params.title || `GOOD AGRICULTURAL PRACTICES FOR YOUR FARM`;
+        const remember = params.remember || 'REMEMBER: Every practice you do well puts more money in your pocket';
+
+        const fullText = `${title}\n\n${gapText}\n\n${remember}`;
+
+        // Only show if read
+        if (!readRecommendations.has(idx)) return null;
+
+        return (
+          <div key={idx} className="rounded-xl p-5 transition-all duration-300 border-2 bg-purple-50 border-purple-300">
+            <div className="flex items-start gap-4">
+              <span className="rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold flex-shrink-0 bg-purple-500 text-white">
+                {idx + 1}
+              </span>
+              <div className="flex-1">
+                <div className="min-h-[60px]">
+                  <p className="text-xl text-gray-800 leading-relaxed whitespace-pre-line">
+                    {fullText}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
     }
+
+    // For all other items, use the streaming/karaoke display
+    const streamingText = recommendationStreams[idx];
+    const isActive = activeStreamingRec === idx;
+    const isRead = readRecommendations.has(idx);
+
+    // Only show if streaming (for active) or already read
+    if (!isActive && !isRead) return null;
+    if (isActive && !streamingText) return null;
+
+    const displayText = streamingText || t(item.key, item.params);
+
+    return (
+      <div
+        key={idx}
+        className={`
+          rounded-xl p-5 transition-all duration-300 border-2
+          ${isActive
+            ? 'bg-purple-100 border-purple-500 shadow-2xl scale-105'
+            : isRead
+              ? 'bg-purple-50 border-purple-300'
+              : 'bg-gray-50 border-gray-200'
+          }
+        `}
+      >
+        <div className="flex items-start gap-4">
+          <span className={`
+            rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold flex-shrink-0
+            ${isActive ? 'bg-purple-600 text-white' : 'bg-purple-500 text-white'}
+          `}>
+            {idx + 1}
+          </span>
+
+          <div className="flex-1">
+            <div className="min-h-[60px]">
+              <p className="text-xl text-gray-800 leading-relaxed whitespace-pre-line">
+                {displayText}
+              </p>
+            </div>
+
+            {/* Karaoke progress bar */}
+            {isActive && recWordsRef.current[idx] && (
+              <div className="mt-3 flex items-center gap-2">
+                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-purple-600 transition-all duration-150"
+                    style={{
+                      width: `${((streamingText?.split(' ').length || 0) / recWordsRef.current[idx].length) * 100}%`
+                    }}
+                  />
+                </div>
+                <span className="text-sm text-purple-700 font-medium">
+                  {streamingText?.split(' ').length || 0}/{recWordsRef.current[idx].length} {t('words')}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="flex flex-col gap-6 p-4 bg-gradient-to-br from-slate-50 to-white rounded-2xl">
-      {/* Header */}
+      {/* Header - with MockMate Logo and dark blue hugos */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-emerald-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -641,7 +777,18 @@ const Agent = ({
               <ArrowLeft className="w-5 h-5 text-emerald-700" />
             </Link>
 
-            <div className="relative">
+            {/* MockMate Logo */}
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-blue-900 rounded-lg flex items-center justify-center shadow-md">
+                <span className="text-white font-bold text-xl">M</span>
+              </div>
+              <div>
+                <span className="font-bold text-xl text-blue-900">MockMate</span>
+                <span className="text-sm text-blue-700 block -mt-1">hugos</span>
+              </div>
+            </div>
+
+            <div className="relative ml-2">
               <Image
                 src="/beautiful-avatar.png"
                 alt={userName}
@@ -662,7 +809,7 @@ const Agent = ({
                 <div className="mt-1 flex flex-wrap gap-2">
                   <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full flex items-center gap-1">
                     <Sprout className="w-3 h-3" />
-                    {sessionData.crops?.map((c: string) => `${c} ${t('crop_enterprise')}`).join(", ")}
+                    {sessionData.crops?.map((c: string) => `${c}`).join(", ")}
                   </span>
                   <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
@@ -731,115 +878,45 @@ const Agent = ({
         </div>
       </div>
 
-      {/* Voice Toggle */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-purple-100">
-        <div className="flex justify-between items-center mb-4">
-          <h4 className="font-semibold text-lg bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
-            <Mic className="w-5 h-5 text-purple-500" />
-            {t('voice_assistant')}
-          </h4>
-          {!speechSupported && (
-            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
-              {t('voice_limited')}
-            </span>
-          )}
-          {sessionData?.grossMarginAnalysis && (
-            <Link href={`/financial/${interviewId}`}>
-              <button className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm rounded-full flex items-center gap-1 hover:scale-105 transition-all">
-                <BarChart3 className="w-4 h-4" />
-                {t('financial_analysis')}
-                <ChevronRight className="w-3 h-3" />
-              </button>
-            </Link>
-          )}
+      {/* Voice Toggle - COMPACT VERSION */}
+      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-3 shadow-xl border-2 border-white/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Mic className="w-5 h-5 text-white" />
+            <span className="font-semibold text-white">{t('voice_mode')}</span>
+            <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">{t('beta')}</span>
+          </div>
+          <VoiceToggle onVoiceToggle={handleVoiceToggle} initialEnabled={voiceEnabled} />
         </div>
-
-        <VoiceToggle onVoiceToggle={handleVoiceToggle} initialEnabled={voiceEnabled} />
-
-        {voiceInitializing && (
-          <div className="mt-3 p-3 bg-blue-50 rounded-xl text-blue-700 flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>{t('initializing_voice')}</span>
+        {isSpeaking && (
+          <div className="mt-1 text-xs text-white/80 flex items-center gap-1">
+            <Volume2 className="w-3 h-3 animate-pulse" />
+            <span>{t('speaking')}</span>
           </div>
         )}
       </div>
 
-      {/* Soil Test Alert */}
-      {hasSoilTest && soilTest && (
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-4 border-2 border-purple-200 shadow-lg">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-purple-100 rounded-full">
-              <Beaker className="w-5 h-5 text-purple-700" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-purple-800">{t('your_soil_test_analysis')}</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-                <div className="bg-white rounded p-2">
-                  <p className="text-xs text-gray-500">pH</p>
-                  <p className="font-bold">{soilTest.ph} <span className={`text-xs px-1 rounded ${getRatingColor(soilTest.phRating)}`}>({soilTest.phRating})</span></p>
-                </div>
-                <div className="bg-white rounded p-2">
-                  <p className="text-xs text-gray-500">P</p>
-                  <p className="font-bold">{soilTest.phosphorus}ppm <span className={`text-xs px-1 rounded ${getRatingColor(soilTest.phosphorusRating)}`}>({soilTest.phosphorusRating})</span></p>
-                </div>
-                <div className="bg-white rounded p-2">
-                  <p className="text-xs text-gray-500">K</p>
-                  <p className="font-bold">{soilTest.potassium}ppm <span className={`text-xs px-1 rounded ${getRatingColor(soilTest.potassiumRating)}`}>({soilTest.potassiumRating})</span></p>
-                </div>
-                <div className="bg-white rounded p-2">
-                  <p className="text-xs text-gray-500">Ca</p>
-                  <p className="font-bold">{soilTest.calcium}ppm <span className={`text-xs px-1 rounded ${getRatingColor(soilTest.calciumRating)}`}>({soilTest.calciumRating})</span></p>
-                </div>
-              </div>
-              {fertilizerPlan && (
-                <p className="text-xs text-purple-600 mt-2">
-                  {t('precision_fertilizer_plan', { amount: formatCurrencyForDisplay(fertilizerPlan.totalCost, currency) })}
-                </p>
-              )}
-            </div>
-            <Link href={`/financial/${interviewId}?tab=soiltest`}>
-              <button className="px-3 py-1 bg-purple-600 text-white text-sm rounded-full hover:bg-purple-700">
-                {t('view_details')}
-              </button>
-            </Link>
-          </div>
-          <p className="text-xs text-purple-600 mt-2">{t('test_soil_yearly_short')}</p>
-        </div>
-      )}
+      {/* Soil Test Alert - REMOVED */}
+      {/* Financial Snapshot - REMOVED */}
 
-      {/* Financial Snapshot */}
-      {sessionData?.grossMarginAnalysis && (
-        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-5 border-2 border-emerald-200 shadow-lg">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="font-bold text-lg flex items-center gap-2 text-emerald-800">
-              <DollarSign className="w-5 h-5" />
-              {t('financial_snapshot')}
-            </h3>
-            <Link href={`/financial/${interviewId}`}>
-              <button className="text-sm text-emerald-600 hover:text-emerald-800 flex items-center gap-1">
-                {t('view_full_analysis')}
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </Link>
-          </div>
+      {/* Buttons Row - Side by side */}
+      <div className="flex flex-row gap-4 justify-center">
+        {sessionData?.grossMarginAnalysis && (
+          <Link href={`/financial/${interviewId}`} className="flex-1">
+            <button className="w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold hover:from-emerald-700 hover:to-teal-700 shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
+              <BarChart3 className="w-5 h-5" />
+              {t('view_financial_analysis')}
+            </button>
+          </Link>
+        )}
 
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="bg-white/80 rounded-lg p-2">
-              <p className="text-xs text-gray-500">{t('low')}</p>
-              <p className="font-bold text-emerald-700">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.low?.grossMargin || 44190, currency)}</p>
-            </div>
-            <div className="bg-white/80 rounded-lg p-2">
-              <p className="text-xs text-gray-500">{t('medium')}</p>
-              <p className="font-bold text-emerald-700">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.medium?.grossMargin || 217710, currency)}</p>
-            </div>
-            <div className="bg-white/80 rounded-lg p-2">
-              <p className="text-xs text-gray-500">{t('high')}</p>
-              <p className="font-bold text-emerald-700">{formatCurrencyForDisplay(sessionData.grossMarginAnalysis.high?.grossMargin || 433680, currency)}</p>
-            </div>
-          </div>
-          <p className="text-xs text-emerald-600 mt-2">{t('every_symbol_invested', { symbol: currency.symbol })}</p>
-        </div>
-      )}
+        <Link href={`/ask/${interviewId}`} className="flex-1">
+          <button className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 shadow-lg transition-all duration-300 flex items-center justify-center gap-2">
+            <MessageCircle className="w-5 h-5" />
+            {t('ask_questions')}
+          </button>
+        </Link>
+      </div>
 
       {/* Recommendations */}
       {structuredList.length > 0 && (
@@ -863,78 +940,9 @@ const Agent = ({
             </p>
           </div>
 
-          {/* Fertilizer Investment Summary */}
-          {fertilizerPlan?.totalCost > 0 && (
-            <div className="mb-6 p-4 bg-green-100 rounded-xl border-2 border-green-400">
-              <h4 className="font-bold text-green-800 flex items-center gap-2">
-                <Package className="w-5 h-5" />
-                {t('total_fertilizer_investment', { amount: formatCurrencyForDisplay(fertilizerPlan.totalCost, currency) })}
-              </h4>
-              <p className="text-sm text-green-700 mt-1">
-                {t('based_on_soil_test')}
-              </p>
-            </div>
-          )}
-
+          {/* Recommendations List - only shown when read */}
           <div className="space-y-4">
-            {structuredList.map((item, idx) => {
-              const streamingText = recommendationStreams[idx];
-              const isActive = activeStreamingRec === idx;
-              const isRead = readRecommendations.has(idx);
-
-              // Show only if streaming or already read
-              if (!streamingText && !isRead && !isActive) return null;
-
-              const displayText = streamingText || t(item.key, item.params);
-
-              return (
-                <div
-                  key={idx}
-                  className={`
-                    rounded-xl p-5 transition-all duration-300 border-2
-                    ${isActive
-                      ? 'bg-purple-100 border-purple-500 shadow-2xl scale-105'
-                      : isRead
-                        ? 'bg-purple-50 border-purple-300'
-                        : 'bg-gray-50 border-gray-200'
-                    }
-                  `}
-                >
-                  <div className="flex items-start gap-4">
-                    <span className={`
-                      rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold flex-shrink-0
-                      ${isActive ? 'bg-purple-600 text-white' : 'bg-purple-500 text-white'}
-                    `}>
-                      {idx + 1}
-                    </span>
-
-                    <div className="flex-1">
-                      <div className="min-h-[60px]">
-                        <p className="text-xl text-gray-800 leading-relaxed whitespace-pre-line">
-                          {displayText}
-                        </p>
-                      </div>
-
-                      {isActive && recWordsRef.current[idx] && (
-                        <div className="mt-3 flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-purple-600 transition-all duration-150"
-                              style={{
-                                width: `${((streamingText?.split(' ').length || 0) / recWordsRef.current[idx].length) * 100}%`
-                              }}
-                            />
-                          </div>
-                          <span className="text-sm text-purple-700 font-medium">
-                            {streamingText?.split(' ').length || 0}/{recWordsRef.current[idx].length} {t('words')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {structuredList.map((item, idx) => renderRecommendationText(item, idx))}
           </div>
 
           {/* Fertilizer Plan Details */}
@@ -962,45 +970,6 @@ const Agent = ({
             </div>
           )}
 
-          {/* Financial Advice */}
-          {structuredFinancialAdvice && (
-            <div className="mt-4 p-4 bg-green-50 rounded-xl border-2 border-green-300">
-              <h4 className="font-bold text-green-800 flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
-                {t('financial_advice')}
-              </h4>
-              <p className="text-gray-700 mt-1 whitespace-pre-line">
-                {t(structuredFinancialAdvice.key, structuredFinancialAdvice.params)}
-              </p>
-            </div>
-          )}
-
-          {/* Farm Summary Stats */}
-          {sessionData && (
-            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-xl">
-              <div className="text-center">
-                <Sprout className="w-5 h-5 text-emerald-600 mx-auto" />
-                <p className="text-xs text-gray-500">{t('crop_enterprises')}</p>
-                <p className="font-bold">{sessionData.crops?.map((c: string) => c).join(", ") || "N/A"}</p>
-              </div>
-              <div className="text-center">
-                <Tractor className="w-5 h-5 text-blue-600 mx-auto" />
-                <p className="text-xs text-gray-500">{t('farm_size')}</p>
-                <p className="font-bold">{sessionData.acres || sessionData.cultivatedAcres || "?"} acres</p>
-              </div>
-              <div className="text-center">
-                <Droplets className="w-5 h-5 text-cyan-600 mx-auto" />
-                <p className="text-xs text-gray-500">{t('soil_type')}</p>
-                <p className="font-bold">{sessionData.soilType || "N/A"}</p>
-              </div>
-              <div className="text-center">
-                <Heart className="w-5 h-5 text-red-600 mx-auto" />
-                <p className="text-xs text-gray-500">{t('experience')}</p>
-                <p className="font-bold">{sessionData.experience || "?"} yrs</p>
-              </div>
-            </div>
-          )}
-
           {/* Soil Test Reminder */}
           {!hasSoilTest && (
             <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-300">
@@ -1010,30 +979,6 @@ const Agent = ({
               </p>
             </div>
           )}
-
-          {/* Financial Analysis Button */}
-          {sessionData?.grossMarginAnalysis && (
-            <div className="mt-6 flex justify-center">
-              <Link href={`/financial/${interviewId}`}>
-                <button className="px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold text-lg hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-3">
-                  <BarChart3 className="w-6 h-6" />
-                  {t('view_financial_analysis')}
-                  <ArrowRight className="w-6 h-6" />
-                </button>
-              </Link>
-            </div>
-          )}
-
-          {/* Buttons */}
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href={`/ask/${interviewId}`}>
-              <button className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 shadow-lg transition-all duration-300 flex items-center justify-center gap-3">
-                <MessageCircle className="w-5 h-5" />
-                {t('ask_questions')}
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </Link>
-          </div>
 
           {/* Yearly Testing Reminder */}
           <div className="mt-4 text-center text-sm text-gray-500">
