@@ -87,14 +87,14 @@ export class TextToSpeech {
 
       const utterance = new SpeechSynthesisUtterance(finalText);
 
-      // Apply configuration
-      utterance.rate = this.config.rate || 0.75;
+      // Apply configuration - UPDATED rate to 1.0
+      utterance.rate = this.config.rate || 1.0;
       utterance.pitch = this.config.pitch || 1.1;
       utterance.volume = this.config.volume || 0.9;
       utterance.lang = this.config.language || 'en-US';
 
-      // Set the best voice for the language
-      this.setBestVoice(utterance);
+      // Set the best FEMALE voice for the language
+      this.setBestFemaleVoice(utterance);
 
       // Store current utterance
       this.currentUtterance = utterance;
@@ -183,8 +183,8 @@ export class TextToSpeech {
       .trim();
   }
 
-  // ============ IMPROVED VOICE SELECTION ============
-  private setBestVoice(utterance: SpeechSynthesisUtterance): void {
+  // ============ IMPROVED FEMALE VOICE SELECTION ============
+  private setBestFemaleVoice(utterance: SpeechSynthesisUtterance): void {
     if (!this.synth) return;
 
     const voices = this.synth.getVoices();
@@ -195,32 +195,108 @@ export class TextToSpeech {
 
     const targetLang = utterance.lang; // e.g., 'fr-FR'
 
-    // 1. Try exact language match with preferred female voices
-    const exactLangVoices = voices.filter(v => v.lang === targetLang);
+    // 1. Filter to only female voices
+    const femaleVoices = voices.filter(v => this.isFemaleVoice(v));
+
+    if (femaleVoices.length === 0) {
+      console.log("TextToSpeech: No female voices found, using any voice");
+      this.setBestVoice(utterance);
+      return;
+    }
+
+    // 2. Try exact language match with preferred female voices
+    const exactLangVoices = femaleVoices.filter(v => v.lang === targetLang);
     if (exactLangVoices.length > 0) {
       // Prefer natural female voices in this order
       const priorityOrder = [
+        // English female voices
         'Microsoft Jenny', 'Microsoft Aria', 'Microsoft Sonia',
         'Google UK English Female', 'Google US English Female',
-        'Samantha', 'Microsoft Hazel', 'Microsoft Zira'
+        'Samantha', 'Microsoft Hazel', 'Microsoft Zira',
+        // French female voices
+        'Microsoft Vivienne', 'Google Français Female',
+        'Microsoft Denise', 'Marie', 'Chloe', 'Emma', 'Olivia'
       ];
 
       for (const preferred of priorityOrder) {
         const found = exactLangVoices.find(v => v.name.includes(preferred));
         if (found) {
           utterance.voice = found;
-          console.log(`TextToSpeech: Using voice: ${found.name} (${found.lang})`);
+          console.log(`TextToSpeech: Using female voice: ${found.name} (${found.lang})`);
           return;
         }
       }
 
       // If no preferred voice found, use the first exact match
       utterance.voice = exactLangVoices[0];
+      console.log(`TextToSpeech: Using female voice: ${exactLangVoices[0].name} (${exactLangVoices[0].lang})`);
+      return;
+    }
+
+    // 3. Fallback to any female voice starting with the language prefix (e.g., 'fr')
+    const langPrefix = targetLang.split('-')[0];
+    const similarVoices = femaleVoices.filter(v => v.lang.startsWith(langPrefix));
+    if (similarVoices.length > 0) {
+      utterance.voice = similarVoices[0];
+      console.log(`TextToSpeech: Using female fallback voice: ${similarVoices[0].name} (${similarVoices[0].lang})`);
+      return;
+    }
+
+    // 4. Last resort: first female English voice
+    const englishVoice = femaleVoices.find(v => v.lang.startsWith('en-'));
+    if (englishVoice) {
+      utterance.voice = englishVoice;
+      console.log(`TextToSpeech: Using English female fallback: ${englishVoice.name}`);
+    }
+  }
+
+  private isFemaleVoice(voice: SpeechSynthesisVoice): boolean {
+    const name = voice.name.toLowerCase();
+
+    // Female voice indicators
+    const femaleIndicators = [
+      'female',
+      'jenny', 'aria', 'sonia', 'samantha', 'vivienne', 'denise',
+      'google uk english female', 'google us english female',
+      'microsoft jenny', 'microsoft aria', 'microsoft sonia', 'microsoft vivienne',
+      'microsoft denise', 'google français female',
+      'marie', 'chloe', 'emma', 'olivia', 'sophie', 'hazel', 'zira'
+    ];
+
+    // Male voice indicators to exclude
+    const maleIndicators = [
+      'male',
+      'david', 'mark', 'george', 'paul', 'daniel', 'microsoft rafiki',
+      'google uk english male', 'google us english male',
+      'microsoft guillaume', 'pierre', 'jean', 'microsoft toby'
+    ];
+
+    // Check if it's explicitly female
+    const isFemale = femaleIndicators.some(i => name.includes(i));
+    const isMale = maleIndicators.some(i => name.includes(i));
+
+    // If it's explicitly male, exclude; if explicitly female or not male, include
+    return isFemale || (!isMale && name.includes('female'));
+  }
+
+  // Fallback method for when female voices aren't available
+  private setBestVoice(utterance: SpeechSynthesisUtterance): void {
+    if (!this.synth) return;
+
+    const voices = this.synth.getVoices();
+    if (voices.length === 0) return;
+
+    const targetLang = utterance.lang;
+
+    // Try exact language match
+    const exactLangVoices = voices.filter(v => v.lang === targetLang);
+    if (exactLangVoices.length > 0) {
+      utterance.voice = exactLangVoices[0];
       console.log(`TextToSpeech: Using voice: ${exactLangVoices[0].name} (${exactLangVoices[0].lang})`);
       return;
     }
 
-    // 2. Fallback to any voice starting with the language prefix (e.g., 'fr')
+    // Fallback to language prefix
     const langPrefix = targetLang.split('-')[0];
     const similarVoices = voices.filter(v => v.lang.startsWith(langPrefix));
     if (similarVoices.length > 0) {
@@ -229,7 +305,7 @@ export class TextToSpeech {
       return;
     }
 
-    // 3. Last resort: first English voice
+    // Last resort: first English voice
     const englishVoice = voices.find(v => v.lang.startsWith('en-'));
     if (englishVoice) {
       utterance.voice = englishVoice;
@@ -351,7 +427,7 @@ export class TextToSpeech {
   }
 
   getVolume(): number { return this.config.volume || 0.9; }
-  getRate(): number { return this.config.rate || 0.75; }
+  getRate(): number { return this.config.rate || 1.0; } // UPDATED from 0.75 to 1.0
   getPitch(): number { return this.config.pitch || 1.1; }
   getLanguage(): string { return this.config.language || 'en-US'; }
   getIsSpeaking(): boolean { return this.isSpeaking; }
@@ -392,6 +468,8 @@ export class TextToSpeech {
       Object.keys(voicesByLang).forEach(lang => {
         console.log(`  ${lang}: ${voicesByLang[lang].length} voices`);
       });
+
+      console.log("Female voices:", voices.filter(v => this.isFemaleVoice(v)).length);
     }
 
     console.log("Current config:", this.config);

@@ -171,6 +171,9 @@ export function VoiceToggle({ onVoiceToggle, initialEnabled = false }: VoiceTogg
                   ? t('voice_active_full')
                   : t('voice_active_simulated')}
               </p>
+              <p className="text-xs text-green-600 mt-1 italic">
+                Using female voice assistant for better engagement
+              </p>
             </div>
           </div>
         </div>
@@ -190,6 +193,9 @@ export function VoiceToggle({ onVoiceToggle, initialEnabled = false }: VoiceTogg
               {isSupported ? t('full_support') : t('limited_support')}
             </div>
           </div>
+        </div>
+        <div className="text-center text-xs text-gray-500 mt-2">
+          🎤 Female voice assistant • Clear & natural
         </div>
       </div>
     </div>

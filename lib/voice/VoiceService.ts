@@ -84,7 +84,7 @@ export class VoiceService {
     this.speechToText = new SpeechToText();
     this.textToSpeech = new TextToSpeech({
       language: this.language,
-      rate: config.speechRate || 0.75,
+      rate: config.speechRate || 1.0,  // UPDATED: Increased from 0.75 to 1.0
       volume: config.speechVolume || 1.0,
       pitch: 1.1
     });
@@ -631,7 +631,7 @@ export class VoiceService {
         }
       }
       this.postSpeechTimeout = null;
-    }, 1500);
+    }, 1000);  // UPDATED: Reduced from 1500ms to 1000ms
   }
 
   public async speakRecommendations(recommendations: string[]): Promise<void> {

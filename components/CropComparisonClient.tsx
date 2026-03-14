@@ -245,13 +245,39 @@ export default function CropComparisonClient({
     wordsRef.current = words;
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.8;
+    utterance.rate = 1.0; // UPDATED: Faster speech (was 0.8)
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
 
+    // Female voice names (common across browsers)
+    const femaleVoiceNames = [
+      'Jenny', 'Aria', 'Sonia', 'Samantha', 'Zira', 'Libby', 'Hazel',
+      'Susan', 'Kate', 'Google UK English Female', 'Google US English Female',
+      'Microsoft Jenny', 'Microsoft Aria', 'Microsoft Sonia', 'Microsoft Zira',
+      'Microsoft Libby', 'Rafiki' // Swahili female voice
+    ];
+
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.name.includes('Google UK') || v.name.includes('Samantha') || v.name.includes('Microsoft Zira'));
-    if (preferredVoice) utterance.voice = preferredVoice;
+
+    // Try to find a female voice first
+    let preferredVoice = voices.find(v =>
+      femaleVoiceNames.some(name => v.name.includes(name))
+    );
+
+    // If no female voice found, fallback to any English voice
+    if (!preferredVoice) {
+      preferredVoice = voices.find(v =>
+        v.name.includes('Google UK') ||
+        v.name.includes('Google US') ||
+        v.name.includes('Samantha') ||
+        v.lang.startsWith('en-')
+      );
+    }
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+      console.log(`Using voice: ${preferredVoice.name} (${preferredVoice.lang})`);
+    }
 
     utteranceRef.current = utterance;
     setIsSpeaking(true);
@@ -260,13 +286,11 @@ export default function CropComparisonClient({
     let currentText = '';
 
     utterance.onboundary = (event) => {
-      if (event.name === 'word') {
-        if (wordIndex < words.length) {
-          currentText += (wordIndex === 0 ? '' : ' ') + words[wordIndex];
-          setStreamingContent(currentText);
-          setCurrentWordIndex(wordIndex + 1);
-          wordIndex++;
-        }
+      if (event.name === 'word' && wordIndex < words.length) {
+        currentText += (wordIndex === 0 ? '' : ' ') + words[wordIndex];
+        setStreamingContent(currentText);
+        setCurrentWordIndex(wordIndex + 1);
+        wordIndex++;
       }
     };
 
@@ -274,11 +298,15 @@ export default function CropComparisonClient({
       setIsStreaming(false);
       setIsSpeaking(false);
       setStreamingContent("");
+      utteranceRef.current = null;
     };
 
-    utterance.onerror = () => {
+    utterance.onerror = (event) => {
+      console.error("Speech error:", event);
       setIsStreaming(false);
       setIsSpeaking(false);
+      setStreamingContent("");
+      utteranceRef.current = null;
     };
 
     window.speechSynthesis.speak(utterance);
@@ -290,6 +318,7 @@ export default function CropComparisonClient({
       setIsSpeaking(false);
       setIsStreaming(false);
       setStreamingContent("");
+      utteranceRef.current = null;
     }
   };
 
@@ -345,7 +374,7 @@ export default function CropComparisonClient({
     }
   };
 
-  // Stream comparison summary - SLOWER with farmer name
+  // Stream comparison summary - with farmer name
   const streamComparison = () => {
     if (rankedCrops.length === 0) return;
 
@@ -454,7 +483,7 @@ export default function CropComparisonClient({
                     />
                   </div>
                   <span className="text-sm font-medium">
-                    {currentWordIndex}/{wordsRef.current.length}
+                    {currentWordIndex}/{wordsRef.current.length} {t('words')}
                   </span>
                 </div>
               </div>
@@ -712,8 +741,6 @@ export default function CropComparisonClient({
             </div>
           </div>
         )}
-
-        {/* Podium Cards - REMOVED */}
 
         {/* Business Insight Card */}
         <div className="mt-8 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-6 text-white shadow-xl">

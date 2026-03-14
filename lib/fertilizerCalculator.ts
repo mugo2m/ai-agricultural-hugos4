@@ -197,7 +197,8 @@ export class FertilizerCalculator {
     },
     farmSize: number = 1,
     spacing?: { rowCm: number; plantCm: number; seedsPerHole: number; label: string },
-    country: string = 'kenya'
+    country: string = 'kenya',
+    crop?: string // ADDED: Pass crop name for perennial detection
   ): FertilizerBlendResult & {
     perAcrePlanting?: FertilizerRecommendation[];
     perAcreTopdressing?: FertilizerRecommendation[];
@@ -218,30 +219,35 @@ export class FertilizerCalculator {
     const plantingRecsPerAcre: FertilizerRecommendation[] = [];
     const topdressingRecsPerAcre: FertilizerRecommendation[] = [];
 
-    if (plantingFertilizer && remainingPPerAcre > 0) {
+    // ENSURE PLANTING FERTILIZER IS ALWAYS CALCULATED
+    if (plantingFertilizer) {
+      // If there's P requirement, use that, otherwise still calculate with whatever P is needed
+      const pNeeded = Math.max(remainingPPerAcre, 10); // Minimum 10kg P if none specified
       const pPercent = plantingFertilizer.nutrients.p / 100;
-      const plantingAmountPerAcre = Math.round(remainingPPerAcre / pPercent);
+      const plantingAmountPerAcre = Math.round(pNeeded / pPercent);
 
-      const providesNPerAcre = plantingAmountPerAcre * (plantingFertilizer.nutrients.n / 100);
-      const providesPPerAcre = plantingAmountPerAcre * pPercent;
+      if (plantingAmountPerAcre > 0) {
+        const providesNPerAcre = plantingAmountPerAcre * (plantingFertilizer.nutrients.n / 100);
+        const providesPPerAcre = plantingAmountPerAcre * pPercent;
 
-      plantingRecsPerAcre.push({
-        fertilizerId: plantingFertilizer.id,
-        brand: plantingFertilizer.brand,
-        company: plantingFertilizer.company,
-        npk: plantingFertilizer.npk,
-        amountKg: plantingAmountPerAcre,
-        packageSizes: plantingFertilizer.packageSizes || ["50kg bag"],
-        pricePer50kg: costs.plantingCost || plantingFertilizer.pricePer50kg || 3500,
-        provides: {
-          n: providesNPerAcre,
-          p: providesPPerAcre,
-          k: 0
-        }
-      });
+        plantingRecsPerAcre.push({
+          fertilizerId: plantingFertilizer.id,
+          brand: plantingFertilizer.brand,
+          company: plantingFertilizer.company,
+          npk: plantingFertilizer.npk,
+          amountKg: plantingAmountPerAcre,
+          packageSizes: plantingFertilizer.packageSizes || ["50kg bag"],
+          pricePer50kg: costs.plantingCost || plantingFertilizer.pricePer50kg || 3500,
+          provides: {
+            n: providesNPerAcre,
+            p: providesPPerAcre,
+            k: 0
+          }
+        });
 
-      remainingNPerAcre -= providesNPerAcre;
-      remainingPPerAcre -= providesPPerAcre;
+        remainingNPerAcre -= providesNPerAcre;
+        remainingPPerAcre -= providesPPerAcre;
+      }
     }
 
     if (remainingNPerAcre > 0.1 && topdressingFertilizer) {
@@ -328,23 +334,29 @@ export class FertilizerCalculator {
 
       const totalPlants = calculateTotalPlants(plantsPerAcre, farmSize);
 
-      // Identify fertilizers by type for per-plant calculation
+      // IMPROVED fertilizer type detection
       const dapPerAcre = plantingRecsPerAcre.find(r =>
-        r.brand.includes('DAP') || r.npk.includes('18-46') || r.npk.includes('DAP')
+        r.brand.toLowerCase().includes('dap') ||
+        r.npk.includes('18-46') ||
+        r.npk.includes('DAP') ||
+        r.brand.toLowerCase().includes('diammonium')
       )?.amountKg || 0;
 
       const ureaPerAcre = topdressingRecsPerAcre.find(r =>
-        r.brand.includes('UREA') || r.npk.includes('46-0-0')
+        r.brand.toLowerCase().includes('urea') ||
+        r.npk.includes('46-0-0') ||
+        r.brand.toLowerCase().includes('uree')
       )?.amountKg || 0;
 
       const mopPerAcre = topdressingRecsPerAcre.find(r =>
-        r.brand.includes('MOP') || r.npk.includes('0-0-60')
+        r.brand.toLowerCase().includes('mop') ||
+        r.npk.includes('0-0-60') ||
+        r.brand.toLowerCase().includes('muriate')
       )?.amountKg || 0;
 
-      // For perennial crops, adjust calculation
-      const isPerennial = ['mangoes', 'avocados', 'oranges', 'coffee', 'tea', 'macadamia', 'cocoa', 'bananas'].includes(
-        recommendations.plantingFertilizer.toLowerCase() // This should come from crop context
-      );
+      // FIXED: Use crop parameter for perennial detection
+      const cropLower = (crop || '').toLowerCase();
+      const isPerennial = ['mangoes', 'avocados', 'oranges', 'coffee', 'tea', 'macadamia', 'cocoa', 'bananas'].includes(cropLower);
 
       const perPlant = calculateFertilizerPerPlant(
         dapPerAcre * farmSize,
@@ -354,6 +366,7 @@ export class FertilizerCalculator {
         isPerennial
       );
 
+      // ADDED: Measurement guides for each fertilizer individually
       perPlantInfo = {
         plantsPerAcre,
         totalPlants,
@@ -599,7 +612,7 @@ export class FertilizerCalculator {
     text += `Total fertilizer investment: ${this.formatCurrencyForDisplay(result.totalCost, country)}\n`;
     text += `Total nutrients provided: ${(result.totalNutrientsProvided?.n || 0).toFixed(1)} kg N, ${(result.totalNutrientsProvided?.p || 0).toFixed(1)} kg P, ${(result.totalNutrientsProvided?.k || 0).toFixed(1)} kg K\n\n`;
 
-    // Per-plant information
+    // Per-plant information - UPDATED with measurement guides for each fertilizer
     if (result.perPlant) {
       const pp = result.perPlant;
 
@@ -607,16 +620,10 @@ export class FertilizerCalculator {
       text += `Plant population: ${pp.totalPlants.toLocaleString()} plants on your farm\n\n`;
 
       text += `Fertilizer per plant:\n`;
-      text += `• DAP: ${pp.dapGrams} grams per plant\n`;
-      text += `• UREA: ${pp.ureaGrams} grams per plant\n`;
-      text += `• MOP: ${pp.mopGrams} grams per plant\n`;
-      text += `• TOTAL: ${pp.totalGrams} grams per plant\n\n`;
-
-      text += `Measurement guide:\n`;
-      text += `• ${pp.dapGrams} g: ${pp.dapGuide}\n`;
-      text += `• ${pp.ureaGrams} g: ${pp.ureaGuide}\n`;
-      text += `• ${pp.mopGrams} g: ${pp.mopGuide}\n`;
-      text += `• ${pp.totalGrams} g: ${pp.totalGuide}\n\n`;
+      text += `• DAP: ${pp.dapGrams} grams per plant (${pp.dapGuide})\n`;
+      text += `• UREA: ${pp.ureaGrams} grams per plant (${pp.ureaGuide})\n`;
+      text += `• MOP: ${pp.mopGrams} grams per plant (${pp.mopGuide})\n`;
+      text += `• TOTAL: ${pp.totalGrams} grams per plant (${pp.totalGuide})\n\n`;
     }
 
     // Business tip

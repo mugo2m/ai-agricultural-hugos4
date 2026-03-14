@@ -765,8 +765,9 @@ export interface GrossMarginInput {
   plantingLabourCost: number;
   weedingCost: number;
   harvestingCost: number;
-  transportCostPerUnit: number;
-  transportUnit: string;
+  transportCostPerKg: number;      // UPDATED: Now directly per kg, no conversion needed
+  transportUnit?: string;           // NEW: Optional, defaults to kg
+  emptyBags: number;                // NEW: Number of empty bags to buy
   bagCost: number;
 }
 
@@ -816,12 +817,11 @@ export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): Gro
   const labourTotal = (input.ploughingCost + input.plantingLabourCost +
                       input.weedingCost + input.harvestingCost) * input.cropAcres;
 
-  // Calculate transport cost (convert to kg if needed)
-  const transportKg = convertToKg(crop, input.transportCostPerUnit, input.transportUnit);
-  const transportTotal = (yieldKg / 1000) * transportKg; // Assume transport cost per tonne
+  // Calculate transport cost - NOW DIRECTLY PER KG
+  const transportTotal = yieldKg * (input.transportCostPerKg || 0);
 
-  // Calculate bag cost
-  const bagsNeeded = Math.ceil(yieldKg / 90); // Standard 90kg bags
+  // Calculate bag cost using farmer's empty bags count
+  const bagsNeeded = input.emptyBags || Math.ceil(yieldKg / 90); // Use farmer's empty bags if provided, otherwise calculate
   const bagsTotal = bagsNeeded * input.bagCost;
 
   // Total costs

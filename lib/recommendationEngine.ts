@@ -208,9 +208,10 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
       plantLines.push(`Based on your spacing, you have approximately ${perPlant.totalPlants?.toLocaleString()} plants on your ${fertilizerPlan.farmSize} acre farm.`);
       plantLines.push('');
       plantLines.push('FERTILIZER PER PLANT');
-      plantLines.push(`DAP: ${perPlant.dapGrams} grams`);
-      plantLines.push(`UREA: ${perPlant.ureaGrams} grams`);
-      plantLines.push(`MOP: ${perPlant.mopGrams} grams`);
+      // UPDATED: Show measurement guide for each fertilizer individually
+      plantLines.push(`DAP: ${perPlant.dapGrams} grams (${perPlant.dapGuide})`);
+      plantLines.push(`UREA: ${perPlant.ureaGrams} grams (${perPlant.ureaGuide})`);
+      plantLines.push(`MOP: ${perPlant.mopGrams} grams (${perPlant.mopGuide})`);
       plantLines.push(`TOTAL: ${perPlant.totalGrams} grams (${perPlant.totalGuide})`);
 
       structuredList.push({
@@ -429,7 +430,21 @@ Planting: Plant at start of rains, dig 60cm x 60cm x 60cm holes
 Fertilizer: Apply DAP at planting, CAN annually
 Watering: Young trees need regular watering, mature trees are drought-tolerant
 Maturity: 3-4 years for grafted trees
-Yield: 100-300 kg per tree (17,000-52,000 kg per acre) with good management`;
+Yield: 100-300 kg per tree (17,000-52,000 kg per acre) with good management
+
+AGROCHEMICAL SAFETY:
+• Always wear protective gear (gloves, mask, goggles) when handling chemicals
+• Follow label instructions exactly - more is NOT better
+• Observe pre-harvest intervals to prevent chemical residues on fruits
+• Dispose of containers properly - never reuse for food or water
+• Store chemicals away from children, food, and water sources
+
+METAL TRACEABILITY:
+• Improper chemical use can leave heavy metal residues in soil and fruits
+• Test soil annually to monitor metal accumulation
+• Use organic amendments to bind heavy metals
+• Consider organic certification for premium prices
+• Keep records of all chemical applications for traceability`;
   }
 
   structuredList.push({
@@ -447,8 +462,15 @@ Yield: 100-300 kg per tree (17,000-52,000 kg per acre) with good management`;
     const diseaseLines: string[] = [];
     diseaseLines.push(`INTEGRATED DISEASE MANAGEMENT FOR YOUR ${crop.toUpperCase()} ENTERPRISE`);
 
-    // Show EXACT farmer input without any cleaning
-    diseaseLines.push(`Your reported diseases: ${farmerData.commonDiseases}`);
+    // PERSONALIZED: List the farmer's specific diseases
+    diseaseLines.push(`The diseases affecting your ${crop.toUpperCase()} ENTERPRISE:`);
+
+    // Split and clean the disease list
+    const diseaseList = farmerData.commonDiseases.split(',').map(d => d.trim()).filter(d => d);
+    diseaseList.forEach(disease => {
+      diseaseLines.push(`• ${disease}`);
+    });
+
     diseaseLines.push('');
     diseaseLines.push('PREVENTION (Cheaper than cure)');
     diseaseLines.push('• Use disease-resistant varieties where available');
@@ -466,7 +488,7 @@ Yield: 100-300 kg per tree (17,000-52,000 kg per acre) with good management`;
     const cropDiseases = cropPestsAndDiseases.filter((pd: PestDisease) => pd.type === "disease");
 
     if (cropDiseases.length > 0) {
-      diseaseLines.push('COMMON DISEASES AND CONTROL OPTIONS');
+      diseaseLines.push('CONTROL OPTIONS FOR DISEASES IN YOUR FARM:');
       // Display each disease with its controls
       cropDiseases.forEach(disease => {
         diseaseLines.push('');
@@ -513,8 +535,7 @@ Yield: 100-300 kg per tree (17,000-52,000 kg per acre) with good management`;
       });
     } else {
       // Fallback to generic tips if no specific diseases found
-      diseaseLines.push('COMMON DISEASES AND CONTROL OPTIONS');
-      diseaseLines.push('General Disease Management Tips');
+      diseaseLines.push('GENERAL DISEASE MANAGEMENT TIPS');
       diseaseLines.push('• Start with certified disease-free seed/planting material');
       diseaseLines.push('• Practice crop rotation (at least 2-3 years)');
       diseaseLines.push('• Ensure proper spacing for air circulation');
@@ -540,8 +561,15 @@ Yield: 100-300 kg per tree (17,000-52,000 kg per acre) with good management`;
     const pestLines: string[] = [];
     pestLines.push(`INTEGRATED PEST MANAGEMENT (IPM) FOR YOUR ${crop.toUpperCase()} ENTERPRISE`);
 
-    // Show EXACT farmer input without any cleaning
-    pestLines.push(`Your reported pests: ${farmerData.commonPests}`);
+    // PERSONALIZED: List the farmer's specific pests
+    pestLines.push(`The pests affecting your ${crop.toUpperCase()} ENTERPRISE:`);
+
+    // Split and clean the pest list
+    const pestList = farmerData.commonPests.split(',').map(p => p.trim()).filter(p => p);
+    pestList.forEach(pest => {
+      pestLines.push(`• ${pest}`);
+    });
+
     pestLines.push('');
     pestLines.push('PREVENTION (Cheaper than cure)');
     pestLines.push('• Practice crop rotation with non-host crops');
@@ -558,7 +586,7 @@ Yield: 100-300 kg per tree (17,000-52,000 kg per acre) with good management`;
     const cropPests = cropPestsAndDiseases.filter((pd: PestDisease) => pd.type === "pest");
 
     if (cropPests.length > 0) {
-      pestLines.push('COMMON PESTS AND CONTROL OPTIONS');
+      pestLines.push('CONTROL OPTIONS FOR PESTS IN YOUR FARM:');
       // Display each pest with its controls
       cropPests.forEach(pest => {
         pestLines.push('');
@@ -615,8 +643,7 @@ Yield: 100-300 kg per tree (17,000-52,000 kg per acre) with good management`;
       });
     } else {
       // Fallback to generic tips if no specific pests found
-      pestLines.push('COMMON PESTS AND CONTROL OPTIONS');
-      pestLines.push('General Pest Management Tips');
+      pestLines.push('GENERAL PEST MANAGEMENT TIPS');
       pestLines.push('• Monitor fields weekly for early detection');
       pestLines.push('• Use pheromone traps for monitoring');
       pestLines.push('• Apply insecticides only when thresholds are reached');

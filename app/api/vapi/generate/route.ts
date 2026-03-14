@@ -9,6 +9,7 @@ import { calculateGrossMarginFromFarmerData, convertToKg, validateYield, validat
 import { getSpacingOptions } from "@/lib/data/spacing";
 import { getPlantingFertilizersByCrop } from "@/lib/fertilizers/plantingFertilizers";
 import { getTopDressingFertilizersByCrop } from "@/lib/fertilizers/topDressingFertilizers";
+import { getPlantingAdvice, getPlantingAdviceText } from "@/lib/data/plantingDates"; // UPDATED import
 
 console.log("Farmer Session Generation Route Loaded");
 
@@ -47,7 +48,8 @@ export async function POST(request: NextRequest) {
       plantingLabourCost,
       weedingCost,
       harvestingCost,
-      transportCostPerBag,
+      transportCostPerKg,
+      emptyBags,
       bagCost,
       hasDoneSoilTest,
 
@@ -121,6 +123,20 @@ export async function POST(request: NextRequest) {
     const cropsArray = crops.split(",").map((c: string) => c.trim());
     const primaryCrop = cropsArray[0];
     const farmSize = parseFloat(cropAcres) || parseFloat(acres) || 1;
+
+    // ========== PLANTING ADVICE ==========
+    let plantingAdvice = null;
+    let plantingAdviceText = null;
+
+    if (plantingDate && primaryCrop && country) {
+      const advice = getPlantingAdvice(primaryCrop, country, county, plantingDate);
+      const adviceText = getPlantingAdviceText(primaryCrop, country, county, plantingDate);
+
+      plantingAdvice = advice;
+      plantingAdviceText = adviceText;
+
+      console.log(`🌱 Planting advice for ${primaryCrop} in ${country}/${county}: ${advice}`);
+    }
 
     // ========== VALIDATE YIELD AND PRICE ==========
     let validatedYield = parseFloat(actualYield) || parseFloat(averageHarvest) || 0;
@@ -280,7 +296,8 @@ export async function POST(request: NextRequest) {
             },
             farmSize,
             spacingInfo,
-            country || 'kenya'
+            country || 'kenya',
+            primaryCrop
           );
         }
       } catch (error) {
@@ -331,8 +348,9 @@ export async function POST(request: NextRequest) {
         plantingLabourCost: parseFloat(plantingLabourCost) || 2000,
         weedingCost: parseFloat(weedingCost) || 2500,
         harvestingCost: parseFloat(harvestingCost) || 2000,
-        transportCostPerUnit: parseFloat(transportCostPerBag) || 50,
-        transportUnit: "per bag",
+        transportCostPerKg: parseFloat(transportCostPerKg) || 5,
+        transportUnit: "kg",
+        emptyBags: parseFloat(emptyBags) || 0,
         bagCost: parseFloat(bagCost) || 40
       };
 
@@ -387,6 +405,8 @@ export async function POST(request: NextRequest) {
       cropVarieties,
       cropAcres: farmSize,
       plantingDate,
+      plantingAdvice,           // NEW: Store planting advice
+      plantingAdviceText,       // NEW: Store planting advice text
       seedSource,
       spacing,
       spacingInfo,
@@ -433,7 +453,8 @@ export async function POST(request: NextRequest) {
         weeding: parseFloat(weedingCost) || null,
         harvesting: parseFloat(harvestingCost) || null
       },
-      transportCostPerBag: parseFloat(transportCostPerBag) || null,
+      transportCostPerKg: parseFloat(transportCostPerKg) || null,
+      emptyBags: parseFloat(emptyBags) || null,
       bagCost: parseFloat(bagCost) || null,
 
       conservationPractices: conservationPractices ? conservationPractices.split(',').map((p: string) => p.trim()) : [],
@@ -511,7 +532,7 @@ export async function POST(request: NextRequest) {
     };
 
     await sessionRef.set(farmerSession);
-    console.log(`Saved farmer session ${sessionId} for crop ${primaryCrop}`);
+    console.log(`Saved farmer session ${sessionId} for crop ${primaryCrop} in ${country}`);
 
     // ========== RETURN RESPONSE ==========
     return NextResponse.json({
@@ -528,6 +549,7 @@ export async function POST(request: NextRequest) {
         price: priceWarnings,
         spacing: spacingWarning
       },
+      plantingAdvice,           // NEW: Include in response
       welcomeMessage: `Welcome ${farmerName || "Farmer"}! I've prepared your recommendations for ${primaryCrop}.`
     }, { status: 200 });
 
@@ -545,6 +567,6 @@ export async function GET() {
     status: "operational",
     message: "Farmer Session Generation API",
     version: "2.0",
-    supportedCrops: "All 47 crops including maize, beans, rice, mangoes, avocados, tea, coffee, macadamia, cocoa, etc."
+    supportedCrops: "All 47 crops across 75+ countries"
   });
 }

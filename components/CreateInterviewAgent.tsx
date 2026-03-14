@@ -480,32 +480,33 @@ const CreateInterviewAgent = ({
     cultivatedAcres: "",
     waterSources: "",
     hasDoneSoilTest: "",
-    crops: "",               // restored
-    saleDate: "",             // new sale date field
-    cropVarieties: "",        // free text
-    cropAcres: "",
+    crops: "",               // Q3 - Crop enterprise
+    saleDate: "",             // sale date field
+    cropVarieties: "",        // Q4 - Crop variety
+    cropAcres: "",            // Q5 - Acres
     season: "",
     plantingDate: "",
     plantingMaterial: "",
-    plantingQuantity: "",
+    plantingQuantity: "",     // Q6 - Seed rate
     seedSource: "",
     spacing: "",
     commonPests: "",
     pestControlMethod: "",
     commonDiseases: "",
     diseaseControlMethod: "",
-    deficiencySymptoms: "",   // NEW: farmer-reported deficiency symptoms
-    deficiencyLocation: "",   // NEW: where symptoms appear (older leaves, new growth, etc.)
-    harvestUnit: "",
-    pricePerKg: "",           // Changed from pricePerUnit to pricePerKg
-    actualYieldKg: "",        // Changed from actualYield to actualYieldKg
+    deficiencySymptoms: "",   // Nutrient deficiency symptoms
+    deficiencyLocation: "",   // Where symptoms appear
+    harvestUnit: "kg",        // Q7 - Yield unit (kg only)
+    pricePerKg: "",           // Q9 - Price per kg
+    actualYieldKg: "",        // Q8 - Actual yield
     storageMethod: "",
     npkCost: "",
     ploughingCost: "",
     plantingLabourCost: "",
     weedingCost: "",
     harvestingCost: "",
-    transportCostPerBag: "",
+    transportCostPerKg: "",   // Transport cost per kg
+    emptyBags: "",            // NEW: Number of empty bags to buy
     bagCost: "",
     seedCost: "",
     calciticLimePricePerBag: "",
@@ -545,6 +546,7 @@ const CreateInterviewAgent = ({
     soilTestNa: "",
     soilTestNaRating: "",
     targetYield: "",
+    recCalciticLime: "",
     recPlantingFertilizer: "",
     recPlantingQuantity: "",
     recTopdressingFertilizer: "",
@@ -626,27 +628,25 @@ const CreateInterviewAgent = ({
     }
   ];
 
-  // UPDATED CROP SELECTION QUESTION with 15 new crops
+  // CROP SELECTION QUESTION - Q3 (moved from original Q38)
   const cropSelectionQuestion = {
     id: "crops",
     questionKey: "question_crop_enterprise",
     type: "dropdown",
     options: [
-      // Existing crops
       "maize", "beans", "finger millet", "sorghum", "soya beans", "cowpeas",
       "green grams", "bambara nuts", "groundnuts", "sunflower", "simsim",
       "coffee", "cotton", "sugarcane", "tobacco", "cassava", "sweet potatoes",
       "irish potatoes", "tomatoes", "kales", "cabbages", "onions", "carrots",
       "capsicums", "chillies", "brinjals", "french beans", "garden peas",
-      "bananas", "oranges", "pineapples", "avocados", "pawpaws", "passion fruit",
-      // NEW CROPS ADDED HERE
-      "rice", "mangoes", "watermelons", "spinach", "pigeon peas",
+      "bananas", "oranges", "pineapples", "mangoes", "avocados", "pawpaws",
+      "passion fruit", "rice", "watermelons", "spinach", "pigeon peas",
       "yams", "taro", "okra", "tea", "macadamia", "cocoa"
     ],
     sectionKey: "section_crops"
   };
 
-  // SALE DATE QUESTION (additional)
+  // SALE DATE QUESTION
   const saleDateQuestion = {
     id: "saleDate",
     questionKey: "question_sale_date",
@@ -656,13 +656,22 @@ const CreateInterviewAgent = ({
     sectionKey: "section_production"
   };
 
-  // NEW: Nutrient deficiency questions
+  // NUTRIENT DEFICIENCY QUESTIONS
   const deficiencyQuestions = [
     {
       id: "deficiencySymptoms",
       questionKey: "question_deficiency_symptoms",
-      type: "text",
-      placeholder: t('deficiency_symptom_placeholder'),
+      type: "dropdown",
+      options: [
+        "Yellow leaves",
+        "Purple color",
+        "Burned edges",
+        "Yellow between veins",
+        "Stunted growth",
+        "Blossom end rot",
+        "Distorted new leaves",
+        "Other (specify)"
+      ],
       sectionKey: "section_nutrition"
     },
     {
@@ -681,14 +690,14 @@ const CreateInterviewAgent = ({
 
     return [
       {
-        id: "cropVarieties",
+        id: "cropVarieties",  // Q4 - Crop variety
         questionKey: "question_crop_varieties",
-        type: "text", // free text
+        type: "text",
         placeholder: "e.g., H614",
         sectionKey: "section_crops"
       },
       {
-        id: "cropAcres",
+        id: "cropAcres",      // Q5 - Acres
         questionKey: "question_crop_acres",
         type: "number",
         step: "any",
@@ -718,28 +727,27 @@ const CreateInterviewAgent = ({
         options: spacingOptions.map(s => s.label),
         sectionKey: "section_planting_density"
       },
-      getPlantingQuantityQuestion(crop),
+      getPlantingQuantityQuestion(crop), // Q6 - Seed rate
     ];
   };
 
   const getProductionQuestions = () => {
     if (!farmerDetails.crops) return [];
     const crop = farmerDetails.crops;
-    const cropType = getCropType(crop);
 
-    // Always use kg for yield - no bag options
-    let unitOptions = ["kg", "tonnes"];
+    // Only kg option - removed tonnes
+    const unitOptions = ["kg"];
 
     return [
       {
-        id: "harvestUnit",
+        id: "harvestUnit",      // Q7 - Yield unit (kg only)
         questionKey: "question_harvest_unit",
         type: "dropdown",
         options: unitOptions,
         sectionKey: "section_production"
       },
       {
-        id: "actualYieldKg",  // Changed from pricePerUnit to actualYieldKg
+        id: "actualYieldKg",    // Q8 - Actual yield
         questionKey: "question_actual_yield_kg",
         type: "number",
         step: "any",
@@ -747,7 +755,7 @@ const CreateInterviewAgent = ({
         sectionKey: "section_production"
       },
       {
-        id: "pricePerKg",      // Changed from pricePerUnit to pricePerKg
+        id: "pricePerKg",       // Q9 - Price per kg
         questionKey: "question_price_per_kg",
         type: "number",
         step: "any",
@@ -779,15 +787,13 @@ const CreateInterviewAgent = ({
       id: "waterSources",
       questionKey: "question_water_sources",
       type: "multiselect",
-      options: [
-        "River only", "Stream only", "Protected spring only", "Borehole only",
-        "Hand-dug well only", "Piped scheme only", "Rainwater harvesting only",
-        "Water pan/pond only", "River + Borehole", "River + Well", "River + Rainwater",
-        "Borehole + Well", "Borehole + Rainwater", "Well + Rainwater",
-        "Spring + Stream", "Piped + Rainwater", "River + Borehole + Well",
-        "River + Borehole + Rainwater", "River + Well + Rainwater",
-        "Borehole + Well + Rainwater", "Spring + Stream + Rainwater",
-        "All available sources", "None (dryland farming)"
+      options: [  // SIMPLIFIED to 6 options
+        "Rainwater only",
+        "River only",
+        "Borehole only",
+        "River + Borehole",
+        "River + Borehole + Rainwater",
+        "None (dryland farming)"
       ],
       sectionKey: "section_water"
     }
@@ -825,7 +831,8 @@ const CreateInterviewAgent = ({
       { id: "plantingLabourCost", questionKey: "question_planting_labour_cost", type: "number", step: "any", placeholder: "e.g., 2000", sectionKey: "section_finance" },
       { id: "weedingCost", questionKey: "question_weeding_cost", type: "number", step: "any", placeholder: "e.g., 2500", sectionKey: "section_finance" },
       { id: "harvestingCost", questionKey: "question_harvesting_cost", type: "number", step: "any", placeholder: "e.g., 2000", sectionKey: "section_finance" },
-      { id: "transportCostPerBag", questionKey: "question_transport_cost", type: "number", step: "any", placeholder: "e.g., 50", sectionKey: "section_finance" },
+      { id: "transportCostPerKg", questionKey: "question_transport_cost", type: "number", step: "any", placeholder: "e.g., 5", sectionKey: "section_finance" },
+      { id: "emptyBags", questionKey: "question_empty_bags", type: "number", placeholder: "e.g., 100 bags", step: "any", sectionKey: "section_finance" }, // NEW
       { id: "bagCost", questionKey: "question_bag_cost", type: "number", step: "any", placeholder: "e.g., 40", sectionKey: "section_finance" },
     ];
   };
@@ -933,9 +940,10 @@ const CreateInterviewAgent = ({
     { id: "soilTestOMRating", questionKey: "question_soil_test_om_rating", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, sectionKey: "section_soil_test" },
     { id: "soilTestCEC", questionKey: "question_soil_test_cec", type: "number", step: "any", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, sectionKey: "section_soil_test" },
     { id: "soilTestCECRating", questionKey: "question_soil_test_cec_rating", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, sectionKey: "section_soil_test" },
+    // Removed duplicate crop question (original Q3) from here
     {
       id: "targetYield",
-      questionKey: "question_target_yield_kg",  // Changed to kg
+      questionKey: "question_target_yield_kg",
       type: "number",
       step: "any",
       placeholder: t('enter_target_yield_kg'),
@@ -1146,28 +1154,28 @@ const CreateInterviewAgent = ({
   const getAllQuestions = () => {
     let questions = [];
 
-    questions = [...questions, ...countryQuestion];
-    questions = [...questions, ...soilTestGatekeeperQuestion];
+    questions = [...questions, ...countryQuestion];                    // Q1
+    questions = [...questions, ...soilTestGatekeeperQuestion];        // Q2
 
-    if (farmerDetails.hasDoneSoilTest === "Yes") {
-      questions = [...questions, ...soilTestDetailsQuestions];
-      questions = [...questions, ...fertilizerSelectionQuestions];
-    } else if (farmerDetails.hasDoneSoilTest === "No") {
-      questions = [...questions, ...fertilizerQuestionsWithoutSoilTest];
-    }
-
-    // RESTORED crop selection
+    // Crop selection (moved from original Q38) - now Q3
     questions = [...questions, cropSelectionQuestion];
 
-    // ADDED sale date question
+    // Sale date question
     questions = [...questions, saleDateQuestion];
 
     if (farmerDetails.crops) {
-      questions = [...questions, ...getCropSpecificQuestions()];
+      questions = [...questions, ...getCropSpecificQuestions()];      // Q4, Q5, Q6 etc.
     }
 
     if (farmerDetails.crops) {
-      questions = [...questions, ...getProductionQuestions()];
+      questions = [...questions, ...getProductionQuestions()];        // Q7, Q8, Q9
+    }
+
+    if (farmerDetails.hasDoneSoilTest === "Yes") {
+      questions = [...questions, ...soilTestDetailsQuestions];        // Soil test questions (original Q4-Q37)
+      questions = [...questions, ...fertilizerSelectionQuestions];
+    } else if (farmerDetails.hasDoneSoilTest === "No") {
+      questions = [...questions, ...fertilizerQuestionsWithoutSoilTest];
     }
 
     questions = [...questions, ...farmWaterQuestions];
@@ -1180,7 +1188,7 @@ const CreateInterviewAgent = ({
       questions = [...questions, ...getFinancialQuestions()];
     }
 
-    // ADDED nutrient deficiency questions
+    // Nutrient deficiency questions
     if (farmerDetails.crops) {
       questions = [...questions, ...deficiencyQuestions];
     }
@@ -1653,10 +1661,10 @@ const CreateInterviewAgent = ({
       hasDoneSoilTest: "", crops: "", saleDate: "", cropVarieties: "", cropAcres: "", season: "", plantingDate: "",
       plantingMaterial: "", plantingQuantity: "", seedSource: "", spacing: "",
       commonPests: "", pestControlMethod: "", commonDiseases: "", diseaseControlMethod: "",
-      deficiencySymptoms: "", deficiencyLocation: "", // NEW: deficiency fields
-      harvestUnit: "", pricePerKg: "", actualYieldKg: "", storageMethod: "",
+      deficiencySymptoms: "", deficiencyLocation: "",
+      harvestUnit: "kg", pricePerKg: "", actualYieldKg: "", storageMethod: "",
       npkCost: "", ploughingCost: "", plantingLabourCost: "", weedingCost: "",
-      harvestingCost: "", transportCostPerBag: "", bagCost: "", seedCost: "",
+      harvestingCost: "", transportCostPerKg: "", emptyBags: "", bagCost: "", seedCost: "",
       calciticLimePricePerBag: "", recCalciticLime: "",
       livestockTypes: "", cattle: "", cattleBreed: "", milkYield: "",
       postHarvestPractices: "", postHarvestLosses: "", valueAddition: "", storageAccess: "",

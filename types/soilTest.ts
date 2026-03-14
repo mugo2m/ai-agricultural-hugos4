@@ -1,5 +1,6 @@
 // types/soilTest.ts
 // TypeScript interfaces for soil test data - UPDATED for all 47 crops
+// UPDATED: Added transportCostPerKg, emptyBags, plantingAdvice fields
 
 export type NutrientRating = "Very Low" | "Low" | "Optimum" | "High" | "Very High";
 
@@ -322,8 +323,9 @@ export interface GrossMarginInput {
   plantingLabourCost: number;
   weedingCost: number;
   harvestingCost: number;
-  transportCostPerUnit: number;
-  transportUnit: string;
+  transportCostPerKg: number;      // UPDATED: Now per kg instead of per unit
+  transportUnit?: string;           // Optional, defaults to "kg"
+  emptyBags: number;                // NEW: Number of empty bags to buy
   bagCost: number;
   otherCosts?: {
     name: string;
@@ -399,6 +401,8 @@ export interface FarmerSession {
   cropAcres?: number;
   season?: string;
   plantingDate?: string;
+  plantingAdvice?: "optimal" | "acceptable" | "late" | "no-data";  // NEW
+  plantingAdviceText?: string;                                      // NEW
 
   // Spacing
   spacing?: string; // Selected spacing label
@@ -456,7 +460,8 @@ export interface FarmerSession {
     weeding?: number;
     harvesting?: number;
   };
-  transportCostPerBag?: number;
+  transportCostPerKg?: number;      // NEW - per kg transport cost
+  emptyBags?: number;                // NEW - number of empty bags to buy
   bagCost?: number;
 
   // Challenges

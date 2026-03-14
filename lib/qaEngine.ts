@@ -1,6 +1,9 @@
 // lib/qaEngine.ts
 // 100% LOGIC-BASED Q&A ENGINE - STRUCTURED OUTPUT FOR I18N
 import { COUNTRY_CURRENCY_MAP } from '@/lib/config/currency';
+import { cropPestDiseaseMap, PestDisease } from '@/lib/data/pestDiseaseMapping';
+import { getPlantingAdvice, getPlantingAdviceText } from '@/lib/data/plantingDates';
+import { getCropMaturityPeriod } from '@/lib/data/cropMaturity';
 
 interface QaOutput {
   key: string;
@@ -28,11 +31,53 @@ function getFarmerName(data: any): string {
   return data?.farmerName || 'Farmer';
 }
 
+// Helper to get control methods for a specific pest/disease
+function getControlMethods(pestName: string, crop: string, type: 'pest' | 'disease'): string {
+  const cropLookupKey = crop.toLowerCase().replace(/\s+/g, '');
+  const cropPestsAndDiseases = cropPestDiseaseMap[cropLookupKey] || cropPestDiseaseMap[crop.toLowerCase()] || [];
+
+  const item = cropPestsAndDiseases.find((pd: PestDisease) =>
+    pd.type === type && pd.name.toLowerCase().includes(pestName.toLowerCase())
+  );
+
+  if (!item) return '';
+
+  let methods = '';
+
+  // Cultural controls
+  if (item.culturalControls.length > 0) {
+    methods += '  • Cultural: ' + item.culturalControls.slice(0, 2).join('; ') + '\n';
+  }
+
+  // Chemical controls
+  if (item.chemicalControls.length > 0) {
+    const chem = item.chemicalControls[0];
+    methods += `  • Chemical: ${chem.productName} (${chem.rate}) - ${chem.timing}\n`;
+    if (chem.packageSizes) {
+      methods += `    Pack sizes: ${chem.packageSizes.join(', ')}\n`;
+    }
+  }
+
+  // Organic controls
+  if (item.organicControls && item.organicControls.length > 0) {
+    const organic = item.organicControls[0];
+    methods += `  • Organic: ${organic.method}\n`;
+  }
+
+  // Business note
+  if (item.businessNote) {
+    methods += `  💼 ${item.businessNote}\n`;
+  }
+
+  return methods;
+}
+
 const qaTemplates: Record<string, (data: any, question: string, farmerName: string) => QaOutput> = {
   varieties: (data, question, farmerName) => {
     const crop = data?.crops?.[0] || 'your crops';
     const lowerCrop = crop.toLowerCase();
     const county = data?.county || 'your area';
+    const farmerVariety = data?.cropVarieties || '';
 
     const varietyKeyMap: Record<string, string> = {
       maize: 'qa_varieties_maize',
@@ -49,7 +94,7 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
     };
 
     const key = varietyKeyMap[lowerCrop] || 'qa_varieties_generic';
-    const params: any = { farmerName, crop, county };
+    const params: any = { farmerName, crop, county, farmerVariety };
 
     if (lowerCrop === 'maize') {
       params.varieties = [
@@ -152,6 +197,12 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
     const crop = data?.crops?.[0] || 'crops';
     const lowerCrop = crop.toLowerCase();
 
+    // Get farmer's chosen spacing
+    const spacingInfo = data?.spacingInfo;
+    const chosenSpacing = spacingInfo ?
+      `${spacingInfo.rowCm}cm x ${spacingInfo.plantCm}cm (${spacingInfo.plantsPerAcre?.toLocaleString() || '?'} plants/acre)` :
+      'your chosen spacing';
+
     const spacingKeyMap: Record<string, string> = {
       maize: 'qa_spacing_maize',
       beans: 'qa_spacing_beans',
@@ -162,8 +213,19 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
       bananas: 'qa_spacing_bananas',
       coffee: 'qa_spacing_coffee',
     };
+
     const key = spacingKeyMap[lowerCrop] || 'qa_spacing_generic';
-    return { key, params: { farmerName, crop } };
+
+    // Add chosen spacing to params
+    return {
+      key,
+      params: {
+        farmerName,
+        crop,
+        chosenSpacing,
+        reminder: "For more details on any spacing option, visit the question-answering section."
+      }
+    };
   },
 
   pest: (data, question, farmerName) => {
@@ -171,31 +233,101 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
     const lowerCrop = crop.toLowerCase();
     const country = getCountryFromData(data);
 
-    const pestKeyMap: Record<string, string> = {
-      maize: 'qa_pest_maize',
-      tomatoes: 'qa_pest_tomatoes',
-    };
-    const key = pestKeyMap[lowerCrop] || 'qa_pest_generic';
-    const params: any = { farmerName, crop };
-    if (lowerCrop === 'maize') {
-      params.rocketCost = 'Rocket 44EC (40ml/20L water)';
-      params.emacotCost = 'Emacot 5WG (4g/20L water)';
-      params.bulldock = 'Bulldock granules (3.5g per plant)';
-      params.actellic = 'Actellic Gold Dust (50g per 90kg bag)';
+    // Get farmer's actual reported pests
+    const farmerPests = data?.commonPests || [];
+    let pestList: string[] = [];
+
+    if (Array.isArray(farmerPests)) {
+      pestList = farmerPests;
+    } else if (typeof farmerPests === 'string') {
+      pestList = farmerPests.split(',').map((p: string) => p.trim()).filter(p => p);
     }
-    return { key, params };
+
+    // If no pests reported, use generic response
+    if (pestList.length === 0) {
+      const pestKeyMap: Record<string, string> = {
+        maize: 'qa_pest_maize',
+        tomatoes: 'qa_pest_tomatoes',
+      };
+      const key = pestKeyMap[lowerCrop] || 'qa_pest_generic';
+      const params: any = { farmerName, crop };
+      if (lowerCrop === 'maize') {
+        params.rocketCost = 'Rocket 44EC (40ml/20L water)';
+        params.emacotCost = 'Emacot 5WG (4g/20L water)';
+        params.bulldock = 'Bulldock granules (3.5g per plant)';
+        params.actellic = 'Actellic Gold Dust (50g per 90kg bag)';
+      }
+      return { key, params };
+    }
+
+    // Build control methods for each pest
+    let controlMethods = '';
+    pestList.forEach(pest => {
+      const methods = getControlMethods(pest, lowerCrop, 'pest');
+      if (methods) {
+        controlMethods += `🐛 ${pest}:\n${methods}\n`;
+      } else {
+        controlMethods += `🐛 ${pest}:\n  • Consult your local agricultural extension for specific control methods.\n\n`;
+      }
+    });
+
+    return {
+      key: 'qa_pest_personalized',
+      params: {
+        farmerName,
+        crop: crop.toUpperCase(),
+        pestList: pestList.join(', '),
+        controlMethods,
+        reminder: "For more details on any specific pest, visit the question-answering section."
+      }
+    };
   },
 
   disease: (data, question, farmerName) => {
     const crop = data?.crops?.[0] || 'crops';
     const lowerCrop = crop.toLowerCase();
 
-    const diseaseKeyMap: Record<string, string> = {
-      maize: 'qa_disease_maize',
-      tomatoes: 'qa_disease_tomatoes',
+    // Get farmer's actual reported diseases
+    const farmerDiseases = data?.commonDiseases || [];
+    let diseaseList: string[] = [];
+
+    if (Array.isArray(farmerDiseases)) {
+      diseaseList = farmerDiseases;
+    } else if (typeof farmerDiseases === 'string') {
+      diseaseList = farmerDiseases.split(',').map((d: string) => d.trim()).filter(d => d);
+    }
+
+    // If no diseases reported, use generic response
+    if (diseaseList.length === 0) {
+      const diseaseKeyMap: Record<string, string> = {
+        maize: 'qa_disease_maize',
+        tomatoes: 'qa_disease_tomatoes',
+      };
+      const key = diseaseKeyMap[lowerCrop] || 'qa_disease_generic';
+      return { key, params: { farmerName, crop } };
+    }
+
+    // Build control methods for each disease
+    let controlMethods = '';
+    diseaseList.forEach(disease => {
+      const methods = getControlMethods(disease, lowerCrop, 'disease');
+      if (methods) {
+        controlMethods += `🦠 ${disease}:\n${methods}\n`;
+      } else {
+        controlMethods += `🦠 ${disease}:\n  • Consult your local agricultural extension for specific control methods.\n\n`;
+      }
+    });
+
+    return {
+      key: 'qa_disease_personalized',
+      params: {
+        farmerName,
+        crop: crop.toUpperCase(),
+        diseaseList: diseaseList.join(', '),
+        controlMethods,
+        reminder: "For more details on any specific disease, visit the question-answering section."
+      }
     };
-    const key = diseaseKeyMap[lowerCrop] || 'qa_disease_generic';
-    return { key, params: { farmerName, crop } };
   },
 
   harvest: (data, question, farmerName) => {
@@ -261,6 +393,48 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
     };
   },
 
+  // NEW: Planting category
+  planting: (data, question, farmerName) => {
+    const crop = data?.crops?.[0] || 'crops';
+    const lowerCrop = crop.toLowerCase();
+    const country = data?.country || 'kenya';
+    const region = data?.county || 'your area';
+    const plantingDate = data?.plantingDate;
+
+    // Get planting advice if date exists
+    if (plantingDate) {
+      try {
+        const advice = getPlantingAdvice(crop, country, region, plantingDate);
+        const adviceText = getPlantingAdviceText(crop, country, region, plantingDate);
+
+        // Get maturity period
+        const maturityMonths = getCropMaturityPeriod(crop, country);
+
+        return {
+          key: 'qa_planting_personalized',
+          params: {
+            farmerName,
+            crop,
+            country,
+            region,
+            plantingDate,
+            advice,
+            adviceText,
+            maturityMonths
+          }
+        };
+      } catch (error) {
+        console.error("Error getting planting advice:", error);
+      }
+    }
+
+    // Generic planting advice
+    return {
+      key: 'qa_planting_generic',
+      params: { farmerName, crop }
+    };
+  },
+
   default: (data, question, farmerName) => {
     const crop = data?.crops?.[0] || 'your crops';
     const county = data?.county || 'your area';
@@ -321,6 +495,12 @@ function detectCategory(question: string): string {
 
   if (q.includes('business') || q.includes('money') || q.includes('invest')) {
     return 'business';
+  }
+
+  // NEW: Planting detection
+  if (q.includes('plant') || q.includes('when to plant') || q.includes('planting time') ||
+      q.includes('sow') || q.includes('sowing') || q.includes('best time to plant')) {
+    return 'planting';
   }
 
   return 'default';
