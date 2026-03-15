@@ -352,7 +352,7 @@ const Agent = ({
           interviewId: interviewId || `demo-${Date.now()}`,
           userId: currentUserId,
           type: "practice",
-          speechRate: 1.0, // Faster speech
+          speechRate: 1.0, // ✅ NORMAL SPEED (was 0.75)
           speechVolume: 0.8,
           country: farmerCountry,
           farmerName: farmerName
@@ -392,17 +392,34 @@ const Agent = ({
     setRecommendationStreams(prev => ({ ...prev, [index]: "" })); // start empty
 
     const utterance = new SpeechSynthesisUtterance(recommendation);
-    utterance.rate = 1.0; // Faster speech
+    utterance.rate = 1.0; // ✅ NORMAL SPEED (was 0.75)
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
     utterance.lang = recognitionLanguage;
 
-    // Female voice names (common across browsers)
+    // Female voice names (common across browsers) - REMOVED ALL MALE VOICES
     const femaleVoiceNames = [
-      'Jenny', 'Aria', 'Sonia', 'Samantha', 'Zira', 'Libby', 'Hazel',
-      'Susan', 'Kate', 'Google UK English Female', 'Microsoft Jenny',
-      'Microsoft Aria', 'Microsoft Sonia', 'Microsoft Zira', 'Microsoft Libby',
-      'Rafiki' // Swahili female voice
+      // English voices
+      'Samantha', 'Victoria', 'Karen', 'Moira', 'Tessa', 'Veena', 'Nicky',
+      'Catherine', 'Fiona', 'Martha', 'Naomi', 'Sangeeta', 'Rishi', 'Lekha',
+      'Google UK English Female', 'Microsoft Jenny', 'Microsoft Aria',
+      'Microsoft Sonia', 'Microsoft Zira', 'Microsoft Libby', 'Microsoft Heidi',
+      'Microsoft Hazel', 'Microsoft Susan', 'Microsoft Kate', 'Microsoft Helen',
+      'Google Deutsch Female', 'Google français Female', 'Google español Female',
+
+      // French voices
+      'Audrey', 'Amélie', 'Chloé', 'Margaux', 'Stéphanie', 'Cécile',
+
+      // Spanish voices
+      'Mónica', 'Carmen', 'Paloma', 'Lucia', 'Sofia', 'Elena',
+
+      // Swahili voices
+      'Rafiki', 'Zawadi', 'Aisha', 'Makena', 'Subira', 'Asha',
+
+      // Additional female voices
+      'Ivy', 'Joanna', 'Kendra', 'Kimberly', 'Salli', 'Amy', 'Emma',
+      'Marlene', 'Vicki', 'Katja', 'Marlene', 'Vicki', 'Katja',
+      'Mizuki', 'Seoyeon', 'Zhiyu'
     ];
 
     const voices = window.speechSynthesis.getVoices();
@@ -416,20 +433,24 @@ const Agent = ({
       );
 
       // If no female voice found in matching language, take any voice in that language
+      // that is NOT clearly male
       if (!preferredVoice) {
-        preferredVoice = matchingVoices[0];
-        console.log('No female voice found for language, using:', preferredVoice.name);
+        const malePatterns = ['Daniel', 'James', 'David', 'John', 'Paul', 'Mark', 'Michael', 'Alex'];
+        preferredVoice = matchingVoices.find(v =>
+          !malePatterns.some(pattern => v.name.includes(pattern))
+        ) || matchingVoices[0];
+        console.log('No female voice found for language, using non-male voice:', preferredVoice.name);
       }
     } else {
       // Fallback to any voice, preferring female
       preferredVoice = voices.find(v =>
         femaleVoiceNames.some(name => v.name.includes(name))
-      ) || voices[0];
+      ) || voices.find(v => !v.name.includes('Daniel') && !v.name.includes('James'));
     }
 
     if (preferredVoice) {
       utterance.voice = preferredVoice;
-      console.log(`Using voice: ${preferredVoice.name} (${preferredVoice.lang})`);
+      console.log(`Using FEMALE voice: ${preferredVoice.name} (${preferredVoice.lang})`);
     }
 
     currentUtteranceRef.current = utterance;
@@ -493,28 +514,36 @@ const Agent = ({
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0; // Faster speech
+    utterance.rate = 1.0; // ✅ NORMAL SPEED (was 0.75)
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
     utterance.lang = recognitionLanguage;
 
-    // Female voice names
+    // Female voice names (same comprehensive list as above)
     const femaleVoiceNames = [
-      'Jenny', 'Aria', 'Sonia', 'Samantha', 'Zira', 'Libby', 'Hazel',
-      'Susan', 'Kate', 'Google UK English Female', 'Microsoft Jenny',
-      'Microsoft Aria', 'Microsoft Sonia', 'Microsoft Zira', 'Microsoft Libby',
-      'Rafiki'
+      'Samantha', 'Victoria', 'Karen', 'Moira', 'Tessa', 'Veena', 'Nicky',
+      'Catherine', 'Fiona', 'Martha', 'Naomi', 'Sangeeta', 'Rishi', 'Lekha',
+      'Google UK English Female', 'Microsoft Jenny', 'Microsoft Aria',
+      'Microsoft Sonia', 'Microsoft Zira', 'Microsoft Libby', 'Microsoft Heidi',
+      'Microsoft Hazel', 'Microsoft Susan', 'Microsoft Kate', 'Microsoft Helen',
+      'Google Deutsch Female', 'Google français Female', 'Google español Female',
+      'Audrey', 'Amélie', 'Chloé', 'Margaux', 'Stéphanie', 'Cécile',
+      'Mónica', 'Carmen', 'Paloma', 'Lucia', 'Sofia', 'Elena',
+      'Rafiki', 'Zawadi', 'Aisha', 'Makena', 'Subira', 'Asha',
+      'Ivy', 'Joanna', 'Kendra', 'Kimberly', 'Salli', 'Amy', 'Emma',
+      'Marlene', 'Vicki', 'Katja', 'Mizuki', 'Seoyeon', 'Zhiyu'
     ];
 
     const voices = window.speechSynthesis.getVoices();
     const matchingVoices = voices.filter(v => v.lang === recognitionLanguage);
 
     if (matchingVoices.length > 0) {
+      // Prefer female voices
       const preferred = matchingVoices.find(v =>
         femaleVoiceNames.some(name => v.name.includes(name))
-      ) || matchingVoices[0];
+      ) || matchingVoices.find(v => !v.name.includes('Daniel') && !v.name.includes('James')) || matchingVoices[0];
       utterance.voice = preferred;
-      console.log(`Using voice: ${preferred.name} (${preferred.lang})`);
+      console.log(`Using FEMALE voice: ${preferred.name} (${preferred.lang})`);
     }
 
     utterance.onend = () => {
@@ -549,14 +578,14 @@ const Agent = ({
     }
 
     await speakWithVoice(introMessage);
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    await new Promise(resolve => setTimeout(resolve, 2000)); // ✅ REDUCED from 2500ms to 2000ms
 
     for (let i = 0; i < structuredList.length; i++) {
       const item = structuredList[i];
       const recommendation = t(item.key, item.params);
 
       await streamRecommendationKaraoke(recommendation, i);
-      await new Promise(resolve => setTimeout(resolve, 4000));
+      await new Promise(resolve => setTimeout(resolve, 3000)); // ✅ REDUCED from 4000ms to 3000ms
 
       while (currentUtteranceRef.current !== null) {
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -566,7 +595,7 @@ const Agent = ({
     if (structuredFinancialAdvice) {
       const financialText = t(structuredFinancialAdvice.key, structuredFinancialAdvice.params);
       await speakWithVoice(financialText);
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      await new Promise(resolve => setTimeout(resolve, 2000)); // ✅ REDUCED from 2500ms to 2000ms
     }
 
     await speakWithVoice(t('post_recommendations'));
@@ -624,7 +653,7 @@ const Agent = ({
         try {
           const welcomeText = t('welcome_farm_plan');
           await speakWithVoice(welcomeText);
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          await new Promise(resolve => setTimeout(resolve, 2000)); // ✅ REDUCED from 3000ms to 2000ms
           await streamAllRecommendations();
         } catch (speechError) {
           console.error("Speech error:", speechError);

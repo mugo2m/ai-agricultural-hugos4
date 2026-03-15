@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
-import { initI18next } from '@/lib/i18n';
+import { initI18next } from '@/lib/i18n'; // ✅ Import from core (no cookies)
 import { useCurrency } from '@/lib/context/CurrencyContext';
 import { getLanguageFromCountry } from '@/lib/config/language';
 
@@ -20,14 +20,19 @@ export default function I18nProvider({ children }: I18nProviderProps) {
       const langWithRegion = getLanguageFromCountry(country);
       // i18next expects simple codes like 'en', 'fr', 'sw'
       const simpleLang = langWithRegion.split('-')[0];
-      const instance = await initI18next(simpleLang);
+
+      // Try to get from localStorage first (for client)
+      const savedLang = localStorage.getItem('preferred-language');
+      const finalLang = savedLang || simpleLang;
+
+      const instance = await initI18next(finalLang);
       setI18n(instance);
     };
     loadI18n();
   }, [country]);
 
   if (!i18n) {
-    return <div>Loading languages...</div>;
+    return <div className="hidden">Loading languages...</div>; // Hide loading to prevent flicker
   }
 
   return (

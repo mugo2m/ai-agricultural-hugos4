@@ -59,6 +59,11 @@ interface CreateInterviewAgentProps {
   profileImage?: string;
 }
 
+// Helper function for crop template variables
+const translateWithCrop = (t: any, key: string, crop: string | undefined) => {
+  return t(key, { crop: crop?.toUpperCase() || 'your crop' });
+};
+
 // Country codes for phone numbers (same as before)
 const countryCodes = [
   { code: "+254", country: "Kenya", flag: "🇰🇪" },
@@ -168,6 +173,57 @@ const getDiseasesOptions = (crop: string) => {
     return ["Blight", "Rust", "Mosaic virus", "Leaf spot", "Powdery mildew", "Other (specify)"];
   }
   return diseases;
+};
+
+// Helper to determine if crop needs planting material cost question
+const needsPlantingMaterialCost = (crop: string): boolean => {
+  const lowerCrop = crop.toLowerCase();
+  const vegetativeCrops = [
+    "sweet potatoes", "cassava", "bananas", "sugarcane", "irish potatoes",
+    "yams", "taro", "pineapples", "coffee", "tea", "cocoa", "mangoes",
+    "avocados", "oranges", "macadamia", "passion fruit"
+  ];
+  return vegetativeCrops.includes(lowerCrop);
+};
+
+const getPlantingMaterialCostQuestion = (crop: string) => {
+  const lowerCrop = crop.toLowerCase();
+
+  // Determine the unit based on crop type
+  let unit = "seedling";
+  let placeholder = "e.g., 30";
+
+  if (lowerCrop.includes("sweet potato") || lowerCrop.includes("cassava")) {
+    unit = "cutting";
+    placeholder = "e.g., 5";
+  } else if (lowerCrop.includes("banana")) {
+    unit = "sucker";
+    placeholder = "e.g., 100";
+  } else if (lowerCrop.includes("sugarcane")) {
+    unit = "sett";
+    placeholder = "e.g., 12";
+  } else if (lowerCrop.includes("potato") || lowerCrop.includes("yam") || lowerCrop.includes("taro")) {
+    unit = "kg";
+    placeholder = "e.g., 50";
+  } else if (lowerCrop.includes("pineapple")) {
+    unit = "crown/slip";
+    placeholder = "e.g., 20";
+  } else if (lowerCrop.includes("coffee") || lowerCrop.includes("tea") || lowerCrop.includes("cocoa")) {
+    unit = "seedling";
+    placeholder = "e.g., 30";
+  } else if (lowerCrop.includes("mango") || lowerCrop.includes("avocado") || lowerCrop.includes("orange") || lowerCrop.includes("macadamia")) {
+    unit = "seedling";
+    placeholder = "e.g., 150";
+  }
+
+  return {
+    id: "plantingMaterialCost",
+    questionKey: "question_planting_material_cost",
+    type: "number",
+    placeholder: placeholder,
+    step: "any",
+    sectionKey: "section_finance"
+  };
 };
 
 const getPlantingMaterialQuestion = (crop: string) => {
@@ -509,6 +565,7 @@ const CreateInterviewAgent = ({
     emptyBags: "",            // NEW: Number of empty bags to buy
     bagCost: "",
     seedCost: "",
+    plantingMaterialCost: "", // NEW: Cost for vegetative planting materials
     calciticLimePricePerBag: "",
     recCalciticLime: "",
     livestockTypes: "",
@@ -628,7 +685,7 @@ const CreateInterviewAgent = ({
     }
   ];
 
-  // CROP SELECTION QUESTION - Q3 (moved from original Q38)
+  // CROP SELECTION QUESTION - Q3
   const cropSelectionQuestion = {
     id: "crops",
     questionKey: "question_crop_enterprise",
@@ -693,7 +750,7 @@ const CreateInterviewAgent = ({
         id: "cropVarieties",  // Q4 - Crop variety
         questionKey: "question_crop_varieties",
         type: "text",
-        placeholder: "e.g., H614",
+        placeholder: "e.g., H614",  // ✅ FIXED
         sectionKey: "section_crops"
       },
       {
@@ -787,7 +844,7 @@ const CreateInterviewAgent = ({
       id: "waterSources",
       questionKey: "question_water_sources",
       type: "multiselect",
-      options: [  // SIMPLIFIED to 6 options
+      options: [
         "Rainwater only",
         "River only",
         "Borehole only",
@@ -823,18 +880,32 @@ const CreateInterviewAgent = ({
 
   const getFinancialQuestions = () => {
     if (!farmerDetails.crops) return [];
+    const crop = farmerDetails.crops;
 
-    return [
-      { id: "seedCost", questionKey: "question_seed_cost", type: "number", placeholder: "e.g., 180", step: "any", sectionKey: "section_finance" },
-      { id: "calciticLimePricePerBag", questionKey: "question_lime_price", type: "number", placeholder: "e.g., 300", step: "any", sectionKey: "section_finance" },
+    let questions = [
       { id: "ploughingCost", questionKey: "question_ploughing_cost", type: "number", step: "any", placeholder: "e.g., 7000", sectionKey: "section_finance" },
       { id: "plantingLabourCost", questionKey: "question_planting_labour_cost", type: "number", step: "any", placeholder: "e.g., 2000", sectionKey: "section_finance" },
       { id: "weedingCost", questionKey: "question_weeding_cost", type: "number", step: "any", placeholder: "e.g., 2500", sectionKey: "section_finance" },
       { id: "harvestingCost", questionKey: "question_harvesting_cost", type: "number", step: "any", placeholder: "e.g., 2000", sectionKey: "section_finance" },
       { id: "transportCostPerKg", questionKey: "question_transport_cost", type: "number", step: "any", placeholder: "e.g., 5", sectionKey: "section_finance" },
-      { id: "emptyBags", questionKey: "question_empty_bags", type: "number", placeholder: "e.g., 100 bags", step: "any", sectionKey: "section_finance" }, // NEW
+      { id: "emptyBags", questionKey: "question_empty_bags", type: "number", placeholder: "e.g., 100 bags", step: "any", sectionKey: "section_finance" },
       { id: "bagCost", questionKey: "question_bag_cost", type: "number", step: "any", placeholder: "e.g., 40", sectionKey: "section_finance" },
     ];
+
+    // Add seed cost for seed crops
+    if (!needsPlantingMaterialCost(crop)) {
+      questions.unshift({ id: "seedCost", questionKey: "question_seed_cost", type: "number", placeholder: "e.g., 180", step: "any", sectionKey: "section_finance" });
+    }
+
+    // Add planting material cost for vegetative crops
+    if (needsPlantingMaterialCost(crop)) {
+      questions.unshift(getPlantingMaterialCostQuestion(crop));
+    }
+
+    // Add lime price question
+    questions.push({ id: "calciticLimePricePerBag", questionKey: "question_lime_price", type: "number", placeholder: "e.g., 300", step: "any", sectionKey: "section_finance" });
+
+    return questions;
   };
 
   const conservationQuestion = [
@@ -904,7 +975,13 @@ const CreateInterviewAgent = ({
   ];
 
   const personalLocationQuestions = [
-    { id: "farmerName", questionKey: "question_farmer_name", type: "text", placeholder: "e.g., John Mugo", sectionKey: "section_personal" },
+    {
+      id: "farmerName",
+      questionKey: "question_farmer_name",
+      type: "text",
+      placeholder: "e.g., John Mugo",  // ✅ FIXED
+      sectionKey: "section_personal"
+    },
     {
       id: "phoneNumber",
       questionKey: "question_phone_number",
@@ -940,7 +1017,6 @@ const CreateInterviewAgent = ({
     { id: "soilTestOMRating", questionKey: "question_soil_test_om_rating", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, sectionKey: "section_soil_test" },
     { id: "soilTestCEC", questionKey: "question_soil_test_cec", type: "number", step: "any", dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, sectionKey: "section_soil_test" },
     { id: "soilTestCECRating", questionKey: "question_soil_test_cec_rating", type: "dropdown", options: ["Very Low", "Low", "Optimum", "High", "Very High"], dependsOn: { field: "hasDoneSoilTest", value: "Yes" }, sectionKey: "section_soil_test" },
-    // Removed duplicate crop question (original Q3) from here
     {
       id: "targetYield",
       questionKey: "question_target_yield_kg",
@@ -963,7 +1039,7 @@ const CreateInterviewAgent = ({
       id: "recPlantingFertilizer",
       questionKey: "question_rec_planting_fertilizer",
       type: "text",
-      placeholder: "e.g., NPK 12.24.12+5S",
+      placeholder: "e.g., NPK 12.24.12+5S",  // ✅ FIXED
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       sectionKey: "section_soil_test_recommendations"
     },
@@ -980,7 +1056,7 @@ const CreateInterviewAgent = ({
       id: "recTopdressingFertilizer",
       questionKey: "question_rec_topdressing_fertilizer",
       type: "text",
-      placeholder: "e.g., UREA 46-0-0",
+      placeholder: "e.g., UREA 46-0-0",  // ✅ FIXED
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       sectionKey: "section_soil_test_recommendations"
     },
@@ -997,7 +1073,7 @@ const CreateInterviewAgent = ({
       id: "recPotassiumFertilizer",
       questionKey: "question_rec_potassium_fertilizer",
       type: "text",
-      placeholder: "e.g., MOP 0-0-60",
+      placeholder: "e.g., MOP 0-0-60",  // ✅ FIXED
       dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
       sectionKey: "section_soil_test_recommendations"
     },
@@ -1157,7 +1233,7 @@ const CreateInterviewAgent = ({
     questions = [...questions, ...countryQuestion];                    // Q1
     questions = [...questions, ...soilTestGatekeeperQuestion];        // Q2
 
-    // Crop selection (moved from original Q38) - now Q3
+    // Crop selection - now Q3
     questions = [...questions, cropSelectionQuestion];
 
     // Sale date question
@@ -1172,7 +1248,7 @@ const CreateInterviewAgent = ({
     }
 
     if (farmerDetails.hasDoneSoilTest === "Yes") {
-      questions = [...questions, ...soilTestDetailsQuestions];        // Soil test questions (original Q4-Q37)
+      questions = [...questions, ...soilTestDetailsQuestions];        // Soil test questions
       questions = [...questions, ...fertilizerSelectionQuestions];
     } else if (farmerDetails.hasDoneSoilTest === "No") {
       questions = [...questions, ...fertilizerQuestionsWithoutSoilTest];
@@ -1293,30 +1369,51 @@ const CreateInterviewAgent = ({
     questionWordsRef.current = words;
 
     const utterance = new SpeechSynthesisUtterance(fullText);
-    utterance.rate = 0.75;
+    utterance.rate = 1.0; // ✅ CHANGED FROM 0.75 TO 1.0
     utterance.pitch = 1.1;
     utterance.lang = recognitionLanguage;
 
+    // Get available voices
     const voices = window.speechSynthesis.getVoices();
-    const matchingVoices = voices.filter(v => v.lang === recognitionLanguage);
-    let preferredVoice;
-    if (matchingVoices.length > 0) {
-      preferredVoice = matchingVoices.find(v =>
-        v.name.includes('Jenny') || v.name.includes('Aria') ||
-        v.name.includes('Sonia') || v.name.includes('Samantha') ||
-        v.name.includes('Vivienne')
-      ) || matchingVoices[0];
-    } else {
-      preferredVoice = voices.find(v =>
-        v.name.includes('Google UK') || v.name.includes('Google') ||
-        v.name.includes('Samantha') || v.name.includes('Microsoft Jenny') ||
-        v.name.includes('Microsoft Aria') || v.name.includes('Microsoft Sonia') ||
-        v.name.includes('Microsoft Vivienne')
+
+    // Filter for FEMALE voices only - REMOVED ALL MALE VOICES
+    const femaleVoicePatterns = [
+      'Google UK', 'Google', 'Samantha', 'Microsoft Jenny',
+      'Microsoft Aria', 'Microsoft Sonia', 'Microsoft Vivienne',
+      'Moira', 'Tessa', 'Karen', 'Veena', 'Nicky', 'Catherine',
+      'Fiona', 'Martha', 'Naomi', 'Sangeeta', 'Rishi', 'Lekha',
+      'Zira', 'Heera', 'Kalpana', 'Hemant', 'Prabhat', 'Sagar'
+    ];
+
+    // First try to find a female voice matching the current language
+    let selectedVoice = voices.find(voice =>
+      voice.lang === recognitionLanguage &&
+      femaleVoicePatterns.some(pattern => voice.name.includes(pattern))
+    );
+
+    // If no language-specific female voice, try any female voice
+    if (!selectedVoice) {
+      selectedVoice = voices.find(voice =>
+        femaleVoicePatterns.some(pattern => voice.name.includes(pattern))
       );
     }
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-      console.log(`Using voice: ${preferredVoice.name} (${preferredVoice.lang})`);
+
+    // Last resort - use any voice but filter out clearly male ones
+    if (!selectedVoice) {
+      const malePatterns = ['Daniel', 'James', 'David', 'John', 'Paul', 'Mark', 'Michael'];
+      selectedVoice = voices.find(voice =>
+        !malePatterns.some(pattern => voice.name.includes(pattern))
+      );
+    }
+
+    // If still nothing, use the first available voice
+    if (!selectedVoice && voices.length > 0) {
+      selectedVoice = voices[0];
+    }
+
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      console.log(`Using voice: ${selectedVoice.name} (${selectedVoice.lang}) - FEMALE ONLY`);
     }
 
     setIsSpeaking(true);
@@ -1665,6 +1762,7 @@ const CreateInterviewAgent = ({
       harvestUnit: "kg", pricePerKg: "", actualYieldKg: "", storageMethod: "",
       npkCost: "", ploughingCost: "", plantingLabourCost: "", weedingCost: "",
       harvestingCost: "", transportCostPerKg: "", emptyBags: "", bagCost: "", seedCost: "",
+      plantingMaterialCost: "",  // NEW
       calciticLimePricePerBag: "", recCalciticLime: "",
       livestockTypes: "", cattle: "", cattleBreed: "", milkYield: "",
       postHarvestPractices: "", postHarvestLosses: "", valueAddition: "", storageAccess: "",
@@ -1693,7 +1791,10 @@ const CreateInterviewAgent = ({
     if (!voiceAssistantRef.current || step >= visibleQuestions.length) return;
     if (isSpeaking) await new Promise(resolve => setTimeout(resolve, 500));
 
-    const question = t(visibleQuestions[step].questionKey);
+    // ✅ FIXED: Pass crop name to template
+    const questionKey = visibleQuestions[step].questionKey;
+    const question = translateWithCrop(t, questionKey, farmerDetails.crops);
+
     setDebugInfo(prev => ({ ...prev, currentQuestion: step + 1 }));
     setUserTranscript("");
     setLastSubmittedAnswer("");

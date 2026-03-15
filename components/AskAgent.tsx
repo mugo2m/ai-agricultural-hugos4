@@ -380,17 +380,38 @@ const AskAgent = ({
     wordsRef.current = words;
 
     const utterance = new SpeechSynthesisUtterance(speechText);
-    utterance.rate = 1.0; // Faster speech (was 0.75)
+    utterance.rate = 1.0; // ✅ NORMAL SPEED (was 0.75)
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
     utterance.lang = recognitionLanguage;
 
-    // Female voice names (common across browsers)
+    // Comprehensive female voice names (all languages, no male voices)
     const femaleVoiceNames = [
-      'Jenny', 'Aria', 'Sonia', 'Samantha', 'Zira', 'Libby', 'Hazel',
-      'Susan', 'Kate', 'Google UK English Female', 'Microsoft Jenny',
-      'Microsoft Aria', 'Microsoft Sonia', 'Microsoft Zira', 'Microsoft Libby',
-      'Rafiki' // Swahili female voice
+      // English voices
+      'Samantha', 'Victoria', 'Karen', 'Moira', 'Tessa', 'Veena', 'Nicky',
+      'Catherine', 'Fiona', 'Martha', 'Naomi', 'Sangeeta', 'Rishi', 'Lekha',
+      'Google UK English Female', 'Microsoft Jenny', 'Microsoft Aria',
+      'Microsoft Sonia', 'Microsoft Zira', 'Microsoft Libby', 'Microsoft Heidi',
+      'Microsoft Hazel', 'Microsoft Susan', 'Microsoft Kate', 'Microsoft Helen',
+      'Google Deutsch Female', 'Google français Female', 'Google español Female',
+
+      // French voices
+      'Audrey', 'Amélie', 'Chloé', 'Margaux', 'Stéphanie', 'Cécile',
+      'Julie', 'Nathalie', 'Sandrine', 'Valérie', 'Véronique',
+
+      // Spanish voices
+      'Mónica', 'Carmen', 'Paloma', 'Lucia', 'Sofia', 'Elena',
+      'Ana', 'Isabel', 'Laura', 'María', 'Patricia', 'Rosa',
+
+      // Swahili voices
+      'Rafiki', 'Zawadi', 'Aisha', 'Makena', 'Subira', 'Asha',
+      'Fatuma', 'Halima', 'Jamila', 'Khadija', 'Mariam', 'Salma',
+
+      // Additional international female voices
+      'Ivy', 'Joanna', 'Kendra', 'Kimberly', 'Salli', 'Amy', 'Emma',
+      'Marlene', 'Vicki', 'Katja', 'Mizuki', 'Seoyeon', 'Zhiyu',
+      'Aditi', 'Lekha', 'Nora', 'Liv', 'Ewa', 'Maja', 'Gwyneth',
+      'Celine', 'Lea', 'Mathilde', 'Chantal', 'Cecile', 'Helene'
     ];
 
     const voices = window.speechSynthesis.getVoices();
@@ -403,21 +424,24 @@ const AskAgent = ({
         femaleVoiceNames.some(name => v.name.includes(name))
       );
 
-      // If no female voice found in matching language, take any voice in that language
+      // If no female voice found in matching language, take any voice that is NOT clearly male
       if (!preferredVoice) {
-        preferredVoice = matchingVoices[0];
-        console.log('No female voice found for language, using:', preferredVoice.name);
+        const malePatterns = ['Daniel', 'James', 'David', 'John', 'Paul', 'Mark', 'Michael', 'Alex', 'Thomas', 'Robert', 'Richard'];
+        preferredVoice = matchingVoices.find(v =>
+          !malePatterns.some(pattern => v.name.includes(pattern))
+        ) || matchingVoices[0];
+        console.log('No female voice found for language, using non-male voice:', preferredVoice.name);
       }
     } else {
       // Fallback to any voice, preferring female
       preferredVoice = voices.find(v =>
         femaleVoiceNames.some(name => v.name.includes(name))
-      ) || voices[0];
+      ) || voices.find(v => !v.name.includes('Daniel') && !v.name.includes('James') && !v.name.includes('David'));
     }
 
     if (preferredVoice) {
       utterance.voice = preferredVoice;
-      console.log(`Using voice: ${preferredVoice.name} (${preferredVoice.lang})`);
+      console.log(`Using FEMALE voice: ${preferredVoice.name} (${preferredVoice.lang})`);
     }
 
     utteranceRef.current = utterance;

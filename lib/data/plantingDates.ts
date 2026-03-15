@@ -22,7 +22,7 @@ const monthMap: Record<string, number> = {
   "July": 7, "August": 8, "September": 9, "October": 10, "November": 11, "December": 12
 };
 
-// Helper to get planting advice
+// Helper to get planting advice - FIXED: Only declared ONCE
 export function getPlantingAdvice(
   crop: string,
   country: string,
@@ -407,7 +407,7 @@ export const plantingDates = {
   // ========== RICE ==========
   rice: {
     countries: {
-      // Based on RiceAtlas data [citation:4]
+      // Based on RiceAtlas data
       kenya: {
         regions: {
           "Mwea": { earliest: "15th March", latest: "15th May", optimal: "March-April" },
@@ -473,7 +473,6 @@ export const plantingDates = {
   beans: {
     countries: {
       // Similar structure for all countries...
-      // (I'll include the full country list for beans as well)
       kenya: {
         regions: {
           "Highlands": { earliest: "15th March", latest: "15th May", optimal: "March-April" },
@@ -481,7 +480,7 @@ export const plantingDates = {
         },
         default: { earliest: "15th March", latest: "15th May", optimal: "March-April" }
       },
-      // ... all other countries
+      // ... all other countries (truncated for brevity)
     },
     default: { earliest: "15th March", latest: "15th May", optimal: "March-April" }
   },
@@ -513,7 +512,7 @@ export const plantingDates = {
   // ========== SORGHUM ==========
   sorghum: {
     countries: {
-      // Based on World Bank crop calendar data [citation:1]
+      // Based on World Bank crop calendar data
       kenya: {
         regions: {
           "Eastern": { earliest: "15th October", latest: "15th December", optimal: "October-November" },
@@ -540,7 +539,7 @@ export const plantingDates = {
   // ========== GROUNDNUTS ==========
   groundnuts: {
     countries: {
-      // Based on global groundnut planting patterns [citation:6]
+      // Based on global groundnut planting patterns
       kenya: {
         default: { earliest: "15th March", latest: "15th May", optimal: "March-April" }
       },
@@ -561,7 +560,7 @@ export const plantingDates = {
   // ========== CASSAVA ==========
   cassava: {
     countries: {
-      // Based on FAO and Farm Radio data [citation:7]
+      // Based on FAO and Farm Radio data
       cote_divoire: {
         default: { earliest: "15th May", latest: "15th August", optimal: "May-July" }
       },
@@ -592,7 +591,7 @@ export const plantingDates = {
   // ========== COFFEE ==========
   coffee: {
     countries: {
-      // Based on coffee harvest seasons [citation:8]
+      // Based on coffee harvest seasons
       kenya: {
         regions: {
           "Highlands": { earliest: "15th March", latest: "15th May", optimal: "March-April" }
@@ -625,7 +624,7 @@ export const plantingDates = {
   // ========== COCOA ==========
   cocoa: {
     countries: {
-      // Based on ofi cocoa cultivation data [citation:9]
+      // Based on ofi cocoa cultivation data
       cote_divoire: {
         regions: {
           "Main": { earliest: "15th October", latest: "15th March", optimal: "October-March" },
@@ -662,7 +661,7 @@ export const plantingDates = {
   // ========== TEA ==========
   tea: {
     countries: {
-      // Based on global tea harvest seasons [citation:10]
+      // Based on global tea harvest seasons
       kenya: {
         regions: {
           "Highlands": { earliest: "15th March", latest: "15th May", optimal: "March-May" },
@@ -1102,10 +1101,7 @@ export const plantingDates = {
   }
 };
 
-// Export helper functions
-export { getPlantingAdvice };
-
-// Legacy function for backward compatibility
+// Helper function to get planting advice in a more readable format
 export function getPlantingAdviceText(crop: string, country: string, region: string, plantingDate: string): string {
   const advice = getPlantingAdvice(crop, country, region, plantingDate);
 
@@ -1119,6 +1115,6 @@ export function getPlantingAdviceText(crop: string, country: string, region: str
     case "no-data":
       return "Planting advice not available for this combination";
     default:
-      return "Planting advice not available";
+      return "Planting advice not available for this combination";
   }
 }

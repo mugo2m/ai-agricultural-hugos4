@@ -744,6 +744,50 @@ export function getMeasurementGuide(grams: number): string {
   return `📦 ${Math.round(grams / 1000)} kg (use a weighing scale)`;
 }
 
+// ========== HELPER TO CHECK IF CROP USES SEED OR PLANTING MATERIAL ==========
+
+/**
+ * Determine if a crop uses seed (true) or vegetative planting material (false)
+ */
+export function usesSeed(crop: string): boolean {
+  const lowerCrop = crop.toLowerCase();
+
+  // Crops that use seeds
+  const seedCrops = [
+    "maize", "beans", "wheat", "sorghum", "millet", "finger millet", "rice", "barley",
+    "soya beans", "cowpeas", "green grams", "bambara nuts", "groundnuts", "sunflower",
+    "simsim", "tomatoes", "cabbage", "kales", "onions", "carrots", "capsicums",
+    "chillies", "brinjals", "french beans", "garden peas", "spinach", "okra",
+    "cauliflower", "watermelons", "pumpkins", "cucumber", "lettuce", "dania",
+    "cover crops", "mucuna", "desmodium", "dolichos", "canavalia",
+    "crotalaria ochroleuca", "crotalaria juncea", "crotalaria paulina"
+  ];
+
+  // Crops that use vegetative planting material
+  const vegetativeCrops = [
+    "cassava", "sweet potatoes", "irish potatoes", "yams", "taro", "arrow roots",
+    "bananas", "plantains", "coffee", "tea", "cocoa", "sugarcane", "pineapples",
+    "mangoes", "avocados", "oranges", "lemons", "limes", "macadamia", "cashew nuts",
+    "passion fruit", "strawberries", "raspberries", "blackberries", "grapes",
+    "roses", "carnations", "tissue culture bananas", "tissue culture potatoes"
+  ];
+
+  if (seedCrops.includes(lowerCrop)) return true;
+  if (vegetativeCrops.includes(lowerCrop)) return false;
+
+  // Default based on common categories
+  if (lowerCrop.includes("potato") || lowerCrop.includes("cassava") ||
+      lowerCrop.includes("banana") || lowerCrop.includes("sugar") ||
+      lowerCrop.includes("coffee") || lowerCrop.includes("tea") ||
+      lowerCrop.includes("cocoa") || lowerCrop.includes("pineapple") ||
+      lowerCrop.includes("mango") || lowerCrop.includes("avocado")) {
+    return false;
+  }
+
+  // Default to seed
+  return true;
+}
+
 // ========== GROSS MARGIN CALCULATOR Using Farmer's Actual Data ==========
 
 export interface GrossMarginInput {
@@ -753,21 +797,27 @@ export interface GrossMarginInput {
   yieldUnit: string;
   pricePerUnit: number;
   priceUnit: string;
-  seedRate: number;
-  seedCost: number;
+  // Planting material (either seed cost or planting material cost)
+  seedRate?: number;                    // Optional - for seed crops
+  seedCost?: number;                     // For seed crops
+  plantingMaterialCost?: number;         // NEW: Cost per unit of planting material (per vine, cutting, sucker, etc.)
+  plantingMaterialUnit?: string;         // NEW: e.g., "per vine", "per cutting", "per sucker", "per kg"
+  plantingMaterialQuantity?: number;     // NEW: Number of planting material units used
+  // Fertilizer costs
   plantingFertilizerCost: number;
   plantingFertilizerQuantity: number;
   topdressingFertilizerCost: number;
   topdressingFertilizerQuantity: number;
   potassiumFertilizerCost: number;
   potassiumFertilizerQuantity: number;
+  // Labour costs
   ploughingCost: number;
   plantingLabourCost: number;
   weedingCost: number;
   harvestingCost: number;
-  transportCostPerKg: number;      // UPDATED: Now directly per kg, no conversion needed
-  transportUnit?: string;           // NEW: Optional, defaults to kg
-  emptyBags: number;                // NEW: Number of empty bags to buy
+  // Transport and bags
+  transportCostPerKg: number;
+  emptyBags: number;
   bagCost: number;
 }
 
@@ -776,7 +826,8 @@ export interface GrossMarginOutput {
   yieldKg: number;
   pricePerKg: number;
   revenue: number;
-  seedCost: number;
+  plantingMaterialCost: number;          // NEW: Unified field for seed or vegetative material
+  plantingMaterialType: 'seed' | 'vegetative'; // NEW: To indicate what was used
   fertilizerCost: number;
   labourCost: number;
   transportCost: number;
@@ -798,8 +849,23 @@ export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): Gro
   // Calculate revenue
   const revenue = yieldKg * pricePerKg;
 
-  // Calculate seed cost
-  const seedCostTotal = input.seedRate * input.cropAcres * input.seedCost;
+  // ===== CALCULATE PLANTING MATERIAL COST =====
+  // Determine if crop uses seed or vegetative material
+  const isSeed = usesSeed(crop);
+
+  let plantingMaterialTotal = 0;
+
+  if (isSeed && input.seedCost && input.seedRate) {
+    // Seed-based crop
+    plantingMaterialTotal = input.seedRate * input.cropAcres * input.seedCost;
+  } else if (!isSeed && input.plantingMaterialCost && input.plantingMaterialQuantity) {
+    // Vegetative crop (vines, cuttings, suckers, etc.)
+    // Total cost = number of units × price per unit
+    plantingMaterialTotal = input.plantingMaterialQuantity * input.plantingMaterialCost;
+  } else {
+    // Fallback - try to use seedCost if provided
+    plantingMaterialTotal = (input.seedCost || 0) * (input.seedRate || 0) * input.cropAcres;
+  }
 
   // Calculate fertilizer costs
   const plantingFertBags = input.plantingFertilizerQuantity / 50;
@@ -817,15 +883,15 @@ export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): Gro
   const labourTotal = (input.ploughingCost + input.plantingLabourCost +
                       input.weedingCost + input.harvestingCost) * input.cropAcres;
 
-  // Calculate transport cost - NOW DIRECTLY PER KG
+  // Calculate transport cost
   const transportTotal = yieldKg * (input.transportCostPerKg || 0);
 
-  // Calculate bag cost using farmer's empty bags count
-  const bagsNeeded = input.emptyBags || Math.ceil(yieldKg / 90); // Use farmer's empty bags if provided, otherwise calculate
+  // Calculate bag cost
+  const bagsNeeded = input.emptyBags || Math.ceil(yieldKg / 90);
   const bagsTotal = bagsNeeded * input.bagCost;
 
   // Total costs
-  const totalCosts = seedCostTotal + fertilizerTotal + labourTotal + transportTotal + bagsTotal;
+  const totalCosts = plantingMaterialTotal + fertilizerTotal + labourTotal + transportTotal + bagsTotal;
 
   // Gross margin
   const grossMargin = revenue - totalCosts;
@@ -844,7 +910,8 @@ export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): Gro
     yieldKg: Math.round(yieldKg),
     pricePerKg: Math.round(pricePerKg * 100) / 100,
     revenue: Math.round(revenue),
-    seedCost: Math.round(seedCostTotal),
+    plantingMaterialCost: Math.round(plantingMaterialTotal),
+    plantingMaterialType: isSeed ? 'seed' : 'vegetative',
     fertilizerCost: Math.round(fertilizerTotal),
     labourCost: Math.round(labourTotal),
     transportCost: Math.round(transportTotal),

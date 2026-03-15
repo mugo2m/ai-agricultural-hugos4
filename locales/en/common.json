@@ -157,7 +157,9 @@
   "type_answer": "Type your answer here...",
   "ready_for_answer": "Ready for your answer...",
 
+  
   "question_country": "Welcome farmer. Agricultural services are shrinking by day—you can imagine 45 officers serving 85,000 farmers. That's a lot. Your chances of being served are extremely little. Anyway, that is for tomorrow. Today we are here to assist you increase your farm yield and profit. Our main objective is for you to produce more in your farm with less, putting more money in your pocket. We are here to advise you which crop is most profitable and provide cash flow for your farm production in a cheap, faster, specific, accessible, convenient, and at 24/7 manner wherever you are at a language you feel comfortable. To achieve this, we will ask you a couple of questions in order to get what troubles you in your farming business so that we provide specific solution to these problems—may it be crop pests, may it be crop diseases. You will ask questions about your crop and they will be answered instantly and vocally. You are the one to tell us. Feel free and tell us all of your crop problems. To start with: Which country is your farm located in?",
+
   "question_soil_test": "Have you done a comprehensive soil test for your enterprise?",
   "question_crop_enterprise": "Which crop enterprise will you invest in?",
   "question_crop_varieties": "Which variety will you grow for your {{crop}} enterprise?",
@@ -849,6 +851,43 @@
 
   "qa_planting_personalized": "{{farmerName}}, for your {{crop}} ENTERPRISE in {{region}}, {{country}}, you planted on {{plantingDate}}. {{adviceText}} This crop typically takes {{maturityMonths}} months to mature. For more details, visit the question-answering section.",
   "qa_planting_generic": "{{farmerName}}, for your {{crop}} ENTERPRISE, plant at the start of the rainy season for best results. Different regions have different optimal planting windows. Check with your local agricultural extension for specific advice.",
+
+
+
+
+
+  "hero_title": "Agricultural Knowledge for Farmers",
+  "hero_description": "Get instant answers about your crops, livestock, and farming practices. Ask questions by voice and receive spoken answers with helpful images.",
+  "sign_in": "Sign In to Start",
+  "hero_image_alt": "Happy farmer with crops",
+  "ask_anything_title": "Ask Anything About Farming",
+  "ask_anything_description": "Get personalized advice for your specific crops, location, and farming practices. Just speak your questions and receive answers with images.",
+  "start_session": "Start New Farm Session",
+  "farmer_phone_alt": "Farmer using smartphone",
+  "farm_sessions": "Your Farm Sessions",
+  "mixed_crops": "Mixed crops",
+  "farm_size": "Farm size",
+  "cattle": "Cattle",
+  "acres": "acres",
+  "recent_questions": "Recent questions",
+  "ask_more": "Ask More",
+  "no_sessions": "You haven't created any farm sessions yet.",
+  "start_first_session": "Start your first farm session",
+  "knowledge_base": "Agricultural Knowledge Base",
+  "crop_guides": "Crop Guides",
+  "disease_images": "Disease Images",
+  "voice_access": "Voice Access",
+  "free": "Free",
+  "for_farmers": "For Farmers",
+  "how_it_works": "How It Works",
+  "step1_title": "Tell us about your farm",
+  "step1_desc": "Answer voice questions about your crops, location, and farming practices.",
+  "step2_title": "Ask any question",
+  "step2_desc": "Speak your farming questions naturally. Get answers instantly.",
+  "step3_title": "See helpful images",
+  "step3_desc": "View diagrams, disease photos, and illustrations alongside text answers.",
+
+
 
   "qa_default": "{{farmerName}}, thanks for asking about \"{{question}}\".\n\nBased on your farm data for your {{crop}} ENTERPRISE in {{county}}:\n\n• Follow good agricultural practices to maximize returns\n• Maintain soil fertility - it's your biggest asset\n• Monitor regularly for pests and diseases (early detection saves {{symbol}}10,000+!)\n• Track ALL costs to know your true profit margin\n\nFor more specific information to grow your business, ask about: fertilizer, pests, spacing, harvest, seed rate, varieties, or gross margins.\n\nRemember {{farmerName}}, every shilling counts! 🚀"
 }
