@@ -21,8 +21,8 @@ interface RecommendationInput {
     contourFarming?: string;
     commonPests?: string;
     commonDiseases?: string;
-    deficiencySymptoms?: string;      // NEW: Farmer-reported deficiency symptoms
-    deficiencyLocation?: string;      // NEW: Where symptoms appear
+    deficiencySymptoms?: string;      // Farmer-reported deficiency symptoms
+    deficiencyLocation?: string;      // Where symptoms appear
     mainChallenge?: string;
     experience?: string;
     managementLevel?: string;
@@ -33,6 +33,8 @@ interface RecommendationInput {
     country?: string;
     limePricePerBag?: number;
     recCalciticLime?: number;
+    // NEW: Plants damaged field (data-only)
+    plantsDamaged?: number;
   };
 }
 
@@ -68,7 +70,7 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
 
   const currencySymbol = COUNTRY_CURRENCY_MAP[country]?.symbol || 'Ksh';
 
-  // ========== GROUP 1: SOIL TEST ANALYSIS ==========
+  // ========== GROUP 1: SOIL TEST ANALYSIS (UPDATED with secondary nutrients) ==========
   if (hasSoilTest && soilAnalysis) {
     const soilLines: string[] = [];
 
@@ -86,6 +88,21 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
     soilLines.push(`Magnesium (Mg): ${soilAnalysis.magnesium || '?'} ppm (${soilAnalysis.magnesiumRating || ''})`);
     soilLines.push(`Nitrogen (N): ${soilAnalysis.totalNitrogen || '?'}% (${soilAnalysis.totalNitrogenRating || ''})`);
     soilLines.push(`Organic Matter (OM): ${soilAnalysis.organicMatter || '?'}% (${soilAnalysis.organicMatterRating || ''})`);
+
+    // NEW: Add sulfur if available
+    if (soilAnalysis.sulfur) {
+      soilLines.push(`Sulfur (S): ${soilAnalysis.sulfur || '?'} ppm (${soilAnalysis.sulfurRating || ''})`);
+    }
+
+    // NEW: Add zinc if available
+    if (soilAnalysis.zinc) {
+      soilLines.push(`Zinc (Zn): ${soilAnalysis.zinc || '?'} ppm (${soilAnalysis.zincRating || ''})`);
+    }
+
+    // NEW: Add boron if available
+    if (soilAnalysis.boron) {
+      soilLines.push(`Boron (B): ${soilAnalysis.boron || '?'} ppm (${soilAnalysis.boronRating || ''})`);
+    }
 
     structuredList.push({
       key: 'soil_test_grouped',
@@ -146,7 +163,7 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
       }
     });
 
-    // ========== GROUP 4: PLANTING FERTILIZERS ==========
+    // ========== GROUP 4: PLANTING FERTILIZERS (UPDATED with secondary nutrients) ==========
     if (fertilizerPlan.plantingRecommendations?.length > 0) {
       const plantingLines: string[] = [];
       plantingLines.push('PLANTING FERTILIZERS (apply at planting)');
@@ -155,11 +172,22 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
         const bagsNeeded = Math.floor(rec.amountKg / 50);
         const extraKg = rec.amountKg % 50;
         const cost = Math.round(rec.amountKg * (rec.pricePer50kg / 50));
+
+        // Build provides string with all nutrients
+        const providesParts = [];
+        if (rec.provides.n > 0) providesParts.push(`${rec.provides.n.toFixed(1)} kg N`);
+        if (rec.provides.p > 0) providesParts.push(`${rec.provides.p.toFixed(1)} kg P`);
+        if (rec.provides.k > 0) providesParts.push(`${rec.provides.k.toFixed(1)} kg K`);
+        if (rec.provides.s > 0) providesParts.push(`${rec.provides.s.toFixed(1)} kg S`);
+        if (rec.provides.ca > 0) providesParts.push(`${rec.provides.ca.toFixed(1)} kg Ca`);
+        if (rec.provides.mg > 0) providesParts.push(`${rec.provides.mg.toFixed(1)} kg Mg`);
+        if (rec.provides.zn > 0) providesParts.push(`${rec.provides.zn.toFixed(1)} kg Zn`);
+
         plantingLines.push(
           `Buy ${rec.amountKg} kg of ${rec.brand} (${rec.npk})`,
           `This is ${bagsNeeded} bag(s) of 50kg + ${extraKg}kg open`,
           `Cost: ${formatCurrency(cost)}`,
-          `Provides: ${rec.provides.n.toFixed(1)} kg N, ${rec.provides.p.toFixed(1)} kg P, ${rec.provides.k.toFixed(1)} kg K`,
+          `Provides: ${providesParts.join(', ')}`,
           ``
         );
       });
@@ -170,7 +198,7 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
       });
     }
 
-    // ========== GROUP 5: TOPDRESSING FERTILIZERS ==========
+    // ========== GROUP 5: TOPDRESSING FERTILIZERS (UPDATED with secondary nutrients) ==========
     if (fertilizerPlan.topDressingRecommendations?.length > 0) {
       const topdressingLines: string[] = [];
       topdressingLines.push('TOP DRESSING FERTILIZERS (apply 3-4 weeks after planting)');
@@ -179,15 +207,20 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
         const bagsNeeded = Math.floor(rec.amountKg / 50);
         const extraKg = rec.amountKg % 50;
         const cost = Math.round(rec.amountKg * (rec.pricePer50kg / 50));
-        const provides = rec.provides.n > 0
-          ? `Provides: ${rec.provides.n.toFixed(1)} kg N`
-          : `Provides: ${rec.provides.k.toFixed(1)} kg K`;
+
+        // Build provides string with all nutrients
+        const providesParts = [];
+        if (rec.provides.n > 0) providesParts.push(`${rec.provides.n.toFixed(1)} kg N`);
+        if (rec.provides.k > 0) providesParts.push(`${rec.provides.k.toFixed(1)} kg K`);
+        if (rec.provides.s > 0) providesParts.push(`${rec.provides.s.toFixed(1)} kg S`);
+        if (rec.provides.ca > 0) providesParts.push(`${rec.provides.ca.toFixed(1)} kg Ca`);
+        if (rec.provides.mg > 0) providesParts.push(`${rec.provides.mg.toFixed(1)} kg Mg`);
 
         topdressingLines.push(
           `Buy ${rec.amountKg} kg of ${rec.brand} (${rec.npk})`,
           `This is ${bagsNeeded} bag(s) of 50kg + ${extraKg}kg open`,
           `Cost: ${formatCurrency(cost)}`,
-          provides,
+          `Provides: ${providesParts.join(', ')}`,
           ``
         );
       });
@@ -208,7 +241,6 @@ export function generateRecommendations(input: RecommendationInput): Recommendat
       plantLines.push(`Based on your spacing, you have approximately ${perPlant.totalPlants?.toLocaleString()} plants on your ${fertilizerPlan.farmSize} acre farm.`);
       plantLines.push('');
       plantLines.push('FERTILIZER PER PLANT');
-      // UPDATED: Show measurement guide for each fertilizer individually
       plantLines.push(`DAP: ${perPlant.dapGrams} grams (${perPlant.dapGuide})`);
       plantLines.push(`UREA: ${perPlant.ureaGrams} grams (${perPlant.ureaGuide})`);
       plantLines.push(`MOP: ${perPlant.mopGrams} grams (${perPlant.mopGuide})`);
@@ -662,7 +694,21 @@ METAL TRACEABILITY:
     });
   }
 
-  // ========== GROUP 11: CONSERVATION ==========
+  // ========== GROUP 11: DAMAGE REPORT (NEW - DATA ONLY) ==========
+  if (farmerData.plantsDamaged && farmerData.plantsDamaged > 0) {
+    structuredList.push({
+      key: 'damage_report_grouped',
+      params: {
+        title: `DAMAGE REPORT FOR YOUR ${crop.toUpperCase()} ENTERPRISE`,
+        plantsDamaged: farmerData.plantsDamaged,
+        message: `You reported ${farmerData.plantsDamaged} plants damaged beyond recovery. This information helps us track farm health trends.`,
+        advice: 'Consider reviewing your pest and disease management strategies to prevent future losses.',
+        followUp: 'For personalized advice on reducing plant damage, ask our Q&A system about pest control or disease prevention.'
+      }
+    });
+  }
+
+  // ========== GROUP 12: CONSERVATION ==========
   const conservationPractices = farmerData.conservationPractices ?
     farmerData.conservationPractices.split(',').map(p => p.trim()) : [];
 
@@ -690,7 +736,7 @@ METAL TRACEABILITY:
     });
   }
 
-  // ========== GROUP 12: BUSINESS ==========
+  // ========== GROUP 13: BUSINESS ==========
   const businessLines: string[] = [];
   businessLines.push('FARMING AS A BUSINESS - MAXIMIZE YOUR PROFIT');
   businessLines.push('');
@@ -718,7 +764,7 @@ METAL TRACEABILITY:
     params: { content: businessLines.join('\n') }
   });
 
-  // ========== GROUP 13: NUTRIENT DEFICIENCY DIAGNOSIS ==========
+  // ========== GROUP 14: NUTRIENT DEFICIENCY DIAGNOSIS ==========
   if (farmerData.deficiencySymptoms) {
     const defLines: string[] = [];
     defLines.push(`🔍 NUTRIENT DEFICIENCY DIAGNOSIS FOR YOUR ${crop.toUpperCase()}`);

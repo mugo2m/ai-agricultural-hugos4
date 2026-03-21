@@ -47,7 +47,12 @@ import {
   Flag,
   Citrus,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  // NEW: Icons for nutrient-enhanced crops
+  Beaker,
+  FlaskConical,
+  Droplet,
+  Wind
 } from "lucide-react";
 import { useCurrency } from '@/lib/context/CurrencyContext';
 import { formatCurrencyForDisplay, formatCurrencyForSpeech } from '@/lib/utils/currency';
@@ -67,6 +72,10 @@ interface RankedCrop {
   icon: string;
   barColor: string;
   roi?: number;
+  // NEW: Optional fields for enhanced crop data
+  plantsDamaged?: number;
+  fertilizerPlan?: any;
+  soilTest?: any;
 }
 
 export default function CropComparisonClient({
@@ -79,6 +88,9 @@ export default function CropComparisonClient({
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
+  // NEW: State for showing nutrient info
+  const [selectedCrop, setSelectedCrop] = useState<RankedCrop | null>(null);
+  const [showNutrientInfo, setShowNutrientInfo] = useState(false);
 
   // ============ KARAOKE STREAMING STATE ============
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -117,7 +129,11 @@ export default function CropComparisonClient({
             rank: 0,
             color: "",
             icon: "",
-            barColor: ""
+            barColor: "",
+            // NEW: Include additional data if available
+            plantsDamaged: sessionData.plantsDamaged,
+            fertilizerPlan: sessionData.soilTest?.fertilizerPlan,
+            soilTest: sessionData.soilTest
           });
         }
 
@@ -142,7 +158,11 @@ export default function CropComparisonClient({
                   rank: 0,
                   color: "",
                   icon: "",
-                  barColor: ""
+                  barColor: "",
+                  // NEW: Include additional data
+                  plantsDamaged: session.plantsDamaged,
+                  fertilizerPlan: session.soilTest?.fertilizerPlan,
+                  soilTest: session.soilTest
                 });
               }
             });
@@ -201,7 +221,7 @@ export default function CropComparisonClient({
     }
   };
 
-  // Get crop icon
+  // Get crop icon - UPDATED with more icons
   const getCropIcon = (crop: string) => {
     const iconMap: Record<string, any> = {
       maize: <Wheat className="w-5 h-5" />,
@@ -219,7 +239,20 @@ export default function CropComparisonClient({
       "sweet potatoes": <Sprout className="w-5 h-5" />,
       potatoes: <Sprout className="w-5 h-5" />,
       oranges: <Citrus className="w-5 h-5" />,
-      avocado: <Apple className="w-5 h-5" />
+      avocado: <Apple className="w-5 h-5" />,
+      // NEW: Icons for new crops
+      pineapples: <Sprout className="w-5 h-5" />,
+      watermelons: <Apple className="w-5 h-5" />,
+      carrots: <Carrot className="w-5 h-5" />,
+      chillies: <Flower2 className="w-5 h-5" />,
+      spinach: <Leaf className="w-5 h-5" />,
+      pigeonpeas: <Sprout className="w-5 h-5" />,
+      yams: <Sprout className="w-5 h-5" />,
+      taro: <Sprout className="w-5 h-5" />,
+      okra: <Sprout className="w-5 h-5" />,
+      tea: <Leaf className="w-5 h-5" />,
+      macadamia: <Sprout className="w-5 h-5" />,
+      cocoa: <Coffee className="w-5 h-5" />
     };
     return iconMap[crop.toLowerCase()] || <Sprout className="w-5 h-5" />;
   };
@@ -395,6 +428,12 @@ export default function CropComparisonClient({
     text += t('comparison_summary_conclusion', { farmerName });
 
     streamTextWithVoice(text);
+  };
+
+  // NEW: Handle crop selection for nutrient info
+  const handleCropClick = (crop: RankedCrop) => {
+    setSelectedCrop(crop);
+    setShowNutrientInfo(true);
   };
 
   if (isLoading) {
@@ -584,9 +623,10 @@ export default function CropComparisonClient({
                 return (
                   <div
                     key={crop.crop}
-                    className="flex-1 flex flex-col items-center group"
+                    className="flex-1 flex flex-col items-center group cursor-pointer"
                     onMouseEnter={() => setHoveredBar(index)}
                     onMouseLeave={() => setHoveredBar(null)}
+                    onClick={() => handleCropClick(crop)}
                   >
                     {/* Profit amount (always visible) */}
                     <div className="mb-2 text-center transition-all duration-300">
@@ -619,6 +659,18 @@ export default function CropComparisonClient({
                         <span className="text-xs bg-white/30 px-2 py-1 rounded-full backdrop-blur-sm">
                           ROI: {formatPercentage(roi)}
                         </span>
+
+                        {/* NEW: Damage indicator if plants were damaged */}
+                        {crop.plantsDamaged && crop.plantsDamaged > 0 && (
+                          <span className="absolute -top-2 -right-2">
+                            <span className="flex h-5 w-5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-xs items-center justify-center">
+                                !
+                              </span>
+                            </span>
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -687,11 +739,12 @@ export default function CropComparisonClient({
                     return (
                       <tr
                         key={crop.crop}
-                        className={`border-b border-blue-100 hover:bg-blue-50 transition-all ${
+                        className={`border-b border-blue-100 hover:bg-blue-50 transition-all cursor-pointer ${
                           index === 0 ? 'bg-yellow-50' :
                           index === 1 ? 'bg-gray-50' :
                           index === 2 ? 'bg-orange-50' : ''
                         }`}
+                        onClick={() => handleCropClick(crop)}
                       >
                         <td className="p-4 text-center">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold mx-auto ${
@@ -706,6 +759,12 @@ export default function CropComparisonClient({
                         <td className="p-4 font-medium text-blue-900 capitalize flex items-center gap-2">
                           {getCropIcon(crop.crop)}
                           {crop.crop} {t('enterprise')}
+                          {/* NEW: Damage indicator */}
+                          {crop.plantsDamaged && crop.plantsDamaged > 0 && (
+                            <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-xs">
+                              {crop.plantsDamaged} damaged
+                            </span>
+                          )}
                         </td>
                         <td className="p-4 text-right text-blue-900">{formatCurrencyForDisplay(crop.revenue, currency)}</td>
                         <td className="p-4 text-right text-blue-900">{formatCurrencyForDisplay(crop.costs, currency)}</td>
@@ -738,6 +797,107 @@ export default function CropComparisonClient({
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* NEW: Nutrient Info Modal */}
+        {showNutrientInfo && selectedCrop && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowNutrientInfo(false)}>
+            <div className="bg-white rounded-2xl p-6 max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-blue-900 capitalize flex items-center gap-2">
+                  {getCropIcon(selectedCrop.crop)}
+                  {selectedCrop.crop} {t('enterprise')}
+                </h3>
+                <button
+                  onClick={() => setShowNutrientInfo(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Nutrient information from fertilizer plan */}
+              {selectedCrop.fertilizerPlan && (
+                <div className="space-y-4">
+                  <div className="bg-green-50 p-4 rounded-xl">
+                    <h4 className="font-bold text-green-800 mb-2 flex items-center gap-2">
+                      <Beaker className="w-4 h-4" />
+                      Fertilizer Plan
+                    </h4>
+                    <p className="text-sm text-green-700">
+                      Total investment: {formatCurrencyForDisplay(selectedCrop.fertilizerPlan.totalCost, currency)}
+                    </p>
+                  </div>
+
+                  {/* Show planting fertilizer nutrients */}
+                  {selectedCrop.fertilizerPlan.plantingRecommendations?.map((rec: any, idx: number) => (
+                    <div key={idx} className="border-l-4 border-blue-500 pl-4">
+                      <p className="font-medium text-blue-800">{rec.brand} ({rec.npk})</p>
+                      <p className="text-sm text-gray-600">Amount: {rec.amountKg}kg</p>
+                      {rec.provides && (
+                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                          {rec.provides.n > 0 && (
+                            <div className="bg-blue-50 p-2 rounded">
+                              <span className="text-blue-600">N: {rec.provides.n.toFixed(1)}kg</span>
+                            </div>
+                          )}
+                          {rec.provides.p > 0 && (
+                            <div className="bg-blue-50 p-2 rounded">
+                              <span className="text-blue-600">P: {rec.provides.p.toFixed(1)}kg</span>
+                            </div>
+                          )}
+                          {rec.provides.k > 0 && (
+                            <div className="bg-blue-50 p-2 rounded">
+                              <span className="text-blue-600">K: {rec.provides.k.toFixed(1)}kg</span>
+                            </div>
+                          )}
+                          {rec.provides.s > 0 && (
+                            <div className="bg-purple-50 p-2 rounded">
+                              <span className="text-purple-600">S: {rec.provides.s.toFixed(1)}kg</span>
+                            </div>
+                          )}
+                          {rec.provides.ca > 0 && (
+                            <div className="bg-purple-50 p-2 rounded">
+                              <span className="text-purple-600">Ca: {rec.provides.ca.toFixed(1)}kg</span>
+                            </div>
+                          )}
+                          {rec.provides.mg > 0 && (
+                            <div className="bg-purple-50 p-2 rounded">
+                              <span className="text-purple-600">Mg: {rec.provides.mg.toFixed(1)}kg</span>
+                            </div>
+                          )}
+                          {rec.provides.zn > 0 && (
+                            <div className="bg-purple-50 p-2 rounded">
+                              <span className="text-purple-600">Zn: {rec.provides.zn.toFixed(1)}kg</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Damage report if any */}
+              {selectedCrop.plantsDamaged && selectedCrop.plantsDamaged > 0 && (
+                <div className="mt-4 p-3 bg-red-50 rounded-xl">
+                  <p className="text-sm text-red-800 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    Plants damaged beyond recovery: {selectedCrop.plantsDamaged.toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowNutrientInfo(false)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}

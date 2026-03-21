@@ -1,5 +1,5 @@
 // lib/payment/clientCheck.ts - REAL PAYMENTS
-"use client";
+// "use client" REMOVED - this is just a utility function, not a React component
 
 export async function checkPaymentStatus(interviewId: string, userId: string): Promise<boolean> {
   console.log('🟡 [REAL] Checking payment for:', {

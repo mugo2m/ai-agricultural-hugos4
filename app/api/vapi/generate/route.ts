@@ -84,6 +84,11 @@ export async function POST(request: NextRequest) {
       recPotassiumFertilizer,
       recPotassiumQuantity,
 
+      // NEW: Nutrient detail fields
+      plantingFertilizerNutrients,
+      topdressingFertilizerNutrients,
+      potassiumFertilizerNutrients,
+
       plantingFertilizerToUse,
       plantingFertilizerCost,
       topdressingFertilizerToUse,
@@ -96,6 +101,9 @@ export async function POST(request: NextRequest) {
       potassiumFertilizerQuantity: potassiumFertilizerQuantityKg,
 
       calciticLimePricePerBag,
+
+      // NEW: Damage report field (data-only)
+      plantsDamaged,
 
       seedCost,
       pricePerUnit,
@@ -236,6 +244,11 @@ export async function POST(request: NextRequest) {
           recPotassiumFertilizer: recPotassiumFertilizer || null,
           recPotassiumQuantity: recPotassiumQuantity ? parseFloat(recPotassiumQuantity) : null,
 
+          // NEW: Nutrient details
+          plantingFertilizerNutrients: plantingFertilizerNutrients || null,
+          topdressingFertilizerNutrients: topdressingFertilizerNutrients || null,
+          potassiumFertilizerNutrients: potassiumFertilizerNutrients || null,
+
           // Add crop info
           crops: primaryCrop,
           cropAcres: farmSize
@@ -266,6 +279,11 @@ export async function POST(request: NextRequest) {
           soilAnalysis.organicCarbonRating = soilTestOCRating || '';
           soilAnalysis.organicMatterRating = soilTestOMRating || '';
           soilAnalysis.cecRating = soilTestCECRating || '';
+
+          // NEW: Add nutrient details to soilAnalysis
+          soilAnalysis.plantingFertilizerNutrients = plantingFertilizerNutrients || null;
+          soilAnalysis.topdressingFertilizerNutrients = topdressingFertilizerNutrients || null;
+          soilAnalysis.potassiumFertilizerNutrients = potassiumFertilizerNutrients || null;
 
           soilAnalysis.crop = primaryCrop;
           soilAnalysis.farmSize = farmSize;
@@ -379,7 +397,8 @@ export async function POST(request: NextRequest) {
         totalCosts: grossMargin?.totalCosts || null,
         country: country || 'kenya',
         limePricePerBag: calciticLimePricePerBag ? parseFloat(calciticLimePricePerBag) : 300,
-        recCalciticLime: recCalciticLime ? parseFloat(recCalciticLime) : 0
+        recCalciticLime: recCalciticLime ? parseFloat(recCalciticLime) : 0,
+        plantsDamaged: plantsDamaged ? parseInt(plantsDamaged) : null // NEW: Data-only field
       }
     });
 
@@ -419,22 +438,31 @@ export async function POST(request: NextRequest) {
         type: plantingFertilizerType || null,
         quantity: plantingFertilizerQuantityKg ? parseFloat(plantingFertilizerQuantityKg) : null,
         cost: plantingFertilizerCost ? parseFloat(plantingFertilizerCost) : null,
+        // NEW: Nutrient details
+        nutrients: plantingFertilizerNutrients || null
       },
       topdressingFertilizer: {
         used: useTopdressingFertilizer === "yes",
         type: topdressingFertilizerType || null,
         quantity: topdressingFertilizerQuantityKg ? parseFloat(topdressingFertilizerQuantityKg) : null,
         cost: topdressingFertilizerCost ? parseFloat(topdressingFertilizerCost) : null,
+        // NEW: Nutrient details
+        nutrients: topdressingFertilizerNutrients || null
       },
       potassiumFertilizer: {
         used: potassiumFertilizerToUse ? true : false,
         type: potassiumFertilizerToUse || null,
         quantity: potassiumFertilizerQuantityKg ? parseFloat(potassiumFertilizerQuantityKg) : null,
         cost: potassiumFertilizerCost ? parseFloat(potassiumFertilizerCost) : null,
+        // NEW: Nutrient details
+        nutrients: potassiumFertilizerNutrients || null
       },
 
       commonPests: commonPests ? commonPests.split(',').map((p: string) => p.trim()) : [],
       commonDiseases: commonDiseases ? commonDiseases.split(',').map((d: string) => d.trim()) : [],
+
+      // NEW: Damage report (data-only - not used in calculations)
+      plantsDamaged: plantsDamaged ? parseInt(plantsDamaged) : null,
 
       yieldData: {
         actual: validatedYield || null,
@@ -492,6 +520,10 @@ export async function POST(request: NextRequest) {
         recTopdressingQuantity: recTopdressingQuantity ? parseFloat(recTopdressingQuantity) : null,
         recPotassiumFertilizer: recPotassiumFertilizer || null,
         recPotassiumQuantity: recPotassiumQuantity ? parseFloat(recPotassiumQuantity) : null,
+        // NEW: Nutrient details in soil test
+        plantingFertilizerNutrients: plantingFertilizerNutrients || null,
+        topdressingFertilizerNutrients: topdressingFertilizerNutrients || null,
+        potassiumFertilizerNutrients: potassiumFertilizerNutrients || null,
         plantingFertilizerToUse: plantingFertilizerToUse || null,
         plantingFertilizerCost: plantingFertilizerCost ? parseFloat(plantingFertilizerCost) : null,
         topdressingFertilizerToUse: topdressingFertilizerToUse || null,

@@ -84,9 +84,10 @@ export class VoiceService {
     this.speechToText = new SpeechToText();
     this.textToSpeech = new TextToSpeech({
       language: this.language,
-      rate: config.speechRate || 1.0,  // ✅ UPDATED: Normal speed (was 0.75)
+      rate: config.speechRate || 1.0,  // ✅ NORMAL SPEED
       volume: config.speechVolume || 1.0,
-      pitch: 1.1
+      pitch: 1.1,
+      preferFemale: true // ✅ Ensure female voices are preferred
     });
 
     if (this.speechToText) {
@@ -163,12 +164,23 @@ export class VoiceService {
     return text;
   }
 
-  private cleanText(text: string): string {
+  private cleanText(text: any): string {
+    // Handle non-string inputs
+    if (text === null || text === undefined) {
+      return '';
+    }
+
+    if (typeof text !== 'string') {
+      console.warn('VoiceService.cleanText received non-string:', typeof text, text);
+      return String(text);
+    }
+
     return text
       .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
       .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
       .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
       .replace(/[\u{2600}-\u{26FF}]/gu, '')
+      .replace(/[\u{2700}-\u{27BF}]/gu, '')
       .replace(/\*\*\*/g, '')
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')
@@ -631,7 +643,7 @@ export class VoiceService {
         }
       }
       this.postSpeechTimeout = null;
-    }, 1000);  // ✅ UPDATED: Reduced from 1500ms to 1000ms
+    }, 1000);  // ✅ REDUCED from 1500ms to 1000ms
   }
 
   public async speakRecommendations(recommendations: string[]): Promise<void> {

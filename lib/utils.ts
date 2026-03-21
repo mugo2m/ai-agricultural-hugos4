@@ -103,7 +103,7 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
-// ========== CROP-SPECIFIC CONVERSION FACTORS ==========
+// ========== CROP-SPECIFIC CONVERSION FACTORS (UPDATED WITH NEW CROPS) ==========
 
 export interface CropConversionFactors {
   bagSizes: {
@@ -607,7 +607,7 @@ export function calculatePlantsPerAcre(spacing: SpacingInput): number {
 }
 
 /**
- * Validate plant population for crop
+ * Validate plant population for crop - UPDATED WITH NEW CROPS
  */
 export function validatePlantPopulation(crop: string, plantsPerAcre: number): {
   valid: boolean;
@@ -625,6 +625,8 @@ export function validatePlantPopulation(crop: string, plantsPerAcre: number): {
     oranges: { min: 50, max: 150 },
     pineapples: { min: 10000, max: 25000 },
     bananas: { min: 400, max: 800 },
+    watermelons: { min: 1500, max: 3000 },
+    passionfruit: { min: 400, max: 800 },
 
     // Vegetables
     tomatoes: { min: 5000, max: 15000 },
@@ -634,17 +636,22 @@ export function validatePlantPopulation(crop: string, plantsPerAcre: number): {
     carrots: { min: 80000, max: 150000 },
     capsicums: { min: 8000, max: 15000 },
     chillies: { min: 8000, max: 15000 },
+    spinach: { min: 40000, max: 80000 },
+    okra: { min: 15000, max: 30000 },
 
     // Tubers
     potatoes: { min: 15000, max: 30000 },
     yams: { min: 3000, max: 6000 },
     taro: { min: 10000, max: 20000 },
+    cassava: { min: 4000, max: 8000 },
+    sweetpotatoes: { min: 15000, max: 30000 },
 
     // Cash crops
     coffee: { min: 600, max: 1200 },
     tea: { min: 3000, max: 6000 },
     macadamia: { min: 50, max: 150 },
-    cocoa: { min: 400, max: 800 }
+    cocoa: { min: 400, max: 800 },
+    sugarcane: { min: 8000, max: 15000 }
   };
 
   const range = ranges[crop.toLowerCase()];
@@ -681,17 +688,30 @@ export interface FertilizerPerPlant {
   ureaGrams: number;
   mopGrams: number;
   totalGrams: number;
+  // NEW: Secondary nutrients per plant
+  sulfurGrams?: number;
+  calciumGrams?: number;
+  magnesiumGrams?: number;
+  zincGrams?: number;
+  boronGrams?: number;
 }
 
 /**
  * Calculate grams of fertilizer per plant based on total kg and plant count
+ * UPDATED: Now includes secondary nutrients
  */
 export function calculateFertilizerPerPlant(
   dapKg: number,
   ureaKg: number,
   mopKg: number,
   totalPlants: number,
-  isPerennial: boolean = false
+  isPerennial: boolean = false,
+  // NEW: Secondary nutrient amounts
+  sulfurKg?: number,
+  calciumKg?: number,
+  magnesiumKg?: number,
+  zincKg?: number,
+  boronKg?: number
 ): FertilizerPerPlant {
   if (totalPlants === 0) {
     return {
@@ -709,15 +729,27 @@ export function calculateFertilizerPerPlant(
   const ureaGrams = (ureaKg * 1000 * factor) / totalPlants;
   const mopGrams = (mopKg * 1000 * factor) / totalPlants;
 
+  // Calculate secondary nutrients per plant
+  const sulfurGrams = sulfurKg ? (sulfurKg * 1000 * factor) / totalPlants : 0;
+  const calciumGrams = calciumKg ? (calciumKg * 1000 * factor) / totalPlants : 0;
+  const magnesiumGrams = magnesiumKg ? (magnesiumKg * 1000 * factor) / totalPlants : 0;
+  const zincGrams = zincKg ? (zincKg * 1000 * factor) / totalPlants : 0;
+  const boronGrams = boronKg ? (boronKg * 1000 * factor) / totalPlants : 0;
+
   return {
     dapGrams: Math.round(dapGrams * 10) / 10,
     ureaGrams: Math.round(ureaGrams * 10) / 10,
     mopGrams: Math.round(mopGrams * 10) / 10,
-    totalGrams: Math.round((dapGrams + ureaGrams + mopGrams) * 10) / 10
+    totalGrams: Math.round((dapGrams + ureaGrams + mopGrams + sulfurGrams + calciumGrams + magnesiumGrams + zincGrams + boronGrams) * 10) / 10,
+    sulfurGrams: Math.round(sulfurGrams * 10) / 10,
+    calciumGrams: Math.round(calciumGrams * 10) / 10,
+    magnesiumGrams: Math.round(magnesiumGrams * 10) / 10,
+    zincGrams: Math.round(zincGrams * 10) / 10,
+    boronGrams: Math.round(boronGrams * 10) / 10
   };
 }
 
-// ========== MEASUREMENT GUIDE ==========
+// ========== MEASUREMENT GUIDE (UPDATED WITH SECONDARY NUTRIENTS) ==========
 
 /**
  * Get a human-readable measurement guide based on grams
@@ -744,6 +776,27 @@ export function getMeasurementGuide(grams: number): string {
   return `📦 ${Math.round(grams / 1000)} kg (use a weighing scale)`;
 }
 
+/**
+ * Get measurement guide for a specific nutrient
+ */
+export function getNutrientMeasurementGuide(nutrient: string, grams: number): string {
+  const baseGuide = getMeasurementGuide(grams);
+
+  const nutrientEmojis: Record<string, string> = {
+    n: "🌿", // Nitrogen
+    p: "🌱", // Phosphorus
+    k: "🍎", // Potassium
+    s: "⚡", // Sulfur
+    ca: "🦴", // Calcium
+    mg: "🌿", // Magnesium
+    zn: "⚡", // Zinc
+    b: "🔵" // Boron
+  };
+
+  const emoji = nutrientEmojis[nutrient.toLowerCase()] || "🌱";
+  return `${emoji} ${nutrient.toUpperCase()}: ${baseGuide}`;
+}
+
 // ========== HELPER TO CHECK IF CROP USES SEED OR PLANTING MATERIAL ==========
 
 /**
@@ -760,7 +813,8 @@ export function usesSeed(crop: string): boolean {
     "chillies", "brinjals", "french beans", "garden peas", "spinach", "okra",
     "cauliflower", "watermelons", "pumpkins", "cucumber", "lettuce", "dania",
     "cover crops", "mucuna", "desmodium", "dolichos", "canavalia",
-    "crotalaria ochroleuca", "crotalaria juncea", "crotalaria paulina"
+    "crotalaria ochroleuca", "crotalaria juncea", "crotalaria paulina",
+    "pigeonpeas", "bambaranuts"
   ];
 
   // Crops that use vegetative planting material
@@ -788,6 +842,44 @@ export function usesSeed(crop: string): boolean {
   return true;
 }
 
+// ========== NEW: PARSE NUTRIENT STRING HELPER ==========
+
+/**
+ * Parse a nutrient string like "5S+3Mg+2Zn" into an object
+ */
+export function parseNutrientString(nutrientStr: string): {
+  s?: number;
+  ca?: number;
+  mg?: number;
+  zn?: number;
+  b?: number;
+  cu?: number;
+  mn?: number;
+} {
+  const result: any = {};
+
+  if (!nutrientStr || nutrientStr === "No additional nutrients") return result;
+
+  const parts = nutrientStr.split('+');
+  parts.forEach(part => {
+    const match = part.match(/(\d+)([A-Za-z]+)/);
+    if (match) {
+      const value = parseFloat(match[1]);
+      const nutrient = match[2].toLowerCase();
+
+      if (nutrient === 's') result.s = value;
+      else if (nutrient === 'ca') result.ca = value;
+      else if (nutrient === 'mg') result.mg = value;
+      else if (nutrient === 'zn') result.zn = value;
+      else if (nutrient === 'b') result.b = value;
+      else if (nutrient === 'cu') result.cu = value;
+      else if (nutrient === 'mn') result.mn = value;
+    }
+  });
+
+  return result;
+}
+
 // ========== GROSS MARGIN CALCULATOR Using Farmer's Actual Data ==========
 
 export interface GrossMarginInput {
@@ -800,9 +892,9 @@ export interface GrossMarginInput {
   // Planting material (either seed cost or planting material cost)
   seedRate?: number;                    // Optional - for seed crops
   seedCost?: number;                     // For seed crops
-  plantingMaterialCost?: number;         // NEW: Cost per unit of planting material (per vine, cutting, sucker, etc.)
-  plantingMaterialUnit?: string;         // NEW: e.g., "per vine", "per cutting", "per sucker", "per kg"
-  plantingMaterialQuantity?: number;     // NEW: Number of planting material units used
+  plantingMaterialCost?: number;         // Cost per unit of planting material (per vine, cutting, sucker, etc.)
+  plantingMaterialUnit?: string;         // e.g., "per vine", "per cutting", "per sucker", "per kg"
+  plantingMaterialQuantity?: number;     // Number of planting material units used
   // Fertilizer costs
   plantingFertilizerCost: number;
   plantingFertilizerQuantity: number;
@@ -819,6 +911,8 @@ export interface GrossMarginInput {
   transportCostPerKg: number;
   emptyBags: number;
   bagCost: number;
+  // NEW: Plants damaged (data only - not used in calculations)
+  plantsDamaged?: number;
 }
 
 export interface GrossMarginOutput {
@@ -826,8 +920,8 @@ export interface GrossMarginOutput {
   yieldKg: number;
   pricePerKg: number;
   revenue: number;
-  plantingMaterialCost: number;          // NEW: Unified field for seed or vegetative material
-  plantingMaterialType: 'seed' | 'vegetative'; // NEW: To indicate what was used
+  plantingMaterialCost: number;          // Unified field for seed or vegetative material
+  plantingMaterialType: 'seed' | 'vegetative'; // To indicate what was used
   fertilizerCost: number;
   labourCost: number;
   transportCost: number;
@@ -837,6 +931,8 @@ export interface GrossMarginOutput {
   roi: number;
   costPerKg: number;
   breakevenPrice: number;
+  // NEW: Damage report (data only)
+  plantsDamaged?: number;
 }
 
 export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): GrossMarginOutput {
@@ -920,7 +1016,9 @@ export function calculateGrossMarginFromFarmerData(input: GrossMarginInput): Gro
     grossMargin: Math.round(grossMargin),
     roi: Math.round(roi * 10) / 10,
     costPerKg: Math.round(costPerKg * 100) / 100,
-    breakevenPrice: Math.round(breakevenPrice * 100) / 100
+    breakevenPrice: Math.round(breakevenPrice * 100) / 100,
+    // NEW: Pass through plants damaged (data only)
+    plantsDamaged: input.plantsDamaged
   };
 }
 
@@ -966,3 +1064,41 @@ export const calculateROI = (investment: number, returns: number): number => {
 export const getTopCropsByProfit = (crops: any[]): any[] => {
   return [...crops].sort((a, b) => b.grossMargin - a.grossMargin);
 };
+
+// ========== NEW: DAMAGE CALCULATION HELPERS ==========
+
+/**
+ * Calculate potential yield loss based on plants damaged
+ * Note: This is for information only, not used in core calculations
+ */
+export function calculatePotentialYieldLoss(
+  totalPlants: number,
+  damagedPlants: number,
+  expectedYieldPerPlant: number
+): {
+  plantsDamaged: number;
+  damagePercentage: number;
+  estimatedYieldLoss: number;
+  note: string;
+} {
+  if (totalPlants === 0 || damagedPlants === 0) {
+    return {
+      plantsDamaged: damagedPlants,
+      damagePercentage: 0,
+      estimatedYieldLoss: 0,
+      note: "No damage reported"
+    };
+  }
+
+  const damagePercentage = (damagedPlants / totalPlants) * 100;
+  const estimatedYieldLoss = damagedPlants * expectedYieldPerPlant;
+
+  return {
+    plantsDamaged: damagedPlants,
+    damagePercentage: Math.round(damagePercentage * 10) / 10,
+    estimatedYieldLoss: Math.round(estimatedYieldLoss),
+    note: damagePercentage > 20
+      ? `⚠️ Significant damage (${damagePercentage.toFixed(1)}% of plants). Consider reviewing pest/disease management.`
+      : `✅ Damage is within manageable range (${damagePercentage.toFixed(1)}% of plants).`
+  };
+}

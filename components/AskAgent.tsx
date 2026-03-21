@@ -5,8 +5,10 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { useTranslation } from 'react-i18next';
+import { useOfflineTranslation } from '@/lib/hooks/useOfflineTranslation'; // ✅ Changed import
 import { VoiceToggle } from "@/components/VoiceToggle";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { OfflineBanner } from "@/components/OfflineBanner"; // ✅ Add offline banner
 import {
   Send,
   Loader2,
@@ -57,7 +59,9 @@ import {
   Target,
   Trophy,
   Flag,
-  Globe
+  Globe,
+  Wifi,
+  WifiOff
 } from "lucide-react";
 import { useCurrency } from '@/lib/context/CurrencyContext';
 import { formatCurrencyForDisplay, formatCurrencyForSpeech } from '@/lib/utils/currency';
@@ -91,8 +95,29 @@ const AskAgent = ({
   sessionData,
   recommendations: oldRecommendations
 }: AskAgentProps) => {
-  const { t } = useTranslation();
+  // ✅ ALL HOOKS MUST COME FIRST - before any conditional returns
+
+  // Core hooks
+  const { t, ready, isOnline } = useOfflineTranslation();
   const { currency } = useCurrency();
+
+  // Safe translation helper
+  const safeT = (key: string, params?: any): string => {
+    try {
+      const result = t(key, params);
+      // Handle if result is a Promise
+      if (result && typeof result.then === 'function') {
+        console.warn(`Translation for "${key}" returned a Promise`);
+        return key;
+      }
+      return typeof result === 'string' ? result : String(result || '');
+    } catch (e) {
+      console.error('Translation error for key:', key, e);
+      return key;
+    }
+  };
+
+  // State hooks
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userTranscript, setUserTranscript] = useState("");
@@ -111,6 +136,7 @@ const AskAgent = ({
   const [structuredList, setStructuredList] = useState<StructuredItem[]>([]);
   const [structuredFinancialAdvice, setStructuredFinancialAdvice] = useState<StructuredItem | null>(null);
 
+  // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const isAISpeakingRef = useRef(false);
@@ -119,8 +145,46 @@ const AskAgent = ({
   const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const nameUsageCountRef = useRef(0);
 
+  // Derived values (not hooks - safe to use here)
   const farmerName = userName;
   const farmerCountry = sessionData?.country || 'kenya';
+
+  // 🧪 TEST API - Temporary code to debug the API
+  useEffect(() => {
+    const testAPI = async () => {
+      try {
+        console.log("🧪 Testing API with POST...");
+        const testResponse = await fetch('/api/farmer/query', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            question: "test question",
+            userId: "test-user",
+            sessionId: "test-session",
+            sessionData: {}
+          })
+        });
+
+        console.log("🧪 Test response status:", testResponse.status);
+        console.log("🧪 Test response headers:", Object.fromEntries(testResponse.headers.entries()));
+
+        if (testResponse.ok) {
+          const testData = await testResponse.json();
+          console.log("✅ Test success:", testData);
+        } else {
+          const testText = await testResponse.text();
+          console.log("❌ Test error:", testText.substring(0, 500));
+        }
+      } catch (error) {
+        console.error("💥 Test failed:", error);
+      }
+    };
+
+    testAPI();
+  }, []);
 
   // Extract structured data from session
   useEffect(() => {
@@ -143,6 +207,91 @@ const AskAgent = ({
       }
     }
   }, [sessionData]);
+
+  // Reset name usage counter when session changes
+  useEffect(() => {
+    nameUsageCountRef.current = 0;
+  }, [sessionId]);
+
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, streamingContent]);
+
+  // Initialize speech recognition with dynamic language
+  useEffect(() => {
+    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = recognitionLanguage;
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setUserTranscript(transcript);
+      };
+
+      recognitionRef.current.onend = () => setIsListening(false);
+      recognitionRef.current.onerror = () => setIsListening(false);
+
+      console.log(`Speech recognition initialized with language: ${recognitionLanguage}`);
+    }
+
+    const greetings = [
+      safeT('greeting_1'),
+      safeT('greeting_2'),
+      safeT('greeting_3'),
+      safeT('greeting_4'),
+      safeT('greeting_5'),
+      safeT('greeting_6')
+    ];
+    const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+
+    let welcomeContent = `${greeting} ${safeT('welcome_question_prefix')}`;
+
+    if (sessionData) {
+      const cropList = sessionData?.crops?.map((c: string) => `${c} ${safeT('crop_enterprise')}`).join(", ") || safeT('crop_enterprises_placeholder');
+      welcomeContent += safeT('welcome_for_crops', { crops: cropList, county: sessionData?.county || safeT('your_area') });
+
+      if (sessionData.managementLevel) {
+        welcomeContent += safeT('management_level', { level: sessionData.managementLevel });
+      }
+
+      if (sessionData.grossMarginAnalysis) {
+        welcomeContent += safeT('financial_help');
+      }
+    }
+
+    welcomeContent += safeT('what_would_you_like_to_know');
+
+    setMessages([{
+      role: "assistant",
+      content: welcomeContent,
+      timestamp: Date.now()
+    }]);
+
+    return () => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (error) {}
+      }
+      if (streamTimeoutRef.current) {
+        clearTimeout(streamTimeoutRef.current);
+      }
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [farmerName, sessionData, recognitionLanguage, safeT]);
+
+  // ✅ NOW you can have conditional returns after ALL hooks
+  if (!ready) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <LoadingSpinner message="Loading your farming assistant..." />
+      </div>
+    );
+  }
 
   // Helper to get currency name for speech
   const getCurrencyName = () => {
@@ -284,82 +433,7 @@ const AskAgent = ({
     return speechText;
   };
 
-  useEffect(() => {
-    nameUsageCountRef.current = 0;
-  }, [sessionId]);
-
-  // Auto-scroll
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingContent]);
-
-  // Initialize speech recognition with dynamic language
-  useEffect(() => {
-    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = recognitionLanguage;
-
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setUserTranscript(transcript);
-      };
-
-      recognitionRef.current.onend = () => setIsListening(false);
-      recognitionRef.current.onerror = () => setIsListening(false);
-
-      console.log(`Speech recognition initialized with language: ${recognitionLanguage}`);
-    }
-
-    const greetings = [
-      t('greeting_1'),
-      t('greeting_2'),
-      t('greeting_3'),
-      t('greeting_4'),
-      t('greeting_5'),
-      t('greeting_6')
-    ];
-    const greeting = greetings[Math.floor(Math.random() * greetings.length)];
-
-    let welcomeContent = `${greeting} ${t('welcome_question_prefix')}`;
-
-    if (sessionData) {
-      const cropList = sessionData?.crops?.map((c: string) => `${c} ${t('crop_enterprise')}`).join(", ") || t('crop_enterprises_placeholder');
-      welcomeContent += t('welcome_for_crops', { crops: cropList, county: sessionData?.county || t('your_area') });
-
-      if (sessionData.managementLevel) {
-        welcomeContent += t('management_level', { level: sessionData.managementLevel });
-      }
-
-      if (sessionData.grossMarginAnalysis) {
-        welcomeContent += t('financial_help');
-      }
-    }
-
-    welcomeContent += t('what_would_you_like_to_know');
-
-    setMessages([{
-      role: "assistant",
-      content: welcomeContent,
-      timestamp: Date.now()
-    }]);
-
-    return () => {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch (error) {}
-      }
-      if (streamTimeoutRef.current) {
-        clearTimeout(streamTimeoutRef.current);
-      }
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, [farmerName, sessionData, recognitionLanguage, t]);
-
-  // Synchronized streaming function - UPDATED with faster rate and female-only voices
+  // Synchronized streaming function - UPDATED with slower rate (0.9) and female-only voices
   const streamAnswerWithVoice = async (fullText: string, isFinancial: boolean = false) => {
     if (!voiceEnabled || !window.speechSynthesis) {
       setMessages(prev => [...prev, {
@@ -380,7 +454,7 @@ const AskAgent = ({
     wordsRef.current = words;
 
     const utterance = new SpeechSynthesisUtterance(speechText);
-    utterance.rate = 1.0; // ✅ NORMAL SPEED (was 0.75)
+    utterance.rate = 0.9; // ✅ SLOWER for farmers (was 1.0)
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
     utterance.lang = recognitionLanguage;
@@ -496,13 +570,13 @@ const AskAgent = ({
 
   const startListening = () => {
     if (!recognitionRef.current || !voiceEnabled || isAISpeakingRef.current) {
-      if (isAISpeakingRef.current) toast.info(t('ai_speaking_wait'));
+      if (isAISpeakingRef.current) toast.info(safeT('ai_speaking_wait'));
       return;
     }
     try {
       recognitionRef.current.start();
       setIsListening(true);
-      toast.success(t('listening_speak_question'), {
+      toast.success(safeT('listening_speak_question'), {
         icon: <Mic className="w-4 h-4 text-purple-500" />,
         duration: 2000
       });
@@ -523,7 +597,7 @@ const AskAgent = ({
     if (Array.isArray(obj)) return obj.map(resolveNestedTranslations);
     if (typeof obj === 'object') {
       if (obj.key && typeof obj.key === 'string') {
-        return t(obj.key, resolveNestedTranslations(obj.params));
+        return safeT(obj.key, resolveNestedTranslations(obj.params));
       }
       const newObj: any = {};
       for (const [k, v] of Object.entries(obj)) {
@@ -534,14 +608,15 @@ const AskAgent = ({
     return obj;
   };
 
+  // ✅ UPDATED submitQuestion with better error handling
   const submitQuestion = async () => {
     if (!userTranscript.trim()) {
-      toast.warning(t('type_or_speak_question'));
+      toast.warning(safeT('type_or_speak_question'));
       return;
     }
 
     if (isAISpeakingRef.current) {
-      toast.info(t('ai_speaking_wait'));
+      toast.info(safeT('ai_speaking_wait'));
       return;
     }
 
@@ -570,7 +645,8 @@ const AskAgent = ({
       question.toLowerCase().includes('investment');
 
     try {
-      console.log("Sending question:", question);
+      console.log("📤 Sending question to API:", '/api/farmer/query');
+      console.log("📦 Request payload:", { question, userId, sessionId });
 
       const enhancedSessionData = {
         ...sessionData,
@@ -584,7 +660,10 @@ const AskAgent = ({
 
       const response = await fetch('/api/farmer/query', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           question,
           userId,
@@ -593,24 +672,32 @@ const AskAgent = ({
         })
       });
 
+      console.log("📥 Response status:", response.status);
+      console.log("📥 Response headers:", Object.fromEntries(response.headers.entries()));
+
+      // Check if response is OK
       if (!response.ok) {
         const errorText = await response.text();
+        console.error("❌ API error response:", errorText.substring(0, 500));
+
+        // Check if it's HTML
+        if (errorText.trim().startsWith('<!DOCTYPE')) {
+          throw new Error("API endpoint returned HTML. The route might not be properly registered.");
+        }
+
         throw new Error(`Server error: ${response.status}`);
       }
 
-      const text = await response.text();
-
-      if (!text || text.trim() === '') {
-        throw new Error("Empty response from server");
+      // Check content type
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error("❌ Non-JSON response:", text.substring(0, 500));
+        throw new Error(`Server returned ${contentType || 'unknown'} instead of JSON`);
       }
 
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (parseError) {
-        console.error("Failed to parse JSON:", parseError);
-        throw new Error("Invalid response format from server");
-      }
+      const data = await response.json();
+      console.log("✅ API success:", data);
 
       if (data.success && data.answer) {
         let answerText: string;
@@ -618,20 +705,20 @@ const AskAgent = ({
           answerText = data.answer;
         } else if (typeof data.answer === 'object' && data.answer.key) {
           const resolvedParams = resolveNestedTranslations(data.answer.params || {});
-          answerText = t(data.answer.key, resolvedParams);
+          answerText = safeT(data.answer.key, resolvedParams);
         } else {
           throw new Error("Unexpected answer format");
         }
 
         await streamAnswerWithVoice(answerText, isFinancialQuestion);
-        toast.success(t('answer_ready'), {
+        toast.success(safeT('answer_ready'), {
           icon: isFinancialQuestion ? <DollarSign className="w-4 h-4 text-green-500" /> : <Sparkles className="w-4 h-4 text-yellow-500" />
         });
       } else if (data.error) {
         toast.error(data.error);
         setMessages(prev => [...prev, {
           role: "assistant",
-          content: t('oops_error', { error: data.error }),
+          content: safeT('oops_error', { error: data.error }),
           timestamp: Date.now()
         }]);
       } else {
@@ -639,12 +726,16 @@ const AskAgent = ({
       }
 
     } catch (error) {
-      console.error("Query error:", error);
-      toast.error(error instanceof Error ? error.message : t('failed_to_process'));
+      console.error("❌ Query error:", error);
 
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process question';
+      toast.error(errorMessage);
+
+      // Add error message to chat
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: t('sorry_try_again'),
+        content: `Sorry, I couldn't process your question. ${errorMessage}`,
         timestamp: Date.now()
       }]);
     } finally {
@@ -664,7 +755,7 @@ const AskAgent = ({
       setIsStreaming(false);
       setStreamingContent("");
     } else {
-      toast.success(t('voice_mode_activated_ask'), {
+      toast.success(safeT('voice_mode_activated_ask'), {
         icon: <Volume2 className="w-4 h-4 text-green-500" />
       });
       nameUsageCountRef.current = 0;
@@ -686,37 +777,104 @@ const AskAgent = ({
   };
 
   const wordProgress = currentWordIndex > 0 && wordsRef.current.length > 0
-    ? `${currentWordIndex}/${wordsRef.current.length} ${t('words')}`
+    ? `${currentWordIndex}/${wordsRef.current.length} ${safeT('words')}`
     : '';
 
+  // ✅ FIXED: Ensure all text values are strings, not Promises
   const financialQuickQuestions = [
-    { text: t('profit_margin'), icon: <TrendingUp className="w-4 h-4" />, color: 'from-green-400 to-emerald-400' },
-    { text: t('break_even'), icon: <Calculator className="w-4 h-4" />, color: 'from-blue-400 to-indigo-400' },
-    { text: t('cost_of_production'), icon: <Package className="w-4 h-4" />, color: 'from-amber-400 to-orange-400' },
-    { text: t('revenue_projection'), icon: <DollarSign className="w-4 h-4" />, color: 'from-purple-400 to-pink-400' }
+    {
+      text: safeT('profit_margin'),
+      icon: <TrendingUp className="w-4 h-4" />,
+      color: 'from-green-400 to-emerald-400'
+    },
+    {
+      text: safeT('break_even'),
+      icon: <Calculator className="w-4 h-4" />,
+      color: 'from-blue-400 to-indigo-400'
+    },
+    {
+      text: safeT('cost_of_production'),
+      icon: <Package className="w-4 h-4" />,
+      color: 'from-amber-400 to-orange-400'
+    },
+    {
+      text: safeT('revenue_projection'),
+      icon: <DollarSign className="w-4 h-4" />,
+      color: 'from-purple-400 to-pink-400'
+    }
   ];
 
   const generalQuickQuestions = [
-    { text: t('fertilizer'), icon: <Sprout className="w-4 h-4" />, color: 'from-emerald-400 to-teal-400' },
-    { text: t('pests'), icon: <Bug className="w-4 h-4" />, color: 'from-red-400 to-rose-400' },
-    { text: t('watering'), icon: <Droplets className="w-4 h-4" />, color: 'from-blue-400 to-cyan-400' },
-    { text: t('harvest'), icon: <Wheat className="w-4 h-4" />, color: 'from-amber-400 to-orange-400' },
-    { text: t('soil'), icon: <Leaf className="w-4 h-4" />, color: 'from-lime-400 to-green-400' },
-    { text: t('market'), icon: <Award className="w-4 h-4" />, color: 'from-purple-400 to-pink-400' }
+    {
+      text: safeT('fertilizer'),
+      icon: <Sprout className="w-4 h-4" />,
+      color: 'from-emerald-400 to-teal-400'
+    },
+    {
+      text: safeT('pests'),
+      icon: <Bug className="w-4 h-4" />,
+      color: 'from-red-400 to-rose-400'
+    },
+    {
+      text: safeT('watering'),
+      icon: <Droplets className="w-4 h-4" />,
+      color: 'from-blue-400 to-cyan-400'
+    },
+    {
+      text: safeT('harvest'),
+      icon: <Wheat className="w-4 h-4" />,
+      color: 'from-amber-400 to-orange-400'
+    },
+    {
+      text: safeT('soil'),
+      icon: <Leaf className="w-4 h-4" />,
+      color: 'from-lime-400 to-green-400'
+    },
+    {
+      text: safeT('market'),
+      icon: <Award className="w-4 h-4" />,
+      color: 'from-purple-400 to-pink-400'
+    }
   ];
 
-  // Handle grouped recommendations
+  // Handle grouped recommendations - ENHANCED for all 18 languages
+  // FIXED: Convert all t() results to strings to prevent [object Promise]
   const renderRecommendationText = (item: StructuredItem, idx: number) => {
     // Resolve any nested translation keys inside params
     const resolvedParams = resolveNestedTranslations(item.params || {});
 
     // Special handling for gap_grouped which contains a nested gapKey
     if (item.key === 'gap_grouped' && resolvedParams.gapKey) {
-      const gapText = t(resolvedParams.gapKey, {});
+      const gapText = safeT(resolvedParams.gapKey, {});
       resolvedParams.gapText = gapText;
     }
 
-    const text = t(item.key, resolvedParams);
+    // Special handling for disease_management_grouped which contains nested content
+    if (item.key === 'disease_management_grouped' && resolvedParams.content) {
+      // Ensure text is a string, not a Promise
+      const text = safeT(item.key, resolvedParams);
+      return (
+        <div key={idx} className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-white">
+          <span className="font-bold mr-2">{idx + 1}.</span>
+          <span className="text-sm whitespace-pre-line">{text}</span>
+        </div>
+      );
+    }
+
+    // Special handling for pest_management_grouped which contains nested content
+    if (item.key === 'pest_management_grouped' && resolvedParams.content) {
+      // Ensure text is a string, not a Promise
+      const text = safeT(item.key, resolvedParams);
+      return (
+        <div key={idx} className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-white">
+          <span className="font-bold mr-2">{idx + 1}.</span>
+          <span className="text-sm whitespace-pre-line">{text}</span>
+        </div>
+      );
+    }
+
+    // For all other items, ensure text is a string
+    const text = safeT(item.key, resolvedParams);
 
     return (
       <div key={idx} className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-white">
@@ -728,6 +886,16 @@ const AskAgent = ({
 
   return (
     <div className="flex flex-col gap-6 p-4 min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl">
+      {/* Offline Status Banner (shows only when offline) */}
+      {!isOnline && (
+        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-3 flex items-center gap-2">
+          <WifiOff className="w-5 h-5 text-yellow-600" />
+          <p className="text-sm text-yellow-800">
+            {safeT('offline_mode') || "You're offline. Using cached translations."}
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 rounded-2xl p-5 shadow-xl border-2 border-white/30">
         <div className="flex items-center justify-between">
@@ -741,12 +909,12 @@ const AskAgent = ({
             <div>
               <h2 className="font-bold text-xl text-white flex items-center gap-2">
                 <Sprout className="w-6 h-6" />
-                {t('ask_your_farming_assistant')}
+                {safeT('ask_your_farming_assistant')}
                 <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
               </h2>
               <p className="text-white/90 flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
-                {sessionData?.county} • {sessionData?.crops?.map((c: string) => `${c} ${t('crop_enterprise')}`).join(", ")}
+                {sessionData?.county} • {sessionData?.crops?.map((c: string) => `${c} ${safeT('crop_enterprise')}`).join(", ")}
                 <Globe className="w-3 h-3 ml-1" />
                 <span className="text-xs bg-white/20 px-1 rounded">{sessionData?.country || 'Kenya'}</span>
                 {sessionData?.managementLevel && (
@@ -763,14 +931,14 @@ const AskAgent = ({
               className="px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-xl flex items-center gap-2 border border-white/40 transition-all duration-300 text-sm"
             >
               <DollarSign className="w-4 h-4" />
-              {showFinancial ? t('hide_finance') : t('show_finance')}
+              {showFinancial ? safeT('hide_finance') : safeT('show_finance')}
             </button>
             <button
               onClick={() => setShowRecommendations(!showRecommendations)}
               className="px-3 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-xl flex items-center gap-2 border border-white/40 transition-all duration-300 text-sm"
             >
               <Sparkles className="w-4 h-4" />
-              {showRecommendations ? t('hide_tips') : t('view_tips')}
+              {showRecommendations ? safeT('hide_tips') : safeT('view_tips')}
             </button>
           </div>
         </div>
@@ -781,18 +949,18 @@ const AskAgent = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Mic className="w-5 h-5 text-white" />
-            <span className="font-semibold text-white">{t('voice_mode')}</span>
-            <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">{t('beta')}</span>
+            <span className="font-semibold text-white">{safeT('voice_mode')}</span>
+            <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">{safeT('beta')}</span>
           </div>
           <VoiceToggle onVoiceToggle={handleVoiceToggle} initialEnabled={voiceEnabled} />
         </div>
         {isSpeaking && (
           <div className="mt-1 text-xs text-white/80 flex items-center gap-1">
             <Volume2 className="w-3 h-3 animate-pulse" />
-            <span>{t('speaking')} {wordProgress}</span>
+            <span>{safeT('speaking')} {wordProgress}</span>
           </div>
         )}
-        <div className="mt-1 text-xs text-white/60 text-right">{t('language')}: {recognitionLanguage}</div>
+        <div className="mt-1 text-xs text-white/60 text-right">{safeT('language')}: {recognitionLanguage}</div>
       </div>
 
       {/* Recommendations Panel - Direct access, no extra sections */}
@@ -800,7 +968,7 @@ const AskAgent = ({
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-5 shadow-xl border-2 border-white/30">
           <h3 className="font-bold text-lg text-white flex items-center gap-2 mb-3">
             <Sparkles className="w-5 h-5" />
-            {t('personalized_recommendations')}
+            {safeT('personalized_recommendations')}
           </h3>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {structuredList.length > 0 ? (
@@ -828,7 +996,7 @@ const AskAgent = ({
           }`}
         >
           <MessageCircle className="w-4 h-4 inline mr-1" />
-          {t('chat')}
+          {safeT('chat')}
         </button>
         <button
           onClick={() => setActiveTab("financial")}
@@ -839,7 +1007,7 @@ const AskAgent = ({
           }`}
         >
           <DollarSign className="w-4 h-4 inline mr-1" />
-          {t('financial_qa')}
+          {safeT('financial_qa')}
         </button>
         <button
           onClick={() => setActiveTab("summary")}
@@ -850,7 +1018,7 @@ const AskAgent = ({
           }`}
         >
           <BarChart3 className="w-4 h-4 inline mr-1" />
-          {t('farm_summary')}
+          {safeT('farm_summary')}
         </button>
       </div>
 
@@ -904,7 +1072,7 @@ const AskAgent = ({
                     <p className="text-sm text-gray-800 font-medium whitespace-pre-wrap">{streamingContent}</p>
                     <p className="text-xs text-green-700 mt-2 flex items-center gap-1">
                       <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                      {t('speaking')} {wordProgress}
+                      {safeT('speaking')} {wordProgress}
                     </p>
                   </div>
                 </div>
@@ -927,7 +1095,7 @@ const AskAgent = ({
         <div className="mt-4 p-2 bg-yellow-50 rounded-lg border border-yellow-300">
           <p className="text-xs text-yellow-800 flex items-center gap-1">
             <Rocket className="w-3 h-3" />
-            {t('pro_tip')}
+            {safeT('pro_tip')}
           </p>
         </div>
       </div>
@@ -939,7 +1107,7 @@ const AskAgent = ({
             type="text"
             value={userTranscript}
             onChange={(e) => setUserTranscript(e.target.value)}
-            placeholder={activeTab === "financial" ? t('ask_about_costs') : t('type_question')}
+            placeholder={activeTab === "financial" ? safeT('ask_about_costs') : safeT('type_question')}
             className="flex-1 px-5 py-4 bg-white/90 backdrop-blur-sm border-2 border-white rounded-xl focus:border-purple-400 focus:ring-4 focus:ring-purple-200 transition-all text-gray-800 placeholder-gray-500"
             disabled={isAISpeakingRef.current}
           />
@@ -957,7 +1125,7 @@ const AskAgent = ({
             ) : (
               <div className="flex items-center gap-2">
                 <Send className="w-5 h-5" />
-                <span>{t('ask')}</span>
+                <span>{safeT('ask')}</span>
                 {activeTab === "financial" && <DollarSign className="w-4 h-4" />}
               </div>
             )}
@@ -977,7 +1145,7 @@ const AskAgent = ({
               } ${isAISpeakingRef.current ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Mic className={`w-5 h-5 ${isListening ? 'animate-pulse' : ''}`} />
-              {isListening ? t('listening_click_stop') : t('click_to_speak')}
+              {isListening ? safeT('listening_click_stop') : safeT('click_to_speak')}
             </button>
           </div>
         )}
@@ -986,10 +1154,10 @@ const AskAgent = ({
       {/* Quick question chips */}
       <div className="flex flex-wrap gap-2 justify-center">
         {activeTab === "financial" ? (
-          financialQuickQuestions.map((item) => (
+          financialQuickQuestions.map((item, index) => (
             <button
-              key={item.text}
-              onClick={() => setUserTranscript(t('ask_my_question_template', { topic: item.text, crop: sessionData?.crops?.[0] || 'maize' }))}
+              key={`financial-${index}`}
+              onClick={() => setUserTranscript(safeT('ask_my_question_template', { topic: item.text, crop: sessionData?.crops?.[0] || 'maize' }))}
               className={`px-4 py-2 bg-gradient-to-r ${item.color} text-white rounded-full text-sm hover:scale-105 transition-all duration-300 shadow-md flex items-center gap-1 border border-white/50`}
             >
               {item.icon}
@@ -997,10 +1165,10 @@ const AskAgent = ({
             </button>
           ))
         ) : (
-          generalQuickQuestions.map((item) => (
+          generalQuickQuestions.map((item, index) => (
             <button
-              key={item.text}
-              onClick={() => setUserTranscript(t('tell_me_about_template', { topic: item.text, crop: sessionData?.crops?.[0] || 'crops' }))}
+              key={`general-${index}`}
+              onClick={() => setUserTranscript(safeT('tell_me_about_template', { topic: item.text, crop: sessionData?.crops?.[0] || 'crops' }))}
               className={`px-4 py-2 bg-gradient-to-r ${item.color} text-white rounded-full text-sm hover:scale-105 transition-all duration-300 shadow-md flex items-center gap-1 border border-white/50`}
             >
               {item.icon}
@@ -1009,6 +1177,9 @@ const AskAgent = ({
           ))
         )}
       </div>
+
+      {/* Offline Banner (global) */}
+      <OfflineBanner />
     </div>
   );
 };

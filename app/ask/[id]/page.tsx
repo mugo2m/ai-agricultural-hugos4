@@ -1,14 +1,20 @@
-// app/ask/[id]/page.tsx
+import { Suspense } from 'react';
 import { db } from '@/firebase/admin';
 import AskAgent from '@/components/AskAgent';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AskPage({ params }: { params: { id: string } }) {
-  // ✅ FIX: Properly await and extract params
-  const { id } = await params;
-  const sessionId = id;
+// Loading component
+function AskPageLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+    </div>
+  );
+}
 
+// Separate async component for data fetching
+async function AskPageContent({ sessionId }: { sessionId: string }) {
   console.log(`🌾 Loading Q&A page for session: ${sessionId}`);
 
   // ✅ FIX: Validate sessionId before using
@@ -128,7 +134,7 @@ export default async function AskPage({ params }: { params: { id: string } }) {
           userId={userId_field}
           sessionId={sessionId}
           sessionData={sessionData?.session_data || sessionData}
-          recommendations={recommendations}  // 🔥 NOW USING DEDUPLICATED ARRAY
+          recommendations={recommendations}
         />
       </div>
     );
@@ -147,4 +153,17 @@ export default async function AskPage({ params }: { params: { id: string } }) {
       </div>
     );
   }
+}
+
+// Main page component - MUST BE ASYNC to await params
+export default async function AskPage({ params }: { params: Promise<{ id: string }> }) {
+  // ✅ FIX: Await the params Promise
+  const { id } = await params;
+  const sessionId = id;
+
+  return (
+    <Suspense fallback={<AskPageLoading />}>
+      <AskPageContent sessionId={sessionId} />
+    </Suspense>
+  );
 }

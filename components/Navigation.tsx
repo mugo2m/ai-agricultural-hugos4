@@ -6,10 +6,28 @@ import { Home, BookOpen, Image as ImageIcon, Upload, LogOut } from "lucide-react
 import { signOut } from "@/lib/actions/auth.action";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { useOfflineTranslation } from '@/lib/hooks/useOfflineTranslation';
 
 export default function Navigation() {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
+  const { t } = useOfflineTranslation();
+
+  // Safe translation helper
+  const safeT = (key: string, params?: any): string => {
+    try {
+      const result = t(key, params);
+      // Handle if result is a Promise
+      if (result && typeof result.then === 'function') {
+        console.warn(`Translation for "${key}" returned a Promise`);
+        return key;
+      }
+      return typeof result === 'string' ? result : String(result || '');
+    } catch (e) {
+      console.error('Translation error for key:', key, e);
+      return key;
+    }
+  };
 
   useEffect(() => {
     // Check if user is admin (you can get this from your auth)
@@ -23,17 +41,17 @@ export default function Navigation() {
 
   const handleSignOut = async () => {
     await signOut();
-    toast.success("Signed out");
+    toast.success(safeT('signed_out'));
     window.location.href = "/sign-in";
   };
 
   const navItems = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/ask-multimodal", label: "Ask with Images", icon: ImageIcon },
+    { href: "/", label: safeT('home'), icon: Home },
+    { href: "/ask-multimodal", label: safeT('ask_with_images'), icon: ImageIcon },
   ];
 
   if (isAdmin) {
-    navItems.push({ href: "/admin/multimodal", label: "Upload Documents", icon: Upload });
+    navItems.push({ href: "/admin/multimodal", label: safeT('upload_documents'), icon: Upload });
   }
 
   return (
@@ -41,7 +59,7 @@ export default function Navigation() {
       <div className="container mx-auto flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link href="/" className="text-xl font-bold text-green-700">
-            🌾 AgriMultimodal
+            🌾 {safeT('app_name')}
           </Link>
           <div className="flex gap-4">
             {navItems.map((item) => {
@@ -68,7 +86,7 @@ export default function Navigation() {
           className="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors"
         >
           <LogOut className="w-4 h-4" />
-          Sign Out
+          {safeT('sign_out')}
         </button>
       </div>
     </nav>

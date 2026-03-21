@@ -8,7 +8,7 @@ export const initI18nextClient = async (lng: string) => {
   await i18nInstance
     .use(initReactI18next)
     .use(resourcesToBackend((language: string, namespace: string) =>
-      import(`../locales/${language}/${namespace}.json`)
+      import(`@/public/locales/${language}/${namespace}.json`) // ✅ Updated path
     ))
     .init({
       lng,
@@ -23,8 +23,8 @@ export const initI18nextClient = async (lng: string) => {
   return i18nInstance;
 };
 
-// ✅ For Client Components
-export async function getClientTranslations(language: string, namespace: string = 'common') {
-  const i18n = await initI18nextClient(language);
-  return (key: string, params?: Record<string, any>) => i18n.t(key, params);
-}
+// ❌ Comment this out - it's causing the async Client Component error
+// export async function getClientTranslations(language: string, namespace: string = 'common') {
+//   const i18n = await initI18nextClient(language);
+//   return (key: string, params?: Record<string, any>) => i18n.t(key, params);
+// }

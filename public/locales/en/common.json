@@ -157,7 +157,6 @@
   "type_answer": "Type your answer here...",
   "ready_for_answer": "Ready for your answer...",
 
-  
   "question_country": "Welcome farmer. Agricultural services are shrinking by day—you can imagine 45 officers serving 85,000 farmers. That's a lot. Your chances of being served are extremely little. Anyway, that is for tomorrow. Today we are here to assist you increase your farm yield and profit. Our main objective is for you to produce more in your farm with less, putting more money in your pocket. We are here to advise you which crop is most profitable and provide cash flow for your farm production in a cheap, faster, specific, accessible, convenient, and at 24/7 manner wherever you are at a language you feel comfortable. To achieve this, we will ask you a couple of questions in order to get what troubles you in your farming business so that we provide specific solution to these problems—may it be crop pests, may it be crop diseases. You will ask questions about your crop and they will be answered instantly and vocally. You are the one to tell us. Feel free and tell us all of your crop problems. To start with: Which country is your farm located in?",
 
   "question_soil_test": "Have you done a comprehensive soil test for your enterprise?",
@@ -200,7 +199,6 @@
   "question_storage_vegetables": "How will you handle your vegetables after harvest to maintain quality?",
   "question_storage_generic": "How will you store your harvest to protect your investment?",
   "question_total_farm_size": "What is your total farm size? (acres)",
-  "question_cultivated_acres": "How many acres are you cultivating for this enterprise?",
   "question_water_sources": "What are your main water sources? (Select all that apply)",
   "question_common_pests": "Which pests threaten your enterprise's profitability?",
   "question_common_diseases": "Which diseases affect your enterprise's yield?",
@@ -210,7 +208,7 @@
   "question_planting_labour_cost": "Planting labour cost per acre?",
   "question_weeding_cost": "Weeding cost per acre?",
   "question_harvesting_cost": "Harvesting cost per acre?",
-  "question_transport_cost": "What is your transport cost per kilogramme of yield?",
+  "question_transport_cost": "What is your transport cost per 100 kilogrammes of yield?",
   "question_bag_cost": "Cost per empty bag?",
   "question_empty_bags": "How many empty bags will you buy for packaging?",
   "question_conservation_practices": "What soil and water conservation practices do you use to protect your investment?",
@@ -249,18 +247,23 @@
   "question_target_yield_kg": "What is your target yield in kg per acre?",
   "question_sale_date": "When do you plan to sell your harvest?",
   "question_rec_calcitic_lime": "According to your soil test, what calcitic lime rate (kg/acre) was recommended? (e.g., 120)",
-  "question_rec_planting_fertilizer": "According to your soil test, what is your recommended planting fertilizer and its formulation? (e.g., NPK 12.24.12+5S)",
+  "question_rec_planting_fertilizer": "According to your soil test, what planting fertilizer formulation was recommended to you? (e.g., NPK 12.24.12+5S)",
   "question_rec_planting_quantity": "According to your soil test, what is the recommended quantity per acre for your planting fertilizer? (e.g., 100kg)",
-  "question_rec_topdressing_fertilizer": "According to your soil test, what is your recommended topdressing fertilizer and its formulation? (e.g., UREA 46-0-0)",
+  "question_rec_topdressing_fertilizer": "According to your soil test, what topdressing fertilizer formulation was recommended to you? (e.g., UREA 46-0-0)",
   "question_rec_topdressing_quantity": "According to your soil test, what is the recommended quantity per acre for your topdressing fertilizer? (e.g., 90kg)",
-  "question_rec_potassium_fertilizer": "According to your soil test, what is your recommended potassium fertilizer and its formulation? (e.g., MOP 0-0-60)",
+  "question_rec_potassium_fertilizer": "According to your soil test, what potassium fertilizer formulation was recommended to you? (e.g., MOP 0-0-60)",
   "question_rec_potassium_quantity": "According to your soil test, what is the recommended quantity per acre for your potassium fertilizer? (e.g., 30kg)",
-  "question_planting_fertilizer_to_use": "Based on fertilizers availability in market, which planting fertilizer will you actually buy and use?",
+  "question_planting_fertilizer_to_use": "Which planting fertilizer will you actually buy and use?",
   "question_planting_fertilizer_cost": "How much do you pay for a 50kg bag of your chosen planting fertilizer?",
-  "question_topdressing_fertilizer_to_use": "Based on fertilizers availability in market, which topdressing fertilizer will you actually buy and use?",
+  "question_topdressing_fertilizer_to_use": "Which topdressing fertilizer will you actually buy and use?",
   "question_topdressing_fertilizer_cost": "How much do you pay for a 50kg bag of your chosen topdressing fertilizer?",
-  "question_potassium_fertilizer_to_use": "Based on fertilizers availability in market, which potassium fertilizer will you actually buy and use?",
+  "question_potassium_fertilizer_to_use": "Which potassium fertilizer will you actually buy and use?",
   "question_potassium_fertilizer_cost": "How much do you pay for a 50kg bag of your chosen potassium fertilizer?",
+  "question_planting_fertilizer_nutrients": "What additional nutrients does your planting fertilizer contain? (e.g., 5S, 3Mg, 2Zn)",
+  "question_topdressing_fertilizer_nutrients": "What additional nutrients does your topdressing fertilizer contain?",
+  "question_potassium_fertilizer_nutrients": "What additional nutrients does your potassium fertilizer contain?",
+  "question_plants_damaged": "How many plants were damaged beyond recovery?",
+
   "question_planting_fertilizer_type": "Which planting fertilizer do you use for your enterprise?",
   "question_planting_fertilizer_quantity": "How many kg per acre do you apply?",
   "question_topdressing_fertilizer_type": "Which topdressing fertilizer do you use?",
@@ -852,10 +855,6 @@
   "qa_planting_personalized": "{{farmerName}}, for your {{crop}} ENTERPRISE in {{region}}, {{country}}, you planted on {{plantingDate}}. {{adviceText}} This crop typically takes {{maturityMonths}} months to mature. For more details, visit the question-answering section.",
   "qa_planting_generic": "{{farmerName}}, for your {{crop}} ENTERPRISE, plant at the start of the rainy season for best results. Different regions have different optimal planting windows. Check with your local agricultural extension for specific advice.",
 
-
-
-
-
   "hero_title": "Agricultural Knowledge for Farmers",
   "hero_description": "Get instant answers about your crops, livestock, and farming practices. Ask questions by voice and receive spoken answers with helpful images.",
   "sign_in": "Sign In to Start",
@@ -887,7 +886,17 @@
   "step3_title": "See helpful images",
   "step3_desc": "View diagrams, disease photos, and illustrations alongside text answers.",
 
-
+  "voice_on": "On",
+  "voice_off": "Off",
+  "app_name": "AgriMultimodal",
+  "beta": "Beta",
+  "offline": "Offline",
+  "tap_to_change_language": "Tap to change language",
+  "home": "Home",
+  "ask_with_images": "Ask with Images",
+  "upload_documents": "Upload Documents",
+  "sign_out": "Sign Out",
+  "signed_out": "Signed out",
 
   "qa_default": "{{farmerName}}, thanks for asking about \"{{question}}\".\n\nBased on your farm data for your {{crop}} ENTERPRISE in {{county}}:\n\n• Follow good agricultural practices to maximize returns\n• Maintain soil fertility - it's your biggest asset\n• Monitor regularly for pests and diseases (early detection saves {{symbol}}10,000+!)\n• Track ALL costs to know your true profit margin\n\nFor more specific information to grow your business, ask about: fertilizer, pests, spacing, harvest, seed rate, varieties, or gross margins.\n\nRemember {{farmerName}}, every shilling counts! 🚀"
 }

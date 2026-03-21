@@ -150,7 +150,8 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
         name: t.brand || t.name || 'Unknown',
         amount: t.amountKg,
         bags: Math.ceil(t.amountKg / 50),
-        cost: computeItemCost(t)
+        cost: computeItemCost(t),
+        provides: t.provides ? Object.entries(t.provides).map(([k, v]) => `${v}kg ${k}`).join(', ') : ''
       })) || [];
 
       const totalCost = formatCurrencyForCountry(plan.totalCost || 0, country);
@@ -169,6 +170,100 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
     };
     const key = fertKeyMap[lowerCrop] || 'qa_fertilizer_generic';
     return { key, params: { farmerName, crop } };
+  },
+
+  // NEW: Nutrients category - answers questions about fertilizer composition
+  nutrients: (data, question, farmerName) => {
+    const crop = data?.crops?.[0] || 'your crops';
+    const lowerCrop = crop.toLowerCase();
+
+    // Get fertilizer plan if available
+    const fertilizerPlan = data?.soilTest?.fertilizerPlan;
+
+    if (fertilizerPlan) {
+      // Extract nutrient info from recommendations
+      const plantingRecs = fertilizerPlan.plantingRecommendations || [];
+      const topdressingRecs = fertilizerPlan.topDressingRecommendations || [];
+
+      const nutrientLines = [];
+
+      // Planting fertilizer nutrients
+      if (plantingRecs.length > 0) {
+        nutrientLines.push(`🌱 ${plantingRecs[0].brand} (${plantingRecs[0].npk}):`);
+        if (plantingRecs[0].provides.n > 0) nutrientLines.push(`  • Nitrogen (N): ${plantingRecs[0].provides.n.toFixed(1)} kg`);
+        if (plantingRecs[0].provides.p > 0) nutrientLines.push(`  • Phosphorus (P): ${plantingRecs[0].provides.p.toFixed(1)} kg`);
+        if (plantingRecs[0].provides.k > 0) nutrientLines.push(`  • Potassium (K): ${plantingRecs[0].provides.k.toFixed(1)} kg`);
+        if (plantingRecs[0].provides.s > 0) nutrientLines.push(`  • Sulfur (S): ${plantingRecs[0].provides.s.toFixed(1)} kg`);
+        if (plantingRecs[0].provides.ca > 0) nutrientLines.push(`  • Calcium (Ca): ${plantingRecs[0].provides.ca.toFixed(1)} kg`);
+        if (plantingRecs[0].provides.mg > 0) nutrientLines.push(`  • Magnesium (Mg): ${plantingRecs[0].provides.mg.toFixed(1)} kg`);
+        if (plantingRecs[0].provides.zn > 0) nutrientLines.push(`  • Zinc (Zn): ${plantingRecs[0].provides.zn.toFixed(1)} kg`);
+        nutrientLines.push('');
+      }
+
+      // Topdressing fertilizer nutrients
+      if (topdressingRecs.length > 0) {
+        topdressingRecs.forEach((rec: any) => {
+          nutrientLines.push(`🌿 ${rec.brand} (${rec.npk}):`);
+          if (rec.provides.n > 0) nutrientLines.push(`  • Nitrogen (N): ${rec.provides.n.toFixed(1)} kg`);
+          if (rec.provides.k > 0) nutrientLines.push(`  • Potassium (K): ${rec.provides.k.toFixed(1)} kg`);
+          if (rec.provides.s > 0) nutrientLines.push(`  • Sulfur (S): ${rec.provides.s.toFixed(1)} kg`);
+          if (rec.provides.ca > 0) nutrientLines.push(`  • Calcium (Ca): ${rec.provides.ca.toFixed(1)} kg`);
+          if (rec.provides.mg > 0) nutrientLines.push(`  • Magnesium (Mg): ${rec.provides.mg.toFixed(1)} kg`);
+          nutrientLines.push('');
+        });
+      }
+
+      // Total nutrients
+      if (fertilizerPlan.totalNutrientsProvided) {
+        const total = fertilizerPlan.totalNutrientsProvided;
+        nutrientLines.push(`📊 TOTAL NUTRIENTS PROVIDED:`);
+        if (total.n > 0) nutrientLines.push(`  • Nitrogen (N): ${total.n.toFixed(1)} kg`);
+        if (total.p > 0) nutrientLines.push(`  • Phosphorus (P): ${total.p.toFixed(1)} kg`);
+        if (total.k > 0) nutrientLines.push(`  • Potassium (K): ${total.k.toFixed(1)} kg`);
+        if (total.s > 0) nutrientLines.push(`  • Sulfur (S): ${total.s.toFixed(1)} kg`);
+        if (total.ca > 0) nutrientLines.push(`  • Calcium (Ca): ${total.ca.toFixed(1)} kg`);
+        if (total.mg > 0) nutrientLines.push(`  • Magnesium (Mg): ${total.mg.toFixed(1)} kg`);
+        if (total.zn > 0) nutrientLines.push(`  • Zinc (Zn): ${total.zn.toFixed(1)} kg`);
+      }
+
+      return {
+        key: 'qa_nutrients_personalized',
+        params: {
+          farmerName,
+          crop,
+          nutrientList: nutrientLines.join('\n')
+        }
+      };
+    }
+
+    // Generic nutrient response
+    return {
+      key: 'qa_nutrients_generic',
+      params: { farmerName, crop }
+    };
+  },
+
+  // NEW: Damage category - answers questions about plant damage
+  damage: (data, question, farmerName) => {
+    const crop = data?.crops?.[0] || 'crops';
+    const plantsDamaged = data?.plantsDamaged;
+
+    if (plantsDamaged && plantsDamaged > 0) {
+      return {
+        key: 'qa_damage_with_data',
+        params: {
+          farmerName,
+          crop,
+          plantsDamaged,
+          advice: "Consider reviewing your pest and disease management strategies to prevent future losses."
+        }
+      };
+    }
+
+    return {
+      key: 'qa_damage_generic',
+      params: { farmerName, crop }
+    };
   },
 
   seed: (data, question, farmerName) => {
@@ -393,7 +488,6 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
     };
   },
 
-  // NEW: Planting category
   planting: (data, question, farmerName) => {
     const crop = data?.crops?.[0] || 'crops';
     const lowerCrop = crop.toLowerCase();
@@ -438,9 +532,19 @@ const qaTemplates: Record<string, (data: any, question: string, farmerName: stri
   default: (data, question, farmerName) => {
     const crop = data?.crops?.[0] || 'your crops';
     const county = data?.county || 'your area';
+
+    // Check if damage data exists to include in default response
+    const plantsDamaged = data?.plantsDamaged;
+
+    const params: any = { farmerName, question, crop, county };
+
+    if (plantsDamaged && plantsDamaged > 0) {
+      params.damageNote = ` You reported ${plantsDamaged} plants damaged beyond recovery.`;
+    }
+
     return {
       key: 'qa_default',
-      params: { farmerName, question, crop, county }
+      params
     };
   }
 };
@@ -460,6 +564,22 @@ function detectCategory(question: string): string {
   if (q.includes('fertilizer') || q.includes('dap') || q.includes('can') ||
       q.includes('npk') || q.includes('manure') || q.includes('topdress')) {
     return 'fertilizer';
+  }
+
+  // NEW: Nutrient detection
+  if (q.includes('nutrient') || q.includes('what nutrients') ||
+      q.includes('n p k') || q.includes('what does my fertilizer contain') ||
+      q.includes('fertilizer composition') || q.includes('secondary nutrients') ||
+      q.includes('sulfur') || q.includes('calcium') || q.includes('magnesium') ||
+      q.includes('zinc') || q.includes('boron') || q.includes('micronutrient')) {
+    return 'nutrients';
+  }
+
+  // NEW: Damage detection
+  if (q.includes('damage') || q.includes('plants damaged') ||
+      q.includes('lost plants') || q.includes('plants died') ||
+      q.includes('beyond recovery') || q.includes('crop loss')) {
+    return 'damage';
   }
 
   if (q.includes('seed rate') || q.includes('how many kg') || q.includes('seed per acre')) {
@@ -497,7 +617,6 @@ function detectCategory(question: string): string {
     return 'business';
   }
 
-  // NEW: Planting detection
   if (q.includes('plant') || q.includes('when to plant') || q.includes('planting time') ||
       q.includes('sow') || q.includes('sowing') || q.includes('best time to plant')) {
     return 'planting';

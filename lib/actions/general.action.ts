@@ -28,7 +28,7 @@ function cleanGeminiJson(text: string) {
 
 // 🌾 Build Q&A history from farmer session with financial context
 function buildFarmerQaHistory(messages: any[]) {
-  const pairs: { question: string; answer: string; isFinancial?: boolean; isSoilTest?: boolean }[] = [];
+  const pairs: { question: string; answer: string; isFinancial?: boolean; isSoilTest?: boolean; isDamage?: boolean }[] = [];
 
   if (Array.isArray(messages)) {
     for (let i = 0; i < messages.length; i++) {
@@ -46,18 +46,24 @@ function buildFarmerQaHistory(messages: any[]) {
           question.toLowerCase().includes('ph') ||
           question.toLowerCase().includes('nutrient');
 
+        const isDamage =
+          question.toLowerCase().includes('damaged') ||
+          question.toLowerCase().includes('plants lost') ||
+          question.toLowerCase().includes('beyond recovery');
+
         pairs.push({
           question: question,
           answer: messages[i + 1].content,
           isFinancial,
-          isSoilTest
+          isSoilTest,
+          isDamage
         });
         i++;
       }
     }
   }
 
-  console.log(`🌾 Built ${pairs.length} Q&A pairs from farmer session (${pairs.filter(p => p.isFinancial).length} financial, ${pairs.filter(p => p.isSoilTest).length} soil test)`);
+  console.log(`🌾 Built ${pairs.length} Q&A pairs from farmer session (${pairs.filter(p => p.isFinancial).length} financial, ${pairs.filter(p => p.isSoilTest).length} soil test, ${pairs.filter(p => p.isDamage).length} damage reports)`);
   return pairs;
 }
 
@@ -201,6 +207,7 @@ export async function generateFarmerSessionSummary(params: {
     const qaPairs = buildFarmerQaHistory(messages);
     const financialPairs = qaPairs.filter(p => p.isFinancial);
     const soilTestPairs = qaPairs.filter(p => p.isSoilTest);
+    const damageReports = qaPairs.filter(p => p.isDamage);
 
     if (qaPairs.length === 0) {
       return {
@@ -258,6 +265,14 @@ SOIL TEST SUMMARY:
 - Phosphorus: ${soilTestSummary.phosphorus} ppm (${soilTestSummary.phosphorusRating})
 - Potassium: ${soilTestSummary.potassium} ppm (${soilTestSummary.potassiumRating})
 - Organic Matter: ${soilTestSummary.organicMatter}% (${soilTestSummary.organicMatterRating})
+- Planting Nutrients: ${soilTestSummary.plantingNutrients ? JSON.stringify(soilTestSummary.plantingNutrients) : 'Not specified'}
+- Topdressing Nutrients: ${soilTestSummary.topdressingNutrients ? JSON.stringify(soilTestSummary.topdressingNutrients) : 'Not specified'}
+- Potassium Nutrients: ${soilTestSummary.potassiumNutrients ? JSON.stringify(soilTestSummary.potassiumNutrients) : 'Not specified'}
+` : "";
+
+        const damageContext = session.plantsDamaged ? `
+DAMAGE REPORT:
+- Plants damaged beyond recovery: ${session.plantsDamaged} plants
 ` : "";
 
         const prompt = `
@@ -271,6 +286,7 @@ FARMER DETAILS:
 - Management level: ${session?.managementLevel || "Not specified"}
 
 ${soilContext}
+${damageContext}
 ${financialContext}
 
 SESSION HISTORY (${qaPairs.length} questions):
@@ -284,7 +300,8 @@ INSTRUCTIONS:
 2. Provide 3 follow-up recommendations
 3. Include financial advice based on their questions
 4. If soil test data exists, highlight key findings
-5. Emphasize farming as a BUSINESS - every input should maximize profit
+5. If damage reports exist, acknowledge them and provide recovery advice
+6. Emphasize farming as a BUSINESS - every input should maximize profit
 
 Return as JSON:
 {
@@ -292,6 +309,7 @@ Return as JSON:
   "recommendations": ["string", "string", "string"],
   "financialAdvice": "string",
   "soilTestAdvice": "string",
+  "damageAdvice": "string",
   "topics": ["string"],
   "nextSteps": "string"
 }
@@ -322,6 +340,7 @@ Return as JSON:
         ],
         financialAdvice: grossMargin?.recommendation || "Track all input costs (seeds, fertilizer, labour) to calculate your actual profit margins. Farming is a BUSINESS!",
         soilTestAdvice: soilTestSummary ? `Your soil test from ${soilTestSummary.testDate} shows ${soilTestSummary.phRating} pH and ${soilTestSummary.phosphorusRating} phosphorus.` : "Consider doing a soil test for precise fertilizer recommendations - it can save you up to 30% on fertilizer costs!",
+        damageAdvice: session.plantsDamaged ? `You reported ${session.plantsDamaged} plants damaged beyond recovery. Consider reviewing your pest and disease management strategies.` : "",
         topics: session?.crops || ["general farming"],
         nextSteps: "Continue asking questions about your specific crops to maximize profitability."
       };
@@ -336,9 +355,13 @@ Return as JSON:
       recommendations: summary.recommendations,
       financialAdvice: summary.financialAdvice || null,
       soilTestAdvice: summary.soilTestAdvice || null,
+      damageAdvice: summary.damageAdvice || null,
       topics: summary.topics,
       nextSteps: summary.nextSteps,
       questionCount: qaPairs.length,
+      financialQuestionCount: financialPairs.length,
+      soilTestQuestionCount: soilTestPairs.length,
+      damageReportCount: damageReports.length,
       createdAt: new Date().toISOString(),
       source
     });
@@ -390,27 +413,95 @@ export async function getFarmerSessionById(id: string): Promise<any> {
   }
 }
 
-// 🌾 ENHANCED: Get farmer sessions by user ID
+// 🌾 ENHANCED: Get farmer sessions by user ID - Handles both string and timestamp dates
 export async function getFarmerSessionsByUserId(userId: string): Promise<any[]> {
   if (!userId) {
     console.log("No userId provided, returning empty array");
     return [];
   }
 
+  console.log(`🔍 [DEBUG] Fetching sessions for userId: ${userId}`);
+
   try {
+    // First, get all sessions without orderBy to see what's in the database
+    const sessionsWithoutOrder = await db
+      .collection("farmer_sessions")
+      .where("userId", "==", userId)
+      .get();
+
+    console.log(`🔍 [DEBUG] Total sessions found in DB: ${sessionsWithoutOrder.size}`);
+
+    // Log all sessions found
+    sessionsWithoutOrder.docs.forEach((doc, index) => {
+      const data = doc.data();
+      console.log(`🔍 [DEBUG] Session ${index + 1}:`, {
+        id: doc.id,
+        crops: data.crops,
+        farmerName: data.farmerName,
+        createdAt: data.createdAt,
+        createdAtType: typeof data.createdAt,
+        userId: data.userId
+      });
+    });
+
+    // Convert all sessions to array and sort manually to handle mixed date types
+    let allSessions = sessionsWithoutOrder.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    // Manual sorting to handle both string and timestamp dates
+    allSessions.sort((a, b) => {
+      let dateA: Date;
+      let dateB: Date;
+
+      // Convert a.createdAt to Date
+      if (a.createdAt) {
+        if (a.createdAt.toDate && typeof a.createdAt.toDate === 'function') {
+          // Firestore Timestamp
+          dateA = a.createdAt.toDate();
+        } else if (typeof a.createdAt === 'string') {
+          // String date
+          dateA = new Date(a.createdAt);
+        } else {
+          dateA = new Date(0); // fallback
+        }
+      } else {
+        dateA = new Date(0);
+      }
+
+      // Convert b.createdAt to Date
+      if (b.createdAt) {
+        if (b.createdAt.toDate && typeof b.createdAt.toDate === 'function') {
+          dateB = b.createdAt.toDate();
+        } else if (typeof b.createdAt === 'string') {
+          dateB = new Date(b.createdAt);
+        } else {
+          dateB = new Date(0);
+        }
+      } else {
+        dateB = new Date(0);
+      }
+
+      return dateB.getTime() - dateA.getTime(); // descending order
+    });
+
+    console.log(`🔍 [DEBUG] After manual sort: ${allSessions.length} sessions`);
+    allSessions.forEach((session, index) => {
+      console.log(`🔍 [DEBUG] Sorted session ${index + 1}:`, {
+        id: session.id,
+        crops: session.crops,
+        farmerName: session.farmerName,
+        createdAt: session.createdAt
+      });
+    });
+
+    // Cache the sorted results
     return await CacheManager.getOrSet(
       `user-sessions:${userId}`,
       async () => {
-        const sessions = await db
-          .collection("farmer_sessions")
-          .where("userId", "==", userId)
-          .orderBy("createdAt", "desc")
-          .get();
-
-        return sessions.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        console.log(`🔍 [DEBUG] Cache miss - returning ${allSessions.length} sessions`);
+        return allSessions;
       },
       1800
     );
@@ -467,8 +558,9 @@ export async function saveFarmerQuery(params: {
   chunksUsed?: number;
   isFinancial?: boolean;
   isSoilTest?: boolean;
+  isDamage?: boolean;
 }) {
-  const { sessionId, userId, question, answer, images, ragUsed, chunksUsed, isFinancial, isSoilTest } = params;
+  const { sessionId, userId, question, answer, images, ragUsed, chunksUsed, isFinancial, isSoilTest, isDamage } = params;
 
   try {
     const queryRef = db.collection("farmer_sessions").doc(sessionId).collection("queries").doc();
@@ -484,6 +576,7 @@ export async function saveFarmerQuery(params: {
       chunksUsed: chunksUsed || 0,
       isFinancial: isFinancial || false,
       isSoilTest: isSoilTest || false,
+      isDamage: isDamage || false,
       timestamp: new Date().toISOString()
     });
 
@@ -491,6 +584,7 @@ export async function saveFarmerQuery(params: {
       queryCount: FieldValue.increment(1),
       financialQueryCount: isFinancial ? FieldValue.increment(1) : FieldValue.increment(0),
       soilTestQueryCount: isSoilTest ? FieldValue.increment(1) : FieldValue.increment(0),
+      damageReportCount: isDamage ? FieldValue.increment(1) : FieldValue.increment(0),
       lastQueryAt: new Date().toISOString()
     });
 

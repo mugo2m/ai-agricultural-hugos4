@@ -10,129 +10,66 @@ export interface CountryLanguage {
 export const COUNTRY_LANGUAGE_MAP: Record<string, CountryLanguage> = {
   // ===== EAST AFRICA =====
   kenya: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
-  kikuyu: { code: 'ki', name: 'Kikuyu', ttsSupported: true }, // for internal use
   uganda: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
   tanzania: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
   rwanda: { code: 'fr-FR', name: 'French', ttsSupported: true },
   burundi: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  southsudan: { code: 'en-GB', name: 'English (UK)', ttsSupported: true },
-  ethiopia: { code: 'en-US', name: 'English (US)', ttsSupported: true },
-  somalia: { code: 'ar-SA', name: 'Arabic', ttsSupported: true },
-  djibouti: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  eritrea: { code: 'ar-SA', name: 'Arabic', ttsSupported: true },
+  ethiopia: { code: 'am-ET', name: 'Amharic', ttsSupported: true },
 
   // ===== WEST AFRICA =====
-  nigeria: { code: 'en-GB', name: 'English (UK)', ttsSupported: true },
-  ghana: { code: 'en-GB', name: 'English (UK)', ttsSupported: true },
-  senegal: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  ivorycoast: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  mali: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  burkinafaso: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  niger: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  togo: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  benin: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  guinea: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  liberia: { code: 'en-US', name: 'English (US)', ttsSupported: true },
-  sierraleone: { code: 'en-GB', name: 'English (UK)', ttsSupported: true },
-  gambia: { code: 'en-GB', name: 'English (UK)', ttsSupported: true },
-  capoverde: { code: 'pt-PT', name: 'Portuguese', ttsSupported: true },
-
-  // ===== CENTRAL AFRICA =====
-  cameroon: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  gabon: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  chad: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  car: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  // Equatorial Guinea - Spanish speaking country in Africa
-  equatorialguinea: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  congobrazzaville: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  // DRC - French official, Swahili widely spoken
-  congokinshasa: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  angola: { code: 'pt-PT', name: 'Portuguese', ttsSupported: true },
-  saotome: { code: 'pt-PT', name: 'Portuguese', ttsSupported: true },
-
-  // ===== SOUTHERN AFRICA =====
-  southafrica: { code: 'en-ZA', name: 'English (South Africa)', ttsSupported: true },
-  namibia: { code: 'en-ZA', name: 'English (South Africa)', ttsSupported: true },
-  botswana: { code: 'en-ZA', name: 'English (South Africa)', ttsSupported: true },
-  zimbabwe: { code: 'en-GB', name: 'English (UK)', ttsSupported: true },
-  zambia: { code: 'en-ZM', name: 'English (Zambia)', ttsSupported: true },
-  malawi: { code: 'en-MW', name: 'English (Malawi)', ttsSupported: true },
-  // Mozambique - Portuguese official, Swahili spoken in north
-  mozambique: { code: 'pt-PT', name: 'Portuguese', ttsSupported: true },
-  madagascar: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  // Comoros - French and Swahili
-  comoros: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  mauritius: { code: 'en-MU', name: 'English (Mauritius)', ttsSupported: true },
-  seychelles: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  eswatini: { code: 'en-ZA', name: 'English (South Africa)', ttsSupported: true },
-  lesotho: { code: 'en-ZA', name: 'English (South Africa)', ttsSupported: true },
+  nigeria: { code: 'en-NG', name: 'English (Nigeria)', ttsSupported: true },
 
   // ===== NORTH AFRICA =====
   egypt: { code: 'ar-EG', name: 'Arabic (Egypt)', ttsSupported: true },
-  sudan: { code: 'ar-SA', name: 'Arabic', ttsSupported: true },
-  libya: { code: 'ar-LY', name: 'Arabic (Libya)', ttsSupported: true },
-  tunisia: { code: 'ar-TN', name: 'Arabic (Tunisia)', ttsSupported: true },
-  algeria: { code: 'ar-DZ', name: 'Arabic (Algeria)', ttsSupported: true },
   morocco: { code: 'ar-MA', name: 'Arabic (Morocco)', ttsSupported: true },
-  mauritania: { code: 'ar-MR', name: 'Arabic (Mauritania)', ttsSupported: true },
+  algeria: { code: 'ar-DZ', name: 'Arabic (Algeria)', ttsSupported: true },
+  tunisia: { code: 'ar-TN', name: 'Arabic (Tunisia)', ttsSupported: true },
+  libya: { code: 'ar-LY', name: 'Arabic (Libya)', ttsSupported: true },
+  sudan: { code: 'ar-SA', name: 'Arabic', ttsSupported: true },
 
-  // ===== SPANISH SPEAKING COUNTRIES (Latin America & Spain) =====
-  // North America
-  mexico: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
+  // ===== SOUTH ASIA =====
+  india: { code: 'hi-IN', name: 'Hindi', ttsSupported: true },
+  pakistan: { code: 'ur-PK', name: 'Urdu', ttsSupported: true }, // Keep in map for country lookup
+  bangladesh: { code: 'bn-BD', name: 'Bengali', ttsSupported: true },
 
-  // Central America
-  guatemala: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  honduras: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  elsalvador: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  nicaragua: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  costarica: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  panama: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
+  // ===== EAST ASIA =====
+  china: { code: 'zh-CN', name: 'Chinese (Simplified)', ttsSupported: true },
 
-  // Caribbean
-  cuba: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  dominicanrepublic: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  puertorico: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
+  // ===== SOUTHEAST ASIA =====
+  vietnam: { code: 'vi-VN', name: 'Vietnamese', ttsSupported: true },
+  thailand: { code: 'th-TH', name: 'Thai', ttsSupported: true },
+  indonesia: { code: 'id-ID', name: 'Indonesian', ttsSupported: true },
 
-  // South America
-  colombia: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  venezuela: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  ecuador: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  peru: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  bolivia: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  chile: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  paraguay: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  argentina: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  uruguay: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
+  // ===== MIDDLE EAST =====
+  saudi: { code: 'ar-SA', name: 'Arabic (Saudi Arabia)', ttsSupported: true },
+  uae: { code: 'ar-AE', name: 'Arabic (UAE)', ttsSupported: true },
+  iraq: { code: 'ar-IQ', name: 'Arabic (Iraq)', ttsSupported: true },
+  jordan: { code: 'ar-JO', name: 'Arabic (Jordan)', ttsSupported: true },
+  lebanon: { code: 'ar-LB', name: 'Arabic (Lebanon)', ttsSupported: true },
+  palestine: { code: 'ar-PS', name: 'Arabic (Palestine)', ttsSupported: true },
+  syria: { code: 'ar-SY', name: 'Arabic (Syria)', ttsSupported: true },
+  yemen: { code: 'ar-YE', name: 'Arabic (Yemen)', ttsSupported: true },
+  qatar: { code: 'ar-QA', name: 'Arabic (Qatar)', ttsSupported: true },
+  kuwait: { code: 'ar-KW', name: 'Arabic (Kuwait)', ttsSupported: true },
+  oman: { code: 'ar-OM', name: 'Arabic (Oman)', ttsSupported: true },
+  bahrain: { code: 'ar-BH', name: 'Arabic (Bahrain)', ttsSupported: true },
 
-  // Europe
+  // ===== EUROPE =====
   spain: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-
-  // ===== ADDITIONAL SWAHILI-SPEAKING REGIONS =====
-  // East African Community countries where Swahili is widely spoken
-  rwanda_sw: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
-  burundi_sw: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
-  southsudan_sw: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
-
-  // Southern African countries with Swahili speakers
-  zambia_sw: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
-  malawi_sw: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
-  mozambique_sw: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
-
-  // Central Africa
-  congokinshasa_sw: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
-
-  // Indian Ocean
-  comoros_sw: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
-
-  // Middle East (historical trade communities)
-  oman: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
-  yemen: { code: 'sw-KE', name: 'Swahili', ttsSupported: true },
+  france: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  germany: { code: 'de-DE', name: 'German', ttsSupported: true },
+  italy: { code: 'it-IT', name: 'Italian', ttsSupported: true },
+  netherlands: { code: 'nl-NL', name: 'Dutch', ttsSupported: true },
+  greece: { code: 'el-GR', name: 'Greek', ttsSupported: true },
+  portugal: { code: 'pt-PT', name: 'Portuguese', ttsSupported: true },
+  russia: { code: 'ru-RU', name: 'Russian', ttsSupported: true },
+  ukraine: { code: 'ru-UA', name: 'Russian', ttsSupported: true },
+  belarus: { code: 'ru-BY', name: 'Russian', ttsSupported: true },
+  kazakhstan: { code: 'ru-KZ', name: 'Russian', ttsSupported: true },
+  uk: { code: 'en-GB', name: 'English (UK)', ttsSupported: true },
 
   // ===== WESTERN COUNTRIES =====
   usa: { code: 'en-US', name: 'English (US)', ttsSupported: true },
-  uk: { code: 'en-GB', name: 'English (UK)', ttsSupported: true },
-  europe: { code: 'en-GB', name: 'English (UK)', ttsSupported: true },
-  canada: { code: 'en-CA', name: 'English (Canada)', ttsSupported: true },
   australia: { code: 'en-AU', name: 'English (Australia)', ttsSupported: true }
 };
 
@@ -149,10 +86,37 @@ export function getLanguageNameFromCountry(country: string): string {
   return COUNTRY_LANGUAGE_MAP[country]?.name || 'English (US)';
 }
 
-// Language options for the language bar (SINGLE EXPORT - CORRECTED)
+// Language options for the language bar - URDU REMOVED
 export const LANGUAGE_OPTIONS = [
+  // Original 4
   { code: 'en', label: '🇬🇧 ENGLISH', flag: '🇬🇧', name: 'English' },
   { code: 'fr', label: '🇫🇷 FRANÇAIS', flag: '🇫🇷', name: 'Français' },
   { code: 'es', label: '🇪🇸 ESPAÑOL', flag: '🇪🇸', name: 'Español' },
   { code: 'sw', label: '🇰🇪 KISWAHILI', flag: '🇰🇪', name: 'Kiswahili' },
+
+  // Hindi, Chinese, Arabic
+  { code: 'hi', label: '🇮🇳 हिन्दी', flag: '🇮🇳', name: 'Hindi' },
+  { code: 'zh', label: '🇨🇳 中文', flag: '🇨🇳', name: 'Chinese' },
+  { code: 'ar', label: '🇸🇦 العربية', flag: '🇸🇦', name: 'Arabic' },
+
+  // Portuguese, Russian
+  { code: 'pt', label: '🇵🇹 PORTUGUÊS', flag: '🇵🇹', name: 'Portuguese' },
+  { code: 'ru', label: '🇷🇺 РУССКИЙ', flag: '🇷🇺', name: 'Russian' },
+
+  // German, Italian, Dutch, Greek
+  { code: 'de', label: '🇩🇪 DEUTSCH', flag: '🇩🇪', name: 'German' },
+  { code: 'it', label: '🇮🇹 ITALIANO', flag: '🇮🇹', name: 'Italian' },
+  { code: 'nl', label: '🇳🇱 NEDERLANDS', flag: '🇳🇱', name: 'Dutch' },
+  { code: 'el', label: '🇬🇷 ΕΛΛΗΝΙΚΑ', flag: '🇬🇷', name: 'Greek' },
+
+  // Thai, Vietnamese, Indonesian
+  { code: 'th', label: '🇹🇭 ภาษาไทย', flag: '🇹🇭', name: 'Thai' },
+  { code: 'vi', label: '🇻🇳 TIẾNG VIỆT', flag: '🇻🇳', name: 'Vietnamese' },
+  { code: 'id', label: '🇮🇩 BAHASA INDONESIA', flag: '🇮🇩', name: 'Indonesian' },
+
+  // Amharic
+  { code: 'am', label: '🇪🇹 አማርኛ', flag: '🇪🇹', name: 'Amharic' },
+
+  // Bengali (Urdu removed)
+  { code: 'bn', label: '🇧🇩 বাংলা', flag: '🇧🇩', name: 'Bengali' }
 ];
