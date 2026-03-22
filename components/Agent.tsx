@@ -585,6 +585,7 @@ const Agent = ({
     return safeT('start_voice_session');
   };
 
+  // FIXED: renderRecommendationText - resolves translation keys inside content
   const renderRecommendationText = (item: StructuredItem, idx: number) => {
     const resolvedItem = resolveDeep(item);
     let displayContent = '';
@@ -605,7 +606,19 @@ const Agent = ({
       if (resolvedItem.params?.followUp) parts.push(resolvedItem.params.followUp);
       displayContent = parts.join('\n\n');
     }
+    else if (resolvedItem.params?.content) {
+      // For items with content field (soil_test_grouped, calcitic_lime_grouped, etc.)
+      // Resolve translation keys inside the content
+      let content = resolvedItem.params.content;
+      // Replace {{key}} with translated value
+      content = content.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+        const translated = safeT(key.trim(), resolvedItem.params);
+        return translated !== key.trim() ? translated : match;
+      });
+      displayContent = content;
+    }
     else {
+      // Fallback: try to translate the key itself
       displayContent = safeT(resolvedItem.key, resolvedItem.params);
     }
 
