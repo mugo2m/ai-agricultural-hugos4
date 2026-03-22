@@ -9,13 +9,19 @@ import { calculateGrossMarginFromFarmerData, convertToKg, validateYield, validat
 import { getSpacingOptions } from "@/lib/data/spacing";
 import { getPlantingFertilizersByCrop } from "@/lib/fertilizers/plantingFertilizers";
 import { getTopDressingFertilizersByCrop } from "@/lib/fertilizers/topDressingFertilizers";
-import { getPlantingAdvice, getPlantingAdviceText } from "@/lib/data/plantingDates"; // UPDATED import
+import { getPlantingAdvice, getPlantingAdviceText } from "@/lib/data/plantingDates";
 
 console.log("Farmer Session Generation Route Loaded");
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    // Get language from cookie or body
+    const cookieLanguage = request.cookies.get('preferred-language')?.value;
+    const bodyLanguage = body.language;
+    const userLanguage = bodyLanguage || cookieLanguage || 'en';
+    console.log(`🌐 Generating recommendations in language: ${userLanguage}`);
 
     const {
       farmerName,
@@ -84,7 +90,6 @@ export async function POST(request: NextRequest) {
       recPotassiumFertilizer,
       recPotassiumQuantity,
 
-      // NEW: Nutrient detail fields
       plantingFertilizerNutrients,
       topdressingFertilizerNutrients,
       potassiumFertilizerNutrients,
@@ -101,14 +106,10 @@ export async function POST(request: NextRequest) {
       potassiumFertilizerQuantity: potassiumFertilizerQuantityKg,
 
       calciticLimePricePerBag,
-
-      // NEW: Damage report field (data-only)
       plantsDamaged,
-
       seedCost,
       pricePerUnit,
       priceUnit,
-
       season,
       county,
       acres,
@@ -153,10 +154,7 @@ export async function POST(request: NextRequest) {
     let priceWarnings: string[] = [];
 
     if (validatedYield > 0 && primaryCrop) {
-      // Convert to kg if needed
       const yieldInKg = convertToKg(primaryCrop, validatedYield, yieldUnit || harvestUnit || "kg");
-
-      // Validate against crop-specific ranges
       const yieldValidation = validateYield(primaryCrop, yieldInKg, farmSize);
       if (!yieldValidation.valid && yieldValidation.message) {
         yieldWarnings.push(yieldValidation.message);
@@ -167,9 +165,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (validatedPrice > 0 && primaryCrop) {
-      // Convert to price per kg
       const pricePerKg = convertToKg(primaryCrop, validatedPrice, priceUnit || "kg") / validatedPrice;
-
       const priceValidation = validatePrice(primaryCrop, pricePerKg);
       if (!priceValidation.valid && priceValidation.message) {
         priceWarnings.push(priceValidation.message);
@@ -195,7 +191,6 @@ export async function POST(request: NextRequest) {
           plantsPerAcre: selectedSpacing.plantsPerAcre
         };
 
-        // Validate plant population
         const { validatePlantPopulation } = await import('@/lib/utils');
         const popValidation = validatePlantPopulation(primaryCrop, selectedSpacing.plantsPerAcre);
         if (!popValidation.valid) {
@@ -223,7 +218,6 @@ export async function POST(request: NextRequest) {
           organicMatter: parseFloat(soilTestOM) || 0,
           cec: parseFloat(soilTestCEC) || 0,
 
-          // Add all the rating fields!
           phRating: soilTestPHRating || '',
           phosphorusRating: soilTestPRating || '',
           potassiumRating: soilTestKRating || '',
@@ -244,19 +238,16 @@ export async function POST(request: NextRequest) {
           recPotassiumFertilizer: recPotassiumFertilizer || null,
           recPotassiumQuantity: recPotassiumQuantity ? parseFloat(recPotassiumQuantity) : null,
 
-          // NEW: Nutrient details
           plantingFertilizerNutrients: plantingFertilizerNutrients || null,
           topdressingFertilizerNutrients: topdressingFertilizerNutrients || null,
           potassiumFertilizerNutrients: potassiumFertilizerNutrients || null,
 
-          // Add crop info
           crops: primaryCrop,
           cropAcres: farmSize
         };
 
         soilAnalysis = soilTestInterpreter.interpretSoilTest(soilTestData);
 
-        // AFTER interpretation, add back the original values and ratings
         if (soilAnalysis) {
           soilAnalysis.ph = parseFloat(soilTestPH) || 0;
           soilAnalysis.phosphorus = parseFloat(soilTestP) || 0;
@@ -280,7 +271,6 @@ export async function POST(request: NextRequest) {
           soilAnalysis.organicMatterRating = soilTestOMRating || '';
           soilAnalysis.cecRating = soilTestCECRating || '';
 
-          // NEW: Add nutrient details to soilAnalysis
           soilAnalysis.plantingFertilizerNutrients = plantingFertilizerNutrients || null;
           soilAnalysis.topdressingFertilizerNutrients = topdressingFertilizerNutrients || null;
           soilAnalysis.potassiumFertilizerNutrients = potassiumFertilizerNutrients || null;
@@ -289,7 +279,6 @@ export async function POST(request: NextRequest) {
           soilAnalysis.farmSize = farmSize;
         }
 
-        // Calculate fertilizer plan if we have recommendations
         if (soilTestData.recPlantingFertilizer && plantingFertilizerToUse) {
           fertilizerPlan = fertilizerCalculator.calculateFromRecommendations(
             {
@@ -326,23 +315,11 @@ export async function POST(request: NextRequest) {
     // ========== GROSS MARGIN CALCULATION ==========
     let grossMargin = null;
     try {
-      // Get crop-specific defaults
       const getCropDefaultYield = (crop: string): number => {
         const defaults: Record<string, number> = {
-          maize: 27, // bags
-          beans: 12,
-          rice: 30,
-          onions: 80,
-          tomatoes: 150,
-          potatoes: 120,
-          cabbages: 100,
-          mangoes: 150,
-          avocados: 80,
-          bananas: 60,
-          coffee: 20,
-          tea: 25,
-          macadamia: 40,
-          cocoa: 8
+          maize: 27, beans: 12, rice: 30, onions: 80, tomatoes: 150,
+          potatoes: 120, cabbages: 100, mangoes: 150, avocados: 80,
+          bananas: 60, coffee: 20, tea: 25, macadamia: 40, cocoa: 8
         };
         return defaults[crop.toLowerCase()] || 27;
       };
@@ -378,7 +355,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ========== GENERATE RECOMMENDATIONS ==========
-    const recommendationsOutput = generateRecommendations({
+    const recommendationsOutput = await generateRecommendations({
       hasSoilTest: hasDoneSoilTest === "Yes",
       soilAnalysis,
       fertilizerPlan,
@@ -398,7 +375,8 @@ export async function POST(request: NextRequest) {
         country: country || 'kenya',
         limePricePerBag: calciticLimePricePerBag ? parseFloat(calciticLimePricePerBag) : 300,
         recCalciticLime: recCalciticLime ? parseFloat(recCalciticLime) : 0,
-        plantsDamaged: plantsDamaged ? parseInt(plantsDamaged) : null // NEW: Data-only field
+        plantsDamaged: plantsDamaged ? parseInt(plantsDamaged) : null,
+        language: userLanguage
       }
     });
 
@@ -409,6 +387,7 @@ export async function POST(request: NextRequest) {
     const farmerSession = {
       id: sessionId,
       userId: userid,
+      language: userLanguage,
       farmerName,
       phoneNumber,
       county,
@@ -424,8 +403,8 @@ export async function POST(request: NextRequest) {
       cropVarieties,
       cropAcres: farmSize,
       plantingDate,
-      plantingAdvice,           // NEW: Store planting advice
-      plantingAdviceText,       // NEW: Store planting advice text
+      plantingAdvice,
+      plantingAdviceText,
       seedSource,
       spacing,
       spacingInfo,
@@ -438,7 +417,6 @@ export async function POST(request: NextRequest) {
         type: plantingFertilizerType || null,
         quantity: plantingFertilizerQuantityKg ? parseFloat(plantingFertilizerQuantityKg) : null,
         cost: plantingFertilizerCost ? parseFloat(plantingFertilizerCost) : null,
-        // NEW: Nutrient details
         nutrients: plantingFertilizerNutrients || null
       },
       topdressingFertilizer: {
@@ -446,7 +424,6 @@ export async function POST(request: NextRequest) {
         type: topdressingFertilizerType || null,
         quantity: topdressingFertilizerQuantityKg ? parseFloat(topdressingFertilizerQuantityKg) : null,
         cost: topdressingFertilizerCost ? parseFloat(topdressingFertilizerCost) : null,
-        // NEW: Nutrient details
         nutrients: topdressingFertilizerNutrients || null
       },
       potassiumFertilizer: {
@@ -454,14 +431,12 @@ export async function POST(request: NextRequest) {
         type: potassiumFertilizerToUse || null,
         quantity: potassiumFertilizerQuantityKg ? parseFloat(potassiumFertilizerQuantityKg) : null,
         cost: potassiumFertilizerCost ? parseFloat(potassiumFertilizerCost) : null,
-        // NEW: Nutrient details
         nutrients: potassiumFertilizerNutrients || null
       },
 
       commonPests: commonPests ? commonPests.split(',').map((p: string) => p.trim()) : [],
       commonDiseases: commonDiseases ? commonDiseases.split(',').map((d: string) => d.trim()) : [],
 
-      // NEW: Damage report (data-only - not used in calculations)
       plantsDamaged: plantsDamaged ? parseInt(plantsDamaged) : null,
 
       yieldData: {
@@ -520,7 +495,6 @@ export async function POST(request: NextRequest) {
         recTopdressingQuantity: recTopdressingQuantity ? parseFloat(recTopdressingQuantity) : null,
         recPotassiumFertilizer: recPotassiumFertilizer || null,
         recPotassiumQuantity: recPotassiumQuantity ? parseFloat(recPotassiumQuantity) : null,
-        // NEW: Nutrient details in soil test
         plantingFertilizerNutrients: plantingFertilizerNutrients || null,
         topdressingFertilizerNutrients: topdressingFertilizerNutrients || null,
         potassiumFertilizerNutrients: potassiumFertilizerNutrients || null,
@@ -541,11 +515,9 @@ export async function POST(request: NextRequest) {
       useCertifiedSeed: useCertifiedSeed === "yes",
       smartphone: false,
 
-      // Legacy string fields (for backward compatibility)
       recommendations: recommendationsOutput.list,
       financialAdvice: recommendationsOutput.financialAdvice,
 
-      // NEW structured fields for i18n
       structuredList: recommendationsOutput.structuredList,
       structuredFinancialAdvice: recommendationsOutput.structuredFinancialAdvice,
 
@@ -564,12 +536,10 @@ export async function POST(request: NextRequest) {
     };
 
     await sessionRef.set(farmerSession);
-    console.log(`Saved farmer session ${sessionId} for crop ${primaryCrop} in ${country}`);
+    console.log(`Saved farmer session ${sessionId} for crop ${primaryCrop} in ${country} with language ${userLanguage}`);
 
-    // ========== RETURN RESPONSE ==========
     return NextResponse.json({
       success: true,
-      // Send both legacy and new fields in the response
       recommendations: recommendationsOutput.list,
       structuredList: recommendationsOutput.structuredList,
       structuredFinancialAdvice: recommendationsOutput.structuredFinancialAdvice,
@@ -581,7 +551,7 @@ export async function POST(request: NextRequest) {
         price: priceWarnings,
         spacing: spacingWarning
       },
-      plantingAdvice,           // NEW: Include in response
+      plantingAdvice,
       welcomeMessage: `Welcome ${farmerName || "Farmer"}! I've prepared your recommendations for ${primaryCrop}.`
     }, { status: 200 });
 

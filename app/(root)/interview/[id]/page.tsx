@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 import Agent from "@/components/Agent";
 import { getRandomInterviewCover } from "@/lib/utils";
@@ -19,14 +20,20 @@ const InterviewDetails = async ({ params }: RouteParams) => {
   const user = await getCurrentUser();
   console.log("Current user:", user?.id);
 
-  // Get farmer session instead of interview
-  const session = await getFarmerSessionById(id);
+  // Get language from cookie
+  const cookieStore = await cookies();
+  const language = cookieStore.get('preferred-language')?.value || 'en';
+  console.log("🌐 Language from cookie:", language);
+
+  // Get farmer session with language preference
+  const session = await getFarmerSessionById(id, language);
   console.log("Farmer session data:", {
     exists: !!session,
     crops: session?.crops,
     county: session?.county,
     acres: session?.acres,
-    recommendations: session?.recommendations?.length
+    recommendations: session?.recommendations?.length,
+    language: session?.language
   });
 
   if (!session) {
@@ -34,7 +41,6 @@ const InterviewDetails = async ({ params }: RouteParams) => {
     redirect("/");
   }
 
-  // ✅ FIX: Safely handle feedback - don't throw error if function returns null
   let feedback = null;
   try {
     if (user?.id) {
@@ -42,7 +48,6 @@ const InterviewDetails = async ({ params }: RouteParams) => {
         interviewId: id,
         userId: user.id,
       });
-      // Check if it's actually a function result (could be null or undefined)
       if (feedbackResult && typeof feedbackResult === 'object') {
         feedback = feedbackResult;
       }
@@ -54,14 +59,8 @@ const InterviewDetails = async ({ params }: RouteParams) => {
 
   console.log("Feedback exists:", !!feedback);
 
-  // Create welcome message from recommendations
-  const welcomeMessages = session.recommendations || [
-    `Welcome! I see you grow ${session.crops?.join(", ")} in ${session.county}. Ask me anything about your farm!`
-  ];
-
   return (
     <>
-      {/* Farm Header - Green themed */}
       <div className="flex flex-row gap-4 justify-between bg-green-50 p-4 rounded-xl mb-4">
         <div className="flex flex-row gap-4 items-center max-sm:flex-col">
           <div className="flex flex-row gap-4 items-center">
@@ -79,7 +78,6 @@ const InterviewDetails = async ({ params }: RouteParams) => {
             </div>
           </div>
 
-          {/* Farm Stats */}
           <div className="flex gap-3 ml-4">
             {session.acres && (
               <span className="bg-white px-3 py-1 rounded-full text-sm">
@@ -101,7 +99,6 @@ const InterviewDetails = async ({ params }: RouteParams) => {
         </div>
       </div>
 
-      {/* Agent Component - Now configured for farmer Q&A */}
       <Agent
         userName={user?.name || "Farmer"}
         userId={user?.id}
@@ -113,4 +110,4 @@ const InterviewDetails = async ({ params }: RouteParams) => {
   );
 };
 
-export default InterviewDetails; 
+export default InterviewDetails;

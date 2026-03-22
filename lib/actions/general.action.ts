@@ -378,8 +378,8 @@ Return as JSON:
   }
 }
 
-// 🌾 FIXED: Get farmer session by ID with caching - PRESERVES real gross margin data
-export async function getFarmerSessionById(id: string): Promise<any> {
+// 🌾 UPDATED: Get farmer session by ID with language support
+export async function getFarmerSessionById(id: string, language: string = 'en'): Promise<any> {
   if (!id || typeof id !== 'string' || id.trim() === '') {
     console.error("Invalid session ID provided:", id);
     return null;
@@ -387,7 +387,7 @@ export async function getFarmerSessionById(id: string): Promise<any> {
 
   try {
     const session = await CacheManager.getOrSet(
-      `session:${id}`,
+      `session:${id}:lang:${language}`,
       async () => {
         const sessionDoc = await db.collection("farmer_sessions").doc(id).get();
         const data = sessionDoc.data();
@@ -399,6 +399,11 @@ export async function getFarmerSessionById(id: string): Promise<any> {
           data.grossMarginAnalysis = calculateGrossMargin(data);
         } else if (data && data.grossMarginAnalysis) {
           console.log("✅ Using existing gross margin data from farmer's actual inputs");
+        }
+
+        // Add language to the session data for use in the frontend
+        if (data) {
+          data.language = language;
         }
 
         return data || null;

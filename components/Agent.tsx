@@ -46,8 +46,20 @@ const Agent = ({
   interviewId,
   sessionData
 }: AgentProps) => {
-  const { t, ready, isOnline } = useOfflineTranslation();
+  const { t, ready, isOnline, i18n } = useOfflineTranslation();
   const { currency } = useCurrency();
+  const [currentLang, setCurrentLang] = useState<string>('en');
+
+  // Sync language from session data
+  useEffect(() => {
+    const sessionLang = sessionData?.language;
+    if (sessionLang && sessionLang !== i18n.language) {
+      console.log(`🌐 Syncing i18n language to: ${sessionLang}`);
+      i18n.changeLanguage(sessionLang);
+      setCurrentLang(sessionLang);
+      localStorage.setItem('preferred-language', sessionLang);
+    }
+  }, [sessionData, i18n]);
 
   const safeT = (key: string, params?: any): string => {
     try {

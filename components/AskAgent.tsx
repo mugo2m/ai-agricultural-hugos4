@@ -1,14 +1,14 @@
-// components/AskAgent.tsx - Clean version with requested sections removed
+// components/AskAgent.tsx - Clean version with infinite loop fix
 "use client";
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { useOfflineTranslation } from '@/lib/hooks/useOfflineTranslation'; // ✅ Changed import
+import { useOfflineTranslation } from '@/lib/hooks/useOfflineTranslation';
 import { VoiceToggle } from "@/components/VoiceToggle";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { OfflineBanner } from "@/components/OfflineBanner"; // ✅ Add offline banner
+import { OfflineBanner } from "@/components/OfflineBanner";
 import {
   Send,
   Loader2,
@@ -144,6 +144,7 @@ const AskAgent = ({
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const nameUsageCountRef = useRef(0);
+  const welcomeSetRef = useRef(false); // ✅ NEW: Track if welcome message has been set
 
   // Derived values (not hooks - safe to use here)
   const farmerName = userName;
@@ -218,8 +219,12 @@ const AskAgent = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingContent]);
 
-  // Initialize speech recognition with dynamic language
+  // Initialize speech recognition and set welcome message - ✅ FIXED: only runs once
   useEffect(() => {
+    // Skip if welcome message already set
+    if (welcomeSetRef.current) return;
+
+    // Initialize speech recognition
     if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
@@ -238,6 +243,7 @@ const AskAgent = ({
       console.log(`Speech recognition initialized with language: ${recognitionLanguage}`);
     }
 
+    // Set welcome message only once
     const greetings = [
       safeT('greeting_1'),
       safeT('greeting_2'),
@@ -271,6 +277,9 @@ const AskAgent = ({
       timestamp: Date.now()
     }]);
 
+    welcomeSetRef.current = true; // ✅ Mark as set
+
+    // Cleanup function
     return () => {
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch (error) {}
@@ -282,7 +291,7 @@ const AskAgent = ({
         window.speechSynthesis.cancel();
       }
     };
-  }, [farmerName, sessionData, recognitionLanguage, safeT]);
+  }, [sessionData, recognitionLanguage]); // ✅ Only run when sessionData or recognitionLanguage changes
 
   // ✅ NOW you can have conditional returns after ALL hooks
   if (!ready) {
@@ -368,7 +377,7 @@ const AskAgent = ({
   const prepareForSpeech = (text: string): string => {
     let speechText = cleanText(text);
 
-    // Currency replacements (same as before)
+    // Currency replacements
     switch(currency.code) {
       case 'ZAR':
         speechText = speechText.replace(/R\s/g, 'South African Rand ');
@@ -433,7 +442,7 @@ const AskAgent = ({
     return speechText;
   };
 
-  // Synchronized streaming function - UPDATED with slower rate (0.9) and female-only voices
+  // Synchronized streaming function
   const streamAnswerWithVoice = async (fullText: string, isFinancial: boolean = false) => {
     if (!voiceEnabled || !window.speechSynthesis) {
       setMessages(prev => [...prev, {
@@ -454,34 +463,25 @@ const AskAgent = ({
     wordsRef.current = words;
 
     const utterance = new SpeechSynthesisUtterance(speechText);
-    utterance.rate = 0.9; // ✅ SLOWER for farmers (was 1.0)
+    utterance.rate = 0.9;
     utterance.pitch = 1.1;
     utterance.volume = 1.0;
     utterance.lang = recognitionLanguage;
 
-    // Comprehensive female voice names (all languages, no male voices)
+    // Comprehensive female voice names
     const femaleVoiceNames = [
-      // English voices
       'Samantha', 'Victoria', 'Karen', 'Moira', 'Tessa', 'Veena', 'Nicky',
       'Catherine', 'Fiona', 'Martha', 'Naomi', 'Sangeeta', 'Rishi', 'Lekha',
       'Google UK English Female', 'Microsoft Jenny', 'Microsoft Aria',
       'Microsoft Sonia', 'Microsoft Zira', 'Microsoft Libby', 'Microsoft Heidi',
       'Microsoft Hazel', 'Microsoft Susan', 'Microsoft Kate', 'Microsoft Helen',
       'Google Deutsch Female', 'Google français Female', 'Google español Female',
-
-      // French voices
       'Audrey', 'Amélie', 'Chloé', 'Margaux', 'Stéphanie', 'Cécile',
       'Julie', 'Nathalie', 'Sandrine', 'Valérie', 'Véronique',
-
-      // Spanish voices
       'Mónica', 'Carmen', 'Paloma', 'Lucia', 'Sofia', 'Elena',
       'Ana', 'Isabel', 'Laura', 'María', 'Patricia', 'Rosa',
-
-      // Swahili voices
       'Rafiki', 'Zawadi', 'Aisha', 'Makena', 'Subira', 'Asha',
       'Fatuma', 'Halima', 'Jamila', 'Khadija', 'Mariam', 'Salma',
-
-      // Additional international female voices
       'Ivy', 'Joanna', 'Kendra', 'Kimberly', 'Salli', 'Amy', 'Emma',
       'Marlene', 'Vicki', 'Katja', 'Mizuki', 'Seoyeon', 'Zhiyu',
       'Aditi', 'Lekha', 'Nora', 'Liv', 'Ewa', 'Maja', 'Gwyneth',
@@ -493,12 +493,10 @@ const AskAgent = ({
     let preferredVoice;
 
     if (matchingVoices.length > 0) {
-      // First try to find a female voice in the matching language
       preferredVoice = matchingVoices.find(v =>
         femaleVoiceNames.some(name => v.name.includes(name))
       );
 
-      // If no female voice found in matching language, take any voice that is NOT clearly male
       if (!preferredVoice) {
         const malePatterns = ['Daniel', 'James', 'David', 'John', 'Paul', 'Mark', 'Michael', 'Alex', 'Thomas', 'Robert', 'Richard'];
         preferredVoice = matchingVoices.find(v =>
@@ -507,7 +505,6 @@ const AskAgent = ({
         console.log('No female voice found for language, using non-male voice:', preferredVoice.name);
       }
     } else {
-      // Fallback to any voice, preferring female
       preferredVoice = voices.find(v =>
         femaleVoiceNames.some(name => v.name.includes(name))
       ) || voices.find(v => !v.name.includes('Daniel') && !v.name.includes('James') && !v.name.includes('David'));
@@ -608,7 +605,6 @@ const AskAgent = ({
     return obj;
   };
 
-  // ✅ UPDATED submitQuestion with better error handling
   const submitQuestion = async () => {
     if (!userTranscript.trim()) {
       toast.warning(safeT('type_or_speak_question'));
@@ -645,9 +641,6 @@ const AskAgent = ({
       question.toLowerCase().includes('investment');
 
     try {
-      console.log("📤 Sending question to API:", '/api/farmer/query');
-      console.log("📦 Request payload:", { question, userId, sessionId });
-
       const enhancedSessionData = {
         ...sessionData,
         isFinancialQuestion,
@@ -672,23 +665,15 @@ const AskAgent = ({
         })
       });
 
-      console.log("📥 Response status:", response.status);
-      console.log("📥 Response headers:", Object.fromEntries(response.headers.entries()));
-
-      // Check if response is OK
       if (!response.ok) {
         const errorText = await response.text();
         console.error("❌ API error response:", errorText.substring(0, 500));
-
-        // Check if it's HTML
         if (errorText.trim().startsWith('<!DOCTYPE')) {
           throw new Error("API endpoint returned HTML. The route might not be properly registered.");
         }
-
         throw new Error(`Server error: ${response.status}`);
       }
 
-      // Check content type
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
@@ -697,7 +682,6 @@ const AskAgent = ({
       }
 
       const data = await response.json();
-      console.log("✅ API success:", data);
 
       if (data.success && data.answer) {
         let answerText: string;
@@ -727,12 +711,8 @@ const AskAgent = ({
 
     } catch (error) {
       console.error("❌ Query error:", error);
-
-      // Show user-friendly error message
       const errorMessage = error instanceof Error ? error.message : 'Failed to process question';
       toast.error(errorMessage);
-
-      // Add error message to chat
       setMessages(prev => [...prev, {
         role: "assistant",
         content: `Sorry, I couldn't process your question. ${errorMessage}`,
@@ -780,7 +760,6 @@ const AskAgent = ({
     ? `${currentWordIndex}/${wordsRef.current.length} ${safeT('words')}`
     : '';
 
-  // ✅ FIXED: Ensure all text values are strings, not Promises
   const financialQuickQuestions = [
     {
       text: safeT('profit_margin'),
@@ -837,43 +816,15 @@ const AskAgent = ({
     }
   ];
 
-  // Handle grouped recommendations - ENHANCED for all 18 languages
-  // FIXED: Convert all t() results to strings to prevent [object Promise]
+  // Handle grouped recommendations
   const renderRecommendationText = (item: StructuredItem, idx: number) => {
-    // Resolve any nested translation keys inside params
     const resolvedParams = resolveNestedTranslations(item.params || {});
 
-    // Special handling for gap_grouped which contains a nested gapKey
     if (item.key === 'gap_grouped' && resolvedParams.gapKey) {
       const gapText = safeT(resolvedParams.gapKey, {});
       resolvedParams.gapText = gapText;
     }
 
-    // Special handling for disease_management_grouped which contains nested content
-    if (item.key === 'disease_management_grouped' && resolvedParams.content) {
-      // Ensure text is a string, not a Promise
-      const text = safeT(item.key, resolvedParams);
-      return (
-        <div key={idx} className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-white">
-          <span className="font-bold mr-2">{idx + 1}.</span>
-          <span className="text-sm whitespace-pre-line">{text}</span>
-        </div>
-      );
-    }
-
-    // Special handling for pest_management_grouped which contains nested content
-    if (item.key === 'pest_management_grouped' && resolvedParams.content) {
-      // Ensure text is a string, not a Promise
-      const text = safeT(item.key, resolvedParams);
-      return (
-        <div key={idx} className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-white">
-          <span className="font-bold mr-2">{idx + 1}.</span>
-          <span className="text-sm whitespace-pre-line">{text}</span>
-        </div>
-      );
-    }
-
-    // For all other items, ensure text is a string
     const text = safeT(item.key, resolvedParams);
 
     return (
@@ -886,7 +837,7 @@ const AskAgent = ({
 
   return (
     <div className="flex flex-col gap-6 p-4 min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl">
-      {/* Offline Status Banner (shows only when offline) */}
+      {/* Offline Status Banner */}
       {!isOnline && (
         <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-3 flex items-center gap-2">
           <WifiOff className="w-5 h-5 text-yellow-600" />
@@ -963,7 +914,7 @@ const AskAgent = ({
         <div className="mt-1 text-xs text-white/60 text-right">{safeT('language')}: {recognitionLanguage}</div>
       </div>
 
-      {/* Recommendations Panel - Direct access, no extra sections */}
+      {/* Recommendations Panel */}
       {showRecommendations && (
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-5 shadow-xl border-2 border-white/30">
           <h3 className="font-bold text-lg text-white flex items-center gap-2 mb-3">
@@ -1022,7 +973,7 @@ const AskAgent = ({
         </button>
       </div>
 
-      {/* Messages Area - Expanded */}
+      {/* Messages Area */}
       <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-xl border-2 border-emerald-200 min-h-[400px] max-h-[600px] overflow-y-auto">
         <div className="space-y-4">
           {messages.map((msg, index) => (
@@ -1178,7 +1129,7 @@ const AskAgent = ({
         )}
       </div>
 
-      {/* Offline Banner (global) */}
+      {/* Offline Banner */}
       <OfflineBanner />
     </div>
   );
