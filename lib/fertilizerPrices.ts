@@ -430,8 +430,8 @@ export function calculateTotalCost(recommendations: any[]): number {
 
     rec.purchaseRecommendation = {
       exactNeeded: `${rec.amountKg}kg (${bagsNeeded} bag(s) of 50kg)`,
-      bulkOption: bulkPrice ? `Consider buying ${bulkBagsNeeded} bags with neighbors to save` : undefined,
-      costBreakdown: `Cost: Ksh ${cost.toLocaleString()}`
+      bulkOption: bulkPrice ? `Consider buying ${bulkBagsNeeded} bags with neighbors to save` : undefined
+      // Removed hardcoded costBreakdown string with "Ksh". Caller should format using currency system.
     };
 
     return total + cost;

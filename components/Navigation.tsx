@@ -58,7 +58,7 @@ export default function Navigation() {
     <nav className="bg-white border-b border-gray-200 py-3 px-6">
       <div className="container mx-auto flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/" className="text-xl font-bold text-green-700">
+          <Link href="/" className="text-xl font-bold text-blue-900">
             🌾 {safeT('app_name')}
           </Link>
           <div className="flex gap-4">

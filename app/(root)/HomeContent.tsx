@@ -254,24 +254,24 @@ export default function HomeContent({ user, farmerSessions, recentQueries }: Hom
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* How It Works – Text color fixed to dark blue */}
       <section className="flex flex-col gap-6 mt-8">
-        <h2 className="text-2xl font-semibold">🎯 {safeT('how_it_works')}</h2>
+        <h2 className="text-2xl font-semibold text-blue-900">🎯 {safeT('how_it_works')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-5 rounded-lg border border-gray-200">
             <div className="text-3xl mb-2">1️⃣</div>
-            <h3 className="font-semibold mb-1">{safeT('step1_title')}</h3>
-            <p className="text-sm text-gray-600">{safeT('step1_desc')}</p>
+            <h3 className="font-semibold text-blue-800 mb-1">{safeT('step1_title')}</h3>
+            <p className="text-sm text-blue-700">{safeT('step1_desc')}</p>
           </div>
           <div className="bg-white p-5 rounded-lg border border-gray-200">
             <div className="text-3xl mb-2">2️⃣</div>
-            <h3 className="font-semibold mb-1">{safeT('step2_title')}</h3>
-            <p className="text-sm text-gray-600">{safeT('step2_desc')}</p>
+            <h3 className="font-semibold text-blue-800 mb-1">{safeT('step2_title')}</h3>
+            <p className="text-sm text-blue-700">{safeT('step2_desc')}</p>
           </div>
           <div className="bg-white p-5 rounded-lg border border-gray-200">
             <div className="text-3xl mb-2">3️⃣</div>
-            <h3 className="font-semibold mb-1">{safeT('step3_title')}</h3>
-            <p className="text-sm text-gray-600">{safeT('step3_desc')}</p>
+            <h3 className="font-semibold text-blue-800 mb-1">{safeT('step3_title')}</h3>
+            <p className="text-sm text-blue-700">{safeT('step3_desc')}</p>
           </div>
         </div>
       </section>

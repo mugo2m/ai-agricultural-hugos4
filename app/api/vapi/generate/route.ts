@@ -13,11 +13,68 @@ import { getPlantingAdvice, getPlantingAdviceText } from "@/lib/data/plantingDat
 
 console.log("Farmer Session Generation Route Loaded");
 
+// ========== COMPREHENSIVE DEFAULT YIELDS (bags per acre for common units) ==========
+const defaultYieldsBags: Record<string, number> = {
+  // Cereals & grains
+  maize: 27, rice: 30, wheat: 25, barley: 25, sorghum: 20, millet: 18,
+  "finger millet": 18, teff: 15, triticale: 25, oats: 20, buckwheat: 15,
+  quinoa: 18, fonio: 12, spelt: 20, kamut: 20, "amaranth grain": 12,
+  // Pulses & legumes
+  beans: 12, cowpeas: 10, "green grams": 10, groundnuts: 15, "soya beans": 15,
+  pigeonpeas: 12, bambaranuts: 10, chickpea: 10, lentil: 10, "faba bean": 12,
+  peanut: 15,
+  // Root & tuber crops (bags of 50kg)
+  cassava: 120, "sweet potatoes": 100, "irish potatoes": 100, yams: 80, taro: 80,
+  ginger: 60, turmeric: 50, horseradish: 40, parsnip: 60, turnip: 60, rutabaga: 60,
+  // Vegetables (90kg bags for heavy vegetables, 50kg for leafy)
+  tomatoes: 150, onions: 80, carrots: 100, cabbages: 100, kales: 80,
+  capsicums: 80, chillies: 60, brinjals: 80, "french beans": 50, "garden peas": 40,
+  spinach: 80, okra: 70, lettuce: 80, broccoli: 60, cauliflower: 60,
+  celery: 80, leeks: 80, beetroot: 80, radish: 80, pumpkin: 100,
+  courgettes: 80, cucumbers: 100, "pumpkin leaves": 80, "sweet potato leaves": 80,
+  "ethiopian kale": 80, "jute mallow": 60, "spider plant": 60, "african nightshade": 50,
+  amaranth: 40, arugula: 50, asparagus: 30, artichoke: 50, rhubarb: 80,
+  wasabi: 50, "bok choy": 80, "collard greens": 80, "mustard greens": 60,
+  "swiss chard": 80, radicchio: 60, escarole: 60, frisee: 60, "turnip greens": 60,
+  // Fruits (90kg bags)
+  bananas: 60, mangoes: 80, avocados: 20, oranges: 100, pineapples: 200,
+  watermelons: 150, pawpaws: 100, "passion fruit": 80, grapefruit: 100, lemons: 100,
+  limes: 80, guava: 80, jackfruit: 50, breadfruit: 50, pomegranate: 60,
+  "star fruit": 80, coconut: 30, cashew: 20, macadamia: 40, fig: 60,
+  "date palm": 50, mulberry: 40, lychee: 50, persimmon: 60, gooseberry: 40,
+  currant: 30, elderberry: 30, rambutan: 50, durian: 80, mangosteen: 40,
+  longan: 50, marula: 40,
+  // Cash crops (90kg bags for coffee/tea, etc.)
+  coffee: 20, tea: 25, cocoa: 8, cotton: 20, sunflower: 15, simsim: 8,
+  sugarcane: 400, tobacco: 20, sisal: 50, pyrethrum: 10, "oil palm": 80,
+  rubber: 5,
+  // Herbs & spices (50kg bags)
+  vanilla: 8, "black pepper": 15, cardamom: 10, cinnamon: 15, cloves: 8,
+  coriander: 10, basil: 20, mint: 20, rosemary: 20, thyme: 20, oregano: 20,
+  sage: 20, dill: 10, fennel: 20, lavender: 10, chamomile: 10, echinacea: 10,
+  ginseng: 8, goldenseal: 8, "stinging nettle": 50, moringa: 50, stevia: 10,
+  fenugreek: 8, cumin: 5, caraway: 5, anise: 5, lovage: 20, marjoram: 20,
+  tarragon: 20, sorrel: 20, chervil: 20, savory: 20, calendula: 10, nasturtium: 20,
+  borage: 20, "st. john's wort": 10, valerian: 10,
+  // Forage grasses (tons, not bags – we'll treat as 100kg bags for simplicity)
+  brachiaria: 100, "buffel grass": 60, "guinea grass": 80, "italian ryegrass": 80,
+  "napier grass": 200, "napier hybrid": 250, "orchard grass": 80, "rhodes grass": 80,
+  "timothy grass": 80, "forage sorghum": 150, leucaena: 80, calliandra: 80,
+  sesbania: 80, cenchrus: 60,
+  // Other
+  bamboo: 50, "aloe vera": 100, "oyster nut": 20, watercress: 50, ramie: 30,
+  flax: 10, hemp: 20, jute: 20, kenaf: 20, "slender leaf": 40
+};
+
+function getCropDefaultYield(crop: string): number {
+  const key = crop.toLowerCase();
+  return defaultYieldsBags[key] || 20;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Get language from cookie or body
     const cookieLanguage = request.cookies.get('preferred-language')?.value;
     const bodyLanguage = body.language;
     const userLanguage = bodyLanguage || cookieLanguage || 'en';
@@ -83,6 +140,7 @@ export async function POST(request: NextRequest) {
 
       targetYield,
       recCalciticLime,
+      recDolomiticLime,           // NEW
       recPlantingFertilizer,
       recPlantingQuantity,
       recTopdressingFertilizer,
@@ -106,6 +164,7 @@ export async function POST(request: NextRequest) {
       potassiumFertilizerQuantity: potassiumFertilizerQuantityKg,
 
       calciticLimePricePerBag,
+      dolomiticLimePricePerBag,   // NEW
       plantsDamaged,
       seedCost,
       pricePerUnit,
@@ -119,7 +178,12 @@ export async function POST(request: NextRequest) {
       useCertifiedSeed,
       seedQuantity,
       userid,
-      country
+      country,
+
+      deficiencySymptoms,
+      deficiencyLocation,
+
+      wantsNutritionBenefits,     // NEW
     } = body;
 
     if (!crops || !county || !userid) {
@@ -140,10 +204,8 @@ export async function POST(request: NextRequest) {
     if (plantingDate && primaryCrop && country) {
       const advice = getPlantingAdvice(primaryCrop, country, county, plantingDate);
       const adviceText = getPlantingAdviceText(primaryCrop, country, county, plantingDate);
-
       plantingAdvice = advice;
       plantingAdviceText = adviceText;
-
       console.log(`🌱 Planting advice for ${primaryCrop} in ${country}/${county}: ${advice}`);
     }
 
@@ -217,7 +279,6 @@ export async function POST(request: NextRequest) {
           organicCarbon: parseFloat(soilTestOC) || 0,
           organicMatter: parseFloat(soilTestOM) || 0,
           cec: parseFloat(soilTestCEC) || 0,
-
           phRating: soilTestPHRating || '',
           phosphorusRating: soilTestPRating || '',
           potassiumRating: soilTestKRating || '',
@@ -228,7 +289,6 @@ export async function POST(request: NextRequest) {
           organicCarbonRating: soilTestOCRating || '',
           organicMatterRating: soilTestOMRating || '',
           cecRating: soilTestCECRating || '',
-
           targetYield: targetYield ? parseFloat(targetYield) : null,
           recCalciticLime: recCalciticLime ? parseFloat(recCalciticLime) : null,
           recPlantingFertilizer: recPlantingFertilizer || null,
@@ -237,11 +297,9 @@ export async function POST(request: NextRequest) {
           recTopdressingQuantity: recTopdressingQuantity ? parseFloat(recTopdressingQuantity) : null,
           recPotassiumFertilizer: recPotassiumFertilizer || null,
           recPotassiumQuantity: recPotassiumQuantity ? parseFloat(recPotassiumQuantity) : null,
-
           plantingFertilizerNutrients: plantingFertilizerNutrients || null,
           topdressingFertilizerNutrients: topdressingFertilizerNutrients || null,
           potassiumFertilizerNutrients: potassiumFertilizerNutrients || null,
-
           crops: primaryCrop,
           cropAcres: farmSize
         };
@@ -274,7 +332,6 @@ export async function POST(request: NextRequest) {
           soilAnalysis.plantingFertilizerNutrients = plantingFertilizerNutrients || null;
           soilAnalysis.topdressingFertilizerNutrients = topdressingFertilizerNutrients || null;
           soilAnalysis.potassiumFertilizerNutrients = potassiumFertilizerNutrients || null;
-
           soilAnalysis.crop = primaryCrop;
           soilAnalysis.farmSize = farmSize;
         }
@@ -315,19 +372,11 @@ export async function POST(request: NextRequest) {
     // ========== GROSS MARGIN CALCULATION ==========
     let grossMargin = null;
     try {
-      const getCropDefaultYield = (crop: string): number => {
-        const defaults: Record<string, number> = {
-          maize: 27, beans: 12, rice: 30, onions: 80, tomatoes: 150,
-          potatoes: 120, cabbages: 100, mangoes: 150, avocados: 80,
-          bananas: 60, coffee: 20, tea: 25, macadamia: 40, cocoa: 8
-        };
-        return defaults[crop.toLowerCase()] || 27;
-      };
-
+      const defaultYieldBags = getCropDefaultYield(primaryCrop);
       const grossMarginInput = {
         crop: primaryCrop,
         cropAcres: farmSize,
-        actualYield: validatedYield || getCropDefaultYield(primaryCrop),
+        actualYield: validatedYield || defaultYieldBags,
         yieldUnit: yieldUnit || harvestUnit || "90kg bags",
         pricePerUnit: validatedPrice || 6750,
         priceUnit: priceUnit || "kg",
@@ -348,7 +397,6 @@ export async function POST(request: NextRequest) {
         emptyBags: parseFloat(emptyBags) || 0,
         bagCost: parseFloat(bagCost) || 40
       };
-
       grossMargin = calculateGrossMarginFromFarmerData(grossMarginInput);
     } catch (error) {
       console.error("Error calculating gross margin:", error);
@@ -375,8 +423,15 @@ export async function POST(request: NextRequest) {
         country: country || 'kenya',
         limePricePerBag: calciticLimePricePerBag ? parseFloat(calciticLimePricePerBag) : 300,
         recCalciticLime: recCalciticLime ? parseFloat(recCalciticLime) : 0,
+        recDolomiticLime: recDolomiticLime ? parseFloat(recDolomiticLime) : 0,
+        dolomiticLimePricePerBag: dolomiticLimePricePerBag ? parseFloat(dolomiticLimePricePerBag) : 300,
         plantsDamaged: plantsDamaged ? parseInt(plantsDamaged) : null,
-        language: userLanguage
+        language: userLanguage,
+        deficiencySymptoms,
+        deficiencyLocation,
+        spacing: spacing,
+        storageMethod: storageMethod,
+        wantsNutritionBenefits: wantsNutritionBenefits === true || wantsNutritionBenefits === "Yes",   // NEW
       }
     });
 
@@ -436,7 +491,6 @@ export async function POST(request: NextRequest) {
 
       commonPests: commonPests ? commonPests.split(',').map((p: string) => p.trim()) : [],
       commonDiseases: commonDiseases ? commonDiseases.split(',').map((d: string) => d.trim()) : [],
-
       plantsDamaged: plantsDamaged ? parseInt(plantsDamaged) : null,
 
       yieldData: {
@@ -464,6 +518,10 @@ export async function POST(request: NextRequest) {
 
       limePricePerBag: calciticLimePricePerBag ? parseFloat(calciticLimePricePerBag) : null,
       recCalciticLime: recCalciticLime ? parseFloat(recCalciticLime) : null,
+      recDolomiticLime: recDolomiticLime ? parseFloat(recDolomiticLime) : null,
+      dolomiticLimePricePerBag: dolomiticLimePricePerBag ? parseFloat(dolomiticLimePricePerBag) : null,
+
+      wantsNutritionBenefits: wantsNutritionBenefits === true || wantsNutritionBenefits === "Yes",   // NEW
 
       soilTest: hasDoneSoilTest === "Yes" ? {
         testDate: soilTestDate,
@@ -517,11 +575,11 @@ export async function POST(request: NextRequest) {
 
       recommendations: recommendationsOutput.list,
       financialAdvice: recommendationsOutput.financialAdvice,
-
       structuredList: recommendationsOutput.structuredList,
       structuredFinancialAdvice: recommendationsOutput.structuredFinancialAdvice,
-
       grossMarginAnalysis: grossMargin,
+      deficiencySymptoms: deficiencySymptoms || null,
+      deficiencyLocation: deficiencyLocation || null,
 
       metadata: {
         warnings: {
@@ -569,6 +627,6 @@ export async function GET() {
     status: "operational",
     message: "Farmer Session Generation API",
     version: "2.0",
-    supportedCrops: "All 47 crops across 75+ countries"
+    supportedCrops: "All 219 crops across 75+ countries"
   });
 }

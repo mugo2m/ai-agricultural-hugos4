@@ -503,3 +503,5 @@ export function getCountriesByCurrencyCode(code: string): string[] {
   }
   return countries;
 }
+// Alias for easier consumption in components
+export const CURRENCY_CONFIG = COUNTRY_CURRENCY_MAP;

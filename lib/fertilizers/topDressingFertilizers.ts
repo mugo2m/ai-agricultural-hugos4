@@ -1,6 +1,6 @@
 // lib/fertilizers/topDressingFertilizers.ts
 // Complete database of top dressing fertilizers from Kenyan suppliers
-// UPDATED: Added crop-specific recommendations for all 47 crops
+// UPDATED: Covers all 219 crops from the pest/disease database
 
 import { Fertilizer } from './plantingFertilizers';
 
@@ -17,7 +17,53 @@ export const topDressingFertilizers: Fertilizer[] = [
       "maize", "wheat", "barley", "sorghum", "finger millet", "rice",
       "tomatoes", "onions", "cabbages", "kales", "spinach", "carrots",
       "chillies", "capsicums", "potatoes", "coffee", "tea",
-      "bananas", "pineapples", "all crops", "cereals", "vegetables"
+      "bananas", "pineapples", "all crops", "cereals", "vegetables",
+      // All vegetables
+      "african nightshade", "amaranth", "arugula", "asparagus", "beetroot",
+      "broccoli", "brinjals", "cauliflower", "celery", "coriander",
+      "courgettes", "cucumbers", "eggplants", "endive", "ethiopian kale",
+      "french beans", "garden peas", "green beans", "kohlrabi", "leeks",
+      "lettuce", "okra", "parsley", "pumpkin leaves", "radish",
+      "rhubarb", "spider plant", "sweet potato leaves", "turnip", "watercress",
+      "bok choy", "collard greens", "mustard greens", "swiss chard", "radicchio",
+      "escarole", "frisee", "turnip greens", "rutabaga", "jute mallow",
+      "slender leaf", "artichoke", "wasabi",
+      // Fruits
+      "mangoes", "avocados", "oranges", "lemons", "limes", "grapefruit",
+      "guava", "jackfruit", "breadfruit", "coconut", "pawpaws", "passion fruit",
+      "pomegranate", "star fruit", "watermelons", "pumpkin", "fig", "date palm",
+      "mulberry", "lychee", "persimmon", "gooseberry", "currant", "elderberry",
+      "rambutan", "durian", "mangosteen", "longan", "marula",
+      // Tubers
+      "cassava", "sweet potatoes", "yams", "taro", "ginger", "turmeric",
+      "horseradish", "parsnip", "irish potatoes",
+      // Cash crops
+      "sugarcane", "cotton", "tobacco", "sunflower", "sisal", "pyrethrum",
+      "cocoa", "oil palm", "rubber",
+      // Legumes
+      "beans", "soya beans", "cowpeas", "green grams", "groundnuts",
+      "pigeonpeas", "bambaranuts", "chickpea", "lentil", "faba bean", "peanut",
+      // Nuts
+      "macadamia", "cashew", "almond", "brazil nut", "chestnut", "hazelnut",
+      "pecan", "pistachio", "shea", "walnut", "pili nut",
+      // Herbs & spices
+      "basil", "black pepper", "cardamom", "chamomile", "cinnamon", "cloves",
+      "dill", "echinacea", "fennel", "ginseng", "goldenseal", "hibiscus",
+      "hops", "lavender", "lemon grass", "mint", "moringa", "mustard",
+      "oregano", "rosemary", "sage", "thyme", "vanilla", "stevia",
+      "fenugreek", "cumin", "caraway", "anise", "lovage", "marjoram",
+      "tarragon", "sorrel", "chervil", "savory", "calendula", "nasturtium",
+      "borage", "st. john's wort", "valerian",
+      // Forage & cover crops
+      "alfalfa", "brachiaria", "buffel grass", "cenchrus", "forage sorghum",
+      "guinea grass", "italian ryegrass", "lucerne", "napier grass",
+      "napier hybrid", "orchard grass", "rhodes grass", "timothy grass",
+      "white clover", "clover", "vetch", "desmodium", "dolichos", "canavalia",
+      "crotalaria juncea", "crotalaria ochroleuca", "crotalaria paulina",
+      "leucaena", "sesbania", "calliandra", "sunn hemp",
+      // Other
+      "bamboo", "aloe vera", "oyster nut", "stinging nettle", "mushroom",
+      "ramie", "flax", "hemp", "jute", "kenaf"
     ],
     description: "Calcium Ammonium Nitrate - most common top dressing, provides both N and Ca",
     packageSizes: ["50kg bag (Ksh 2,500)", "50kg bag (Ksh 2,600)", "50kg bag (Ksh 2,700)"],
@@ -36,7 +82,10 @@ export const topDressingFertilizers: Fertilizer[] = [
     crops: [
       "maize", "wheat", "barley", "sorghum", "finger millet", "rice",
       "sugarcane", "bananas", "pineapples", "coffee", "tea",
-      "all crops", "cereals"
+      "all crops", "cereals",
+      "forage sorghum", "napier grass", "napier hybrid", "brachiaria",
+      "guinea grass", "buffel grass", "rhodes grass", "orchard grass",
+      "timothy grass", "italian ryegrass", "cenchrus", "bamboo"
     ],
     description: "Urea - highest nitrogen content, best for cereals and grasses",
     packageSizes: ["50kg bag (Ksh 2,800)", "50kg bag (Ksh 2,900)", "50kg bag (Ksh 3,000)"],
@@ -55,7 +104,9 @@ export const topDressingFertilizers: Fertilizer[] = [
     crops: [
       "maize", "wheat", "barley", "onions", "garlic", "cabbages",
       "potatoes", "tea", "coffee", "oil crops", "sunflower",
-      "all crops", "cereals", "vegetables"
+      "all crops", "cereals", "vegetables",
+      "cocoa", "macadamia", "cashew", "mustard", "rapeseed", "safflower",
+      "broccoli", "cauliflower", "kales", "spinach", "leeks"
     ],
     description: "Ammonium Sulphate - nitrogen with sulphur for crops needing S",
     packageSizes: ["50kg bag (Ksh 2,200)", "50kg bag (Ksh 2,300)", "50kg bag (Ksh 2,400)"],
@@ -89,7 +140,8 @@ export const topDressingFertilizers: Fertilizer[] = [
     nutrients: { n: 24, p: 0, k: 0, s: 6 },
     crops: [
       "maize", "wheat", "barley", "onions", "garlic", "cabbages",
-      "potatoes", "tea", "cereals", "vegetables"
+      "potatoes", "tea", "cereals", "vegetables",
+      "sugarcane", "coffee"
     ],
     description: "Nitrogen with sulphur - ideal for crops needing both",
     packageSizes: ["50kg bag (Ksh 2,800)", "50kg bag (Ksh 3,000)"],
@@ -108,7 +160,7 @@ export const topDressingFertilizers: Fertilizer[] = [
     crops: [
       "tomatoes", "capsicums", "chillies", "onions", "cabbages", "kales",
       "spinach", "okra", "french beans", "garden peas", "vegetables",
-      "fruits", "general"
+      "fruits", "general", "all crops"
     ],
     description: "Balanced NPK for general top dressing",
     packageSizes: ["50kg bag (Ksh 3,200)", "50kg bag (Ksh 3,400)"],
@@ -140,7 +192,8 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "24-0-24",
     nutrients: { n: 24, p: 0, k: 24, s: 4, ca: 1, mg: 0.2, zn: 0.1, b: 0.1, mn: 0.1 },
-    crops: ["potatoes", "yams", "taro", "cassava", "sweet potatoes", "tubers"],
+    crops: ["potatoes", "yams", "taro", "cassava", "sweet potatoes", "tubers",
+            "irish potatoes", "ginger", "turmeric", "horseradish", "parsnip"],
     description: "Balanced NK for potatoes and tuber crops",
     packageSizes: ["50kg bag (Ksh 3,200)", "50kg bag (Ksh 3,400)"],
     pricePer50kg: 3300,
@@ -172,7 +225,15 @@ export const topDressingFertilizers: Fertilizer[] = [
     nutrients: { n: 20, p: 0, k: 15, s: 2, mg: 1, zn: 0.2, b: 0.1 },
     crops: [
       "tomatoes", "onions", "cabbages", "kales", "capsicums", "chillies",
-      "spinach", "okra", "french beans", "garden peas", "carrots", "vegetables"
+      "spinach", "okra", "french beans", "garden peas", "carrots", "vegetables",
+      "african nightshade", "amaranth", "arugula", "asparagus", "beetroot",
+      "broccoli", "brinjals", "cauliflower", "celery", "coriander",
+      "courgettes", "cucumbers", "eggplants", "endive", "ethiopian kale",
+      "green beans", "kohlrabi", "leeks", "lettuce", "parsley",
+      "pumpkin leaves", "radish", "rhubarb", "spider plant", "sweet potato leaves",
+      "turnip", "watercress", "bok choy", "collard greens", "mustard greens",
+      "swiss chard", "radicchio", "escarole", "frisee", "turnip greens",
+      "rutabaga", "jute mallow", "slender leaf", "artichoke", "wasabi"
     ],
     description: "NK blend for vegetable crops",
     packageSizes: ["50kg bag (Ksh 3,000)", "50kg bag (Ksh 3,200)"],
@@ -190,7 +251,12 @@ export const topDressingFertilizers: Fertilizer[] = [
     nutrients: { n: 15, p: 0, k: 25, s: 2, mg: 1.5, zn: 0.3, b: 0.2 },
     crops: [
       "bananas", "oranges", "mangoes", "avocados", "pineapples", "pawpaws",
-      "passion fruit", "citrus", "watermelons", "macadamia", "fruits"
+      "passion fruit", "citrus", "watermelons", "macadamia", "fruits",
+      "breadfruit", "coconut", "grapefruit", "guava", "jackfruit",
+      "lemons", "limes", "pomegranate", "star fruit", "pumpkin",
+      "almond", "cashew", "pecan", "pistachio", "walnut", "shea",
+      "fig", "date palm", "mulberry", "lychee", "persimmon", "gooseberry",
+      "currant", "elderberry", "rambutan", "durian", "mangosteen", "longan", "marula"
     ],
     description: "High potassium for fruit development and quality",
     packageSizes: ["50kg bag (Ksh 3,400)", "50kg bag (Ksh 3,600)"],
@@ -239,7 +305,8 @@ export const topDressingFertilizers: Fertilizer[] = [
     nutrients: { n: 20, p: 0, k: 20, s: 2, mg: 1, zn: 0.2 },
     crops: [
       "potatoes", "sweet potatoes", "cassava", "yams", "taro", "tubers",
-      "bananas", "pineapples", "fruits"
+      "bananas", "pineapples", "fruits",
+      "ginger", "turmeric", "horseradish", "parsnip", "irish potatoes"
     ],
     description: "Balanced NK for tuber and fruit crops",
     packageSizes: ["50kg bag (Ksh 3,200)", "50kg bag (Ksh 3,400)"],
@@ -255,7 +322,11 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "0-0-0",
     nutrients: { s: 90 },
-    crops: ["onions", "garlic", "cabbages", "tea", "coffee", "oil crops"],
+    crops: [
+      "onions", "garlic", "cabbages", "tea", "coffee", "oil crops",
+      "mustard", "rapeseed", "safflower", "broccoli", "cauliflower",
+      "kales", "spinach", "leeks"
+    ],
     description: "Pure sulphur for crops with high S requirement",
     packageSizes: ["50kg bag (Ksh 2,500)", "50kg bag (Ksh 2,700)"],
     pricePer50kg: 2600,
@@ -274,7 +345,12 @@ export const topDressingFertilizers: Fertilizer[] = [
     crops: [
       "potatoes", "tomatoes", "onions", "bananas", "oranges", "mangoes",
       "avocados", "pineapples", "watermelons", "macadamia", "coffee",
-      "sugarcane", "cocoa", "fruits", "vegetables", "all crops"
+      "sugarcane", "cocoa", "fruits", "vegetables", "all crops",
+      "yams", "taro", "cassava", "sweet potatoes", "ginger", "turmeric",
+      "pumpkin", "cucumbers", "eggplants", "capsicums", "chillies",
+      "pigeonpeas", "beans", "soya beans", "groundnuts",
+      "almond", "cashew", "pecan", "pistachio", "walnut", "shea",
+      "fig", "date palm", "lychee", "rambutan", "durian", "mangosteen"
     ],
     description: "Muriate of Potash - high potassium for fruit and tuber development",
     packageSizes: ["50kg bag (Ksh 2,800)", "50kg bag (Ksh 2,900)"],
@@ -292,7 +368,10 @@ export const topDressingFertilizers: Fertilizer[] = [
     nutrients: { n: 0, p: 0, k: 50, s: 18 },
     crops: [
       "potatoes", "tomatoes", "onions", "garlic", "capsicums", "chillies",
-      "fruits", "vegetables", "tobacco", "horticulture"
+      "fruits", "vegetables", "tobacco", "horticulture",
+      "cocoa", "coffee", "tea", "macadamia", "cashew",
+      "avocados", "mangoes", "oranges", "lemons", "limes", "grapefruit",
+      "passion fruit", "guava", "pineapples"
     ],
     description: "Sulphate of Potash - potassium with sulphur, chloride-free",
     packageSizes: ["50kg bag (Ksh 3,200)", "50kg bag (Ksh 3,400)"],
@@ -338,7 +417,6 @@ export const topDressingFertilizers: Fertilizer[] = [
   },
 
   // ========== CROP-SPECIFIC SPECIALTY FERTILIZERS ==========
-
   // Rice
   {
     id: "mea_rice_top",
@@ -475,7 +553,7 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "15-0-20",
     nutrients: { n: 15, p: 0, k: 20, mg: 1.5, zn: 0.2, b: 0.1 },
-    crops: ["chillies", "capsicums"],
+    crops: ["chillies", "capsicums", "birds eye chili", "cayenne", "jalapeno"],
     description: "High potassium for fruit quality and heat",
     packageSizes: ["50kg bag (Ksh 3,600)", "50kg bag (Ksh 3,800)"],
     pricePer50kg: 3700,
@@ -491,7 +569,7 @@ export const topDressingFertilizers: Fertilizer[] = [
     type: "topdressing",
     npk: "20-0-15",
     nutrients: { n: 20, p: 0, k: 15, s: 3, zn: 0.2 },
-    crops: ["onions", "garlic"],
+    crops: ["onions", "garlic", "leeks", "shallots"],
     description: "NK blend for bulb development with sulphur",
     packageSizes: ["50kg bag (Ksh 3,300)", "50kg bag (Ksh 3,500)"],
     pricePer50kg: 3400,
@@ -516,7 +594,7 @@ export const topDressingFertilizers: Fertilizer[] = [
   }
 ];
 
-// Helper function to get top dressing fertilizers by crop
+// Helper function to get top dressing fertilizers by crop (expanded to cover all 219 crops)
 export function getTopDressingFertilizersByCrop(crop: string): Fertilizer[] {
   const lowerCrop = crop.toLowerCase();
 
@@ -529,20 +607,86 @@ export function getTopDressingFertilizersByCrop(crop: string): Fertilizer[] {
     if (f.crops.includes("general")) return true;
 
     // Cereals
-    const cereals = ["maize", "sorghum", "finger millet", "wheat", "barley", "rice"];
+    const cereals = [
+      "maize", "sorghum", "finger millet", "wheat", "barley", "rice", "millet",
+      "oats", "teff", "triticale", "buckwheat", "quinoa", "fonio", "spelt", "kamut",
+      "amaranth grain"
+    ];
     if (cereals.includes(lowerCrop) && f.crops.includes("cereals")) return true;
 
-    // Vegetables
-    const vegetables = ["tomatoes", "kales", "cabbages", "onions", "capsicums", "chillies", "spinach", "okra", "french beans", "garden peas", "carrots"];
-    if (vegetables.includes(lowerCrop) && f.crops.includes("vegetables")) return true;
+    // Vegetables (all leafy, fruit, root vegetables)
+    const vegetables = [
+      "tomatoes", "kales", "cabbages", "onions", "capsicums", "chillies", "spinach",
+      "okra", "french beans", "garden peas", "carrots", "african nightshade",
+      "amaranth", "arugula", "asparagus", "beetroot", "broccoli", "brinjals",
+      "cauliflower", "celery", "coriander", "courgettes", "cucumbers", "eggplants",
+      "endive", "ethiopian kale", "green beans", "kohlrabi", "leeks", "lettuce",
+      "parsley", "pumpkin leaves", "radish", "rhubarb", "spider plant",
+      "sweet potato leaves", "turnip", "watercress", "bok choy", "collard greens",
+      "mustard greens", "swiss chard", "radicchio", "escarole", "frisee",
+      "turnip greens", "rutabaga", "jute mallow", "slender leaf", "artichoke",
+      "wasabi", "garlic", "shallots", "chives"
+    ];
+    if (vegetables.includes(lowerCrop) && (f.crops.includes("vegetables") || f.id === "elgon_thabiti_top_veg" || f.id === "ss_can" || f.id === "yara_npk_15_15_15")) return true;
 
-    // Fruits
-    const fruits = ["bananas", "oranges", "mangoes", "avocados", "pineapples", "pawpaws", "passion fruit", "citrus", "watermelons"];
-    if (fruits.includes(lowerCrop) && f.crops.includes("fruits")) return true;
+    // Fruits (all tropical and temperate)
+    const fruits = [
+      "bananas", "oranges", "mangoes", "avocados", "pineapples", "pawpaws",
+      "passion fruit", "citrus", "watermelons", "breadfruit", "coconut",
+      "grapefruit", "guava", "jackfruit", "lemons", "limes", "pomegranate",
+      "star fruit", "pumpkin", "papayas", "fig", "date palm", "mulberry",
+      "lychee", "persimmon", "gooseberry", "currant", "elderberry", "rambutan",
+      "durian", "mangosteen", "longan", "marula"
+    ];
+    if (fruits.includes(lowerCrop) && (f.crops.includes("fruits") || f.id === "elgon_thabiti_top_fruit" || f.id === "mop" || f.id === "sop")) return true;
 
-    // Tubers
-    const tubers = ["potatoes", "sweet potatoes", "cassava", "yams", "taro"];
-    if (tubers.includes(lowerCrop) && f.crops.includes("tubers")) return true;
+    // Tree nuts
+    const nuts = [
+      "macadamia", "cashew", "almond", "brazil nut", "chestnut", "hazelnut",
+      "pecan", "pistachio", "shea", "walnut", "pili nut"
+    ];
+    if (nuts.includes(lowerCrop) && (f.crops.includes("fruits") || f.id === "mea_macadamia_top" || f.id === "mop" || f.id === "sop")) return true;
+
+    // Tubers and root crops
+    const tubers = [
+      "potatoes", "irish potatoes", "sweet potatoes", "cassava", "yams", "taro",
+      "ginger", "turmeric", "horseradish", "parsnip"
+    ];
+    if (tubers.includes(lowerCrop) && (f.crops.includes("tubers") || f.id === "elgon_thabiti_top_potato" || f.id === "etg_kyno_top_nk")) return true;
+
+    // Cash crops
+    const cash = ["coffee", "tea", "cocoa", "cotton", "sugarcane", "tobacco", "pyrethrum", "sisal", "oil palm", "rubber"];
+    if (cash.includes(lowerCrop) && (f.crops.includes("coffee") || f.crops.includes("tea") || f.id === "mea_coffee_top" || f.id === "mea_tea_top" || f.id === "elgon_thabiti_top_sugar")) return true;
+
+    // Oil crops
+    const oilCrops = ["sunflower", "rapeseed", "safflower", "sesame", "simsim", "mustard"];
+    if (oilCrops.includes(lowerCrop) && (f.crops.includes("oil crops") || f.id === "ss_as" || f.id === "yara_bela_sulfan")) return true;
+
+    // Herbs and spices
+    const herbs = [
+      "basil", "mint", "rosemary", "thyme", "oregano", "sage", "lavender",
+      "chamomile", "echinacea", "ginseng", "goldenseal", "hibiscus", "hops",
+      "lemon grass", "moringa", "stevia", "fenugreek", "cumin", "caraway",
+      "anise", "dill", "fennel", "lovage", "marjoram", "tarragon", "sorrel",
+      "chervil", "savory", "calendula", "nasturtium", "borage", "st. john's wort",
+      "valerian", "vanilla", "black pepper", "cardamom", "cinnamon", "cloves",
+      "wasabi", "coriander", "parsley"
+    ];
+    if (herbs.includes(lowerCrop) && (f.crops.includes("vegetables") || f.id === "ss_can" || f.id === "elgon_thabiti_top_veg")) return true;
+
+    // Forage and cover crops
+    const forage = [
+      "alfalfa", "lucerne", "clover", "white clover", "vetch", "mucuna",
+      "desmodium", "dolichos", "canavalia", "crotalaria paulina", "sunn hemp",
+      "brachiaria", "buffel grass", "guinea grass", "italian ryegrass",
+      "napier grass", "napier hybrid", "orchard grass", "rhodes grass",
+      "timothy grass", "forage sorghum", "calliandra", "leucaena", "sesbania", "cenchrus"
+    ];
+    if (forage.includes(lowerCrop) && (f.crops.includes("cereals") || f.id === "ss_urea" || f.id === "ss_can")) return true;
+
+    // Other crops
+    const other = ["mushroom", "bamboo", "aloe vera", "stinging nettle", "oyster nut", "ramie", "flax", "hemp", "jute", "kenaf"];
+    if (other.includes(lowerCrop) && (f.id === "ss_can" || f.id === "ss_urea")) return true;
 
     return false;
   });

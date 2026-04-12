@@ -1,4 +1,4 @@
-// components/Agent.tsx - COMPLETE KARAOKE VERSION WITH SWAHILI VOICE FALLBACK
+// components/Agent.tsx - UPDATED with crop_benefits_grouped support
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -61,13 +61,25 @@ const Agent = ({
     }
   }, [sessionData, i18n]);
 
+  // Populate structuredList and structuredFinancialAdvice
+  useEffect(() => {
+    if (sessionData?.structuredList) {
+      console.log('📋 Setting structuredList:', sessionData.structuredList);
+      setStructuredList(sessionData.structuredList);
+    }
+    if (sessionData?.structuredFinancialAdvice) {
+      console.log('💰 Setting structuredFinancialAdvice:', sessionData.structuredFinancialAdvice);
+      setStructuredFinancialAdvice(sessionData.structuredFinancialAdvice);
+    }
+  }, [sessionData]);
+
+  // Safe translation (still used for some UI elements)
   const safeT = (key: string, params?: any): string => {
     try {
       if (key && (key.includes(' ') || key.includes('\n') || key.includes('.'))) {
         return key;
       }
-      if (!t || typeof t !== 'function') return key;
-      const template = t(key);
+      const template = i18n.t(key);
       if (!params) return template;
       let result = template;
       for (const [paramKey, paramValue] of Object.entries(params)) {
@@ -78,20 +90,6 @@ const Agent = ({
     } catch (e) {
       return key;
     }
-  };
-
-  const resolveDeep = (obj: any): any => {
-    if (!obj) return obj;
-    if (Array.isArray(obj)) return obj.map(resolveDeep);
-    if (typeof obj === 'object') {
-      if (obj.key && typeof obj.key === 'string') return obj;
-      const resolved: any = {};
-      for (const [k, v] of Object.entries(obj)) {
-        resolved[k] = resolveDeep(v);
-      }
-      return resolved;
-    }
-    return obj;
   };
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -124,73 +122,109 @@ const Agent = ({
   const fertilizerPlan = soilTest?.fertilizerPlan;
   const farmerName = sessionData?.farmerName || userName || "Farmer";
   const farmerCountry = sessionData?.country || 'kenya';
-  const recognitionLanguage = getLanguageFromCountry(farmerCountry);
 
-  // Helper function to get best available voice with Swahili preference and English fallback
+  // Voice language uses UI language
+  const recognitionLanguage = (() => {
+    const lang = i18n.language || 'en';
+    if (lang === 'en') return 'en-US';
+    if (lang === 'fr') return 'fr-FR';
+    if (lang === 'sw') return 'sw-KE';
+    return 'en-US';
+  })();
+
+  console.log(`🎤 Voice language set to: ${recognitionLanguage} (UI language: ${i18n.language})`);
+
+  // Helper to get best available voice
   const getBestVoice = () => {
     const voices = window.speechSynthesis.getVoices();
+    console.log(`Looking for voice for language: ${recognitionLanguage}`);
 
-    // First try: Swahili female voice (Rafiki, Zuri, Aisha, etc.)
-    let swahiliVoices = voices.filter(v =>
-      v.lang === 'sw-KE' &&
-      (v.name.includes('Rafiki') || v.name.includes('Zuri') || v.name.includes('Aisha') || v.name.includes('Kenya'))
-    );
+    const findFrenchVoice = (): SpeechSynthesisVoice | null => {
+      let vivienne = voices.find(v => v.lang.startsWith('fr') && v.name.toLowerCase().includes('vivienne'));
+      if (vivienne) return vivienne;
+      const frenchFemale = voices.find(v => v.lang.startsWith('fr') &&
+        (v.name.toLowerCase().includes('denise') ||
+         v.name.toLowerCase().includes('google français female') ||
+         v.name.toLowerCase().includes('marie') ||
+         v.name.toLowerCase().includes('chloe')));
+      if (frenchFemale) return frenchFemale;
+      const anyFrench = voices.find(v => v.lang.startsWith('fr'));
+      return anyFrench || null;
+    };
 
-    if (swahiliVoices.length > 0) {
-      console.log('✅ Swahili voice found:', swahiliVoices[0].name);
-      return { voice: swahiliVoices[0], language: 'sw-KE' };
+    if (recognitionLanguage === 'fr-FR' || recognitionLanguage === 'fr-CA' || recognitionLanguage.startsWith('fr')) {
+      const frenchVoice = findFrenchVoice();
+      if (frenchVoice) {
+        return { voice: frenchVoice, language: 'fr-FR' };
+      } else {
+        console.warn('No French voice found, falling back to English');
+      }
     }
 
-    // Second try: Any Swahili voice
-    swahiliVoices = voices.filter(v => v.lang === 'sw-KE');
-    if (swahiliVoices.length > 0) {
-      console.log('✅ Swahili voice (any) found:', swahiliVoices[0].name);
-      return { voice: swahiliVoices[0], language: 'sw-KE' };
+    if (recognitionLanguage === 'sw-KE' || recognitionLanguage === 'sw-TZ' || recognitionLanguage.startsWith('sw')) {
+      let swahiliVoices = voices.filter(v =>
+        v.lang === 'sw-KE' &&
+        (v.name.includes('Rafiki') || v.name.includes('Zuri') || v.name.includes('Aisha') || v.name.includes('Kenya'))
+      );
+      if (swahiliVoices.length > 0) {
+        console.log(`✅ Swahili voice found: ${swahiliVoices[0].name}`);
+        return { voice: swahiliVoices[0], language: 'sw-KE' };
+      }
+      swahiliVoices = voices.filter(v => v.lang === 'sw-KE');
+      if (swahiliVoices.length > 0) {
+        console.log(`✅ Swahili voice (any) found: ${swahiliVoices[0].name}`);
+        return { voice: swahiliVoices[0], language: 'sw-KE' };
+      }
+      console.warn('No Swahili voice found, falling back to English');
     }
 
-    // Fallback: English female voice
-    const englishVoices = voices.filter(v =>
-      v.lang === 'en-US' &&
-      (v.name.includes('Samantha') || v.name.includes('Victoria') ||
-       v.name.includes('Google UK English Female') || v.name.includes('Microsoft Jenny'))
-    );
-
-    if (englishVoices.length > 0) {
-      console.log('⚠️ Falling back to English voice:', englishVoices[0].name);
-      return { voice: englishVoices[0], language: 'en-US' };
+    if (recognitionLanguage === 'en-US' || recognitionLanguage.startsWith('en')) {
+      const englishVoices = voices.filter(v =>
+        v.lang === 'en-US' &&
+        (v.name.includes('Samantha') || v.name.includes('Victoria') ||
+         v.name.includes('Google UK English Female') || v.name.includes('Microsoft Jenny') ||
+         v.name.includes('Zira'))
+      );
+      if (englishVoices.length > 0) {
+        console.log(`✅ English female voice found: ${englishVoices[0].name}`);
+        return { voice: englishVoices[0], language: 'en-US' };
+      }
+      const anyEnglish = voices.find(v => v.lang.startsWith('en'));
+      if (anyEnglish) {
+        console.log(`⚠️ Using any English voice: ${anyEnglish.name}`);
+        return { voice: anyEnglish, language: 'en-US' };
+      }
     }
 
-    // Final fallback: Any voice
     console.log('⚠️ Using default voice');
     return { voice: null, language: 'en-US' };
   };
 
-  useEffect(() => {
-    if (sessionData?.structuredList) {
-      setStructuredList(sessionData.structuredList);
-    }
-    if (sessionData?.structuredFinancialAdvice) {
-      setStructuredFinancialAdvice(sessionData.structuredFinancialAdvice);
-    }
-  }, [sessionData]);
-
-  useEffect(() => {
-    nameUsageCountRef.current = 0;
-  }, [sessionData]);
+  const waitForVoices = (maxAttempts = 5): Promise<void> => {
+    return new Promise((resolve) => {
+      const check = (attempt = 0) => {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+          setVoicesLoaded(true);
+          resolve();
+        } else if (attempt < maxAttempts) {
+          setTimeout(() => check(attempt + 1), 500);
+        } else {
+          setVoicesLoaded(false);
+          resolve();
+        }
+      };
+      check();
+    });
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const supported = 'speechSynthesis' in window;
       if (supported) {
-        const loadVoices = () => {
-          const voices = window.speechSynthesis.getVoices();
-          if (voices.length > 0) {
-            setVoicesLoaded(true);
-          }
-        };
-        loadVoices();
+        waitForVoices();
         if (window.speechSynthesis.onvoiceschanged !== undefined) {
-          window.speechSynthesis.onvoiceschanged = loadVoices;
+          window.speechSynthesis.onvoiceschanged = () => waitForVoices();
         }
       }
     }
@@ -290,23 +324,12 @@ const Agent = ({
     return speechText;
   };
 
-  // Karaoke streaming function with chunking for long texts and voice fallback
+  // Karaoke streaming function
   const streamRecommendationKaraoke = async (recommendation: string, index: number) => {
     if (!voiceEnabled || !window.speechSynthesis) return;
 
     if (!voicesLoaded) {
-      await new Promise<void>((resolve) => {
-        const checkVoices = () => {
-          const voices = window.speechSynthesis.getVoices();
-          if (voices.length > 0) {
-            setVoicesLoaded(true);
-            resolve();
-          } else {
-            setTimeout(checkVoices, 100);
-          }
-        };
-        checkVoices();
-      });
+      await waitForVoices();
     }
 
     try {
@@ -319,7 +342,6 @@ const Agent = ({
       const allWords = recommendation.split(' ');
       recWordsRef.current[index] = allWords;
 
-      // Split into chunks of 250 words to prevent speech from getting stuck
       const maxChunkWords = 250;
       const chunks = [];
       for (let i = 0; i < allWords.length; i += maxChunkWords) {
@@ -339,7 +361,6 @@ const Agent = ({
         utterance.pitch = 1.1;
         utterance.volume = 1.0;
 
-        // Get best voice (Swahili preferred, English fallback)
         const { voice, language } = getBestVoice();
         if (voice) utterance.voice = voice;
         utterance.lang = language;
@@ -393,7 +414,6 @@ const Agent = ({
         utterance.pitch = 1.1;
         utterance.volume = 1.0;
 
-        // Get best voice (Swahili preferred, English fallback)
         const { voice, language } = getBestVoice();
         if (voice) utterance.voice = voice;
         utterance.lang = language;
@@ -413,10 +433,8 @@ const Agent = ({
           console.error("Speech error with", utterance.voice?.name, ":", event);
           if (!resolved) {
             resolved = true;
-
-            // If Swahili voice failed, try English as fallback
-            if (utterance.lang === 'sw-KE') {
-              console.log('⚠️ Swahili voice failed, retrying with English voice...');
+            if (language !== 'en-US') {
+              console.log(`⚠️ Voice for ${language} failed, retrying with English...`);
               const englishUtterance = new SpeechSynthesisUtterance(text);
               englishUtterance.rate = 0.9;
               englishUtterance.pitch = 1.1;
@@ -473,35 +491,56 @@ const Agent = ({
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     for (let i = 0; i < structuredList.length; i++) {
+      let content = '';
       const item = structuredList[i];
-      const resolvedItem = resolveDeep(item);
-      let recommendation;
-
-      if (resolvedItem.key === 'gap_grouped') {
+      if (item.params?.content) {
+        content = item.params.content;
+      } else if (item.key === 'gap_grouped') {
         const parts = [];
-        if (resolvedItem.params?.title) parts.push(resolvedItem.params.title);
-        const gapKey = resolvedItem.params?.gapKey;
+        if (item.params?.title) parts.push(item.params.title);
+        const gapKey = item.params?.gapKey;
         if (gapKey) parts.push(safeT(gapKey, {}));
-        if (resolvedItem.params?.remember) parts.push(resolvedItem.params.remember);
-        recommendation = parts.join('\n\n');
-      } else if (resolvedItem.key === 'damage_report_grouped') {
+        if (item.params?.remember) parts.push(item.params.remember);
+        content = parts.join('\n\n');
+      } else if (item.key === 'damage_report_grouped') {
         const parts = [];
-        if (resolvedItem.params?.title) parts.push(resolvedItem.params.title);
-        if (resolvedItem.params?.message) parts.push(resolvedItem.params.message);
-        if (resolvedItem.params?.advice) parts.push(resolvedItem.params.advice);
-        if (resolvedItem.params?.followUp) parts.push(resolvedItem.params.followUp);
-        recommendation = parts.join('\n\n');
+        if (item.params?.title) parts.push(item.params.title);
+        if (item.params?.message) parts.push(item.params.message);
+        if (item.params?.advice) parts.push(item.params.advice);
+        if (item.params?.followUp) parts.push(item.params.followUp);
+        content = parts.join('\n\n');
+      } else if (item.key === 'dolomitic_lime_grouped') {
+        const p = item.params;
+        const parts = [];
+        if (p.title) parts.push(p.title);
+        if (p.need) parts.push(p.need);
+        if (p.bags) parts.push(p.bags);
+        if (p.cost) parts.push(p.cost);
+        if (p.why) parts.push(p.why);
+        if (p.application) parts.push(p.application);
+        if (p.wait) parts.push(p.wait);
+        if (p.business) parts.push(p.business);
+        if (p.yearly) parts.push(p.yearly);
+        content = parts.join('\n\n');
+      } else if (item.key === 'crop_benefits_grouped') { // NEW: handle crop benefits
+        const p = item.params;
+        const parts = [];
+        if (p.title) parts.push(p.title);
+        if (p.subtitle) parts.push(p.subtitle);
+        if (p.nutrientsHeader) parts.push(p.nutrientsHeader);
+        if (p.nutrientsList) parts.push(p.nutrientsList);
+        if (p.healthHeader) parts.push(p.healthHeader);
+        if (p.healthList) parts.push(p.healthList);
+        content = parts.join('\n\n');
       } else {
-        recommendation = safeT(resolvedItem.key, resolvedItem.params);
+        content = safeT(item.key, item.params);
       }
-
-      await streamRecommendationKaraoke(recommendation, i);
+      await streamRecommendationKaraoke(content, i);
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     if (structuredFinancialAdvice) {
-      const resolvedItem = resolveDeep(structuredFinancialAdvice);
-      const financialText = safeT(resolvedItem.key, resolvedItem.params);
+      const financialText = safeT(structuredFinancialAdvice.key, structuredFinancialAdvice.params);
       await speakWithVoice(financialText);
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
@@ -555,8 +594,6 @@ const Agent = ({
         setWelcomeSpoken(true);
         nameUsageCountRef.current = 0;
 
-        // DO NOT show all recommendations immediately
-        // Start with empty streams - recommendations appear only when being read
         setRecommendationStreams({});
         setReadRecommendations(new Set());
 
@@ -585,52 +622,57 @@ const Agent = ({
     return safeT('start_voice_session');
   };
 
-  // FIXED: renderRecommendationText - resolves translation keys inside content
+  // Render function – now includes crop_benefits_grouped
   const renderRecommendationText = (item: StructuredItem, idx: number) => {
-    const resolvedItem = resolveDeep(item);
     let displayContent = '';
-
-    if (resolvedItem.key === 'gap_grouped') {
+    if (item.params?.content) {
+      displayContent = item.params.content;
+    } else if (item.key === 'gap_grouped') {
       const parts = [];
-      if (resolvedItem.params?.title) parts.push(resolvedItem.params.title);
-      const gapKey = resolvedItem.params?.gapKey;
+      if (item.params?.title) parts.push(item.params.title);
+      const gapKey = item.params?.gapKey;
       if (gapKey) parts.push(safeT(gapKey, {}));
-      if (resolvedItem.params?.remember) parts.push(resolvedItem.params.remember);
+      if (item.params?.remember) parts.push(item.params.remember);
       displayContent = parts.join('\n\n');
-    }
-    else if (resolvedItem.key === 'damage_report_grouped') {
+    } else if (item.key === 'damage_report_grouped') {
       const parts = [];
-      if (resolvedItem.params?.title) parts.push(resolvedItem.params.title);
-      if (resolvedItem.params?.message) parts.push(resolvedItem.params.message);
-      if (resolvedItem.params?.advice) parts.push(resolvedItem.params.advice);
-      if (resolvedItem.params?.followUp) parts.push(resolvedItem.params.followUp);
+      if (item.params?.title) parts.push(item.params.title);
+      if (item.params?.message) parts.push(item.params.message);
+      if (item.params?.advice) parts.push(item.params.advice);
+      if (item.params?.followUp) parts.push(item.params.followUp);
       displayContent = parts.join('\n\n');
-    }
-    else if (resolvedItem.params?.content) {
-      // For items with content field (soil_test_grouped, calcitic_lime_grouped, etc.)
-      // Resolve translation keys inside the content
-      let content = resolvedItem.params.content;
-      // Replace {{key}} with translated value
-      content = content.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-        const translated = safeT(key.trim(), resolvedItem.params);
-        return translated !== key.trim() ? translated : match;
-      });
-      displayContent = content;
-    }
-    else {
-      // Fallback: try to translate the key itself
-      displayContent = safeT(resolvedItem.key, resolvedItem.params);
+    } else if (item.key === 'dolomitic_lime_grouped') {
+      const p = item.params;
+      const parts = [];
+      if (p.title) parts.push(p.title);
+      if (p.need) parts.push(p.need);
+      if (p.bags) parts.push(p.bags);
+      if (p.cost) parts.push(p.cost);
+      if (p.why) parts.push(p.why);
+      if (p.application) parts.push(p.application);
+      if (p.wait) parts.push(p.wait);
+      if (p.business) parts.push(p.business);
+      if (p.yearly) parts.push(p.yearly);
+      displayContent = parts.join('\n\n');
+    } else if (item.key === 'crop_benefits_grouped') { // NEW: handle crop benefits display
+      const p = item.params;
+      const parts = [];
+      if (p.title) parts.push(p.title);
+      if (p.subtitle) parts.push(p.subtitle);
+      if (p.nutrientsHeader) parts.push(p.nutrientsHeader);
+      if (p.nutrientsList) parts.push(p.nutrientsList);
+      if (p.healthHeader) parts.push(p.healthHeader);
+      if (p.healthList) parts.push(p.healthList);
+      displayContent = parts.join('\n\n');
+    } else {
+      displayContent = safeT(item.key, item.params);
     }
 
     const streamingText = recommendationStreams[idx];
     const isActive = activeStreamingRec === idx;
     const isRead = readRecommendations.has(idx);
 
-    // KARAOKE BEHAVIOR:
-    // - Only show recommendation if it's currently being spoken (active) OR has been read
-    // - During active streaming: show words as they're spoken (streamingText)
-    // - After read: show full content (displayContent)
-    // - Unread recommendations: HIDDEN
+    // Show only when streaming or read
     if (!isActive && !isRead) {
       return null;
     }

@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { useTranslation } from 'react-i18next';
-import { VoiceToggle } from "@/components/VoiceToggle";
 import {
   Sparkles,
   Sprout,
@@ -64,7 +63,7 @@ const translateWithCrop = (t: any, key: string, crop: string | undefined) => {
   return String(t(key, { crop: crop?.toUpperCase() || 'your crop' }));
 };
 
-// REDUCED country codes for better performance (kept for any future use)
+// Country codes for phone (kept for any future use)
 const countryCodes = [
   { code: "+254", country: "Kenya", flag: "🇰🇪" },
   { code: "+256", country: "Uganda", flag: "🇺🇬" },
@@ -85,16 +84,62 @@ const countryCodes = [
   { code: "+44", country: "UK", flag: "🇬🇧" }
 ];
 
-// Crop categories - UPDATED with new crops
+// ========== UPDATED CROP CATEGORIES (supports all 200+ crops) ==========
 const cropCategories = {
-  grains: ["maize", "beans", "wheat", "sorghum", "millet", "rice", "barley", "finger millet"],
-  pulses: ["soya beans", "cowpeas", "green grams", "bambara nuts", "groundnuts", "pigeon peas"],
-  cash: ["coffee", "cotton", "sugarcane", "tobacco", "sunflower", "simsim", "pyrethrum", "tea", "cocoa"],
-  tubers: ["cassava", "sweet potatoes", "irish potatoes", "yams", "taro", "arrow roots"],
-  vegetables: ["tomatoes", "cabbage", "kales", "onions", "carrots", "capsicums", "chillies", "brinjals", "french beans", "garden peas", "spinach", "okra", "cauliflower"],
-  fruits: ["bananas", "oranges", "pineapples", "mangoes", "avocados", "pawpaws", "passion fruit", "citrus", "watermelon"],
-  nuts: ["macadamia", "groundnuts"],
-  cover: ["mucuna", "desmodium", "dolichos", "canavalia", "crotalaria ochroleuca", "crotalaria juncea", "crotalaria paulina"]
+  grains: [
+    "maize", "beans", "wheat", "sorghum", "millet", "rice", "barley", "finger millet",
+    "oats", "teff", "triticale", "buckwheat", "quinoa", "fonio", "spelt", "kamut", "amaranth grain"
+  ],
+  pulses: [
+    "soya beans", "cowpeas", "green grams", "bambara nuts", "groundnuts", "pigeonpeas",
+    "chickpea", "lentil", "faba bean", "peanut", "fenugreek", "caraway", "anise", "cumin"
+  ],
+  cash: [
+    "coffee", "cotton", "sugarcane", "tobacco", "sunflower", "simsim", "pyrethrum",
+    "tea", "cocoa", "sisal", "oil palm", "rubber", "kenaf", "jute", "flax", "hemp"
+  ],
+  tubers: [
+    "cassava", "sweet potatoes", "irish potatoes", "yams", "taro", "ginger", "turmeric",
+    "horseradish", "parsnip", "turnip", "rutabaga", "radish", "beetroot", "carrots"
+  ],
+  vegetables: [
+    "tomatoes", "cabbage", "kales", "onions", "capsicums", "chillies", "brinjals",
+    "french beans", "garden peas", "spinach", "okra", "cauliflower", "lettuce", "broccoli",
+    "celery", "leeks", "pumpkin", "courgettes", "cucumbers", "artichoke", "asparagus",
+    "arugula", "endive", "kohlrabi", "watercress", "pumpkin leaves", "sweet potato leaves",
+    "jute mallow", "spider plant", "african nightshade", "amaranth", "ethiopian kale",
+    "coriander", "parsley", "dill", "fennel", "radicchio", "escarole", "frisee",
+    "turnip greens", "mustard greens", "collard greens", "bok choy", "Swiss chard"
+  ],
+  fruits: [
+    "bananas", "oranges", "pineapples", "mangoes", "avocados", "pawpaws", "passion fruit",
+    "citrus", "watermelon", "grapefruit", "lemons", "limes", "guava", "jackfruit",
+    "breadfruit", "pomegranate", "star fruit", "coconut", "fig", "date palm", "mulberry",
+    "lychee", "persimmon", "gooseberry", "currant", "elderberry", "rambutan", "durian",
+    "mangosteen", "longan", "marula"
+  ],
+  nuts: [
+    "macadamia", "cashew", "almond", "brazil nut", "chestnut", "hazelnut", "pecan",
+    "pistachio", "shea", "walnut", "pili nut"
+  ],
+  cover: [
+    "mucuna", "desmodium", "dolichos", "canavalia", "crotalaria ochroleuca",
+    "crotalaria juncea", "crotalaria paulina", "vetch", "clover", "alfalfa", "lucerne"
+  ],
+  herbs: [
+    "basil", "mint", "rosemary", "thyme", "oregano", "sage", "lavender", "chamomile",
+    "echinacea", "ginseng", "goldenseal", "hibiscus", "hops", "lemon grass", "moringa",
+    "mustard", "rapeseed", "safflower", "wasabi", "stevia", "lovage", "marjoram",
+    "tarragon", "sorrel", "chervil", "savory", "calendula", "nasturtium", "borage",
+    "St. John's wort", "valerian"
+  ],
+  forage: [
+    "brachiaria", "buffel_grass", "guinea_grass", "italian_ryegrass", "lucerne",
+    "napier grass", "napier_hybrid", "orchard_grass", "rhodes grass", "timothy_grass",
+    "white_clover", "alfalfa", "forage_sorghum", "calliandra", "cenchrus", "leucaena", "sesbania"
+  ],
+  medicinal: ["aloe vera", "stinging nettle", "watercress", "echinacea", "ginseng", "goldenseal"],
+  other: ["bamboo", "oyster nut", "mushroom", "ramie"]
 };
 
 const getCropType = (crop: string): string => {
@@ -120,17 +165,11 @@ const getVarietiesOptions = (crop: string) => {
 
 const getPestsOptions = (crop: string) => {
   const pests = cropPestDiseaseMap[crop.toLowerCase()]?.filter(p => p.type === "pest").map(p => p.name) || [];
-  if (pests.length === 0) {
-    return ["Aphids", "Cutworms", "Stalk borers", "Fall armyworm", "Thrips", "Whiteflies", "Other (specify)"];
-  }
   return pests;
 };
 
 const getDiseasesOptions = (crop: string) => {
   const diseases = cropPestDiseaseMap[crop.toLowerCase()]?.filter(p => p.type === "disease").map(p => p.name) || [];
-  if (diseases.length === 0) {
-    return ["Blight", "Rust", "Mosaic virus", "Leaf spot", "Powdery mildew", "Other (specify)"];
-  }
   return diseases;
 };
 
@@ -140,7 +179,16 @@ const needsPlantingMaterialCost = (crop: string): boolean => {
   const vegetativeCrops = [
     "sweet potatoes", "cassava", "bananas", "sugarcane", "irish potatoes",
     "yams", "taro", "pineapples", "coffee", "tea", "cocoa", "mangoes",
-    "avocados", "oranges", "macadamia", "passion fruit"
+    "avocados", "oranges", "macadamia", "passion fruit", "ginger", "turmeric",
+    "vanilla", "black pepper", "cardamom", "cinnamon", "cloves", "lemon grass",
+    "moringa", "aloe vera", "sisal", "bamboo", "garlic", "shallots", "chives",
+    "stevia", "fig", "date palm", "mulberry", "lychee", "persimmon", "gooseberry",
+    "currant", "elderberry", "rambutan", "durian", "mangosteen", "longan", "marula",
+    "pili nut", "ramie", "calendula", "nasturtium", "borage", "St. John's wort",
+    "valerian", "echinacea", "ginseng", "goldenseal", "horseradish", "artichoke",
+    "asparagus", "rhubarb", "wasabi", "lavender", "rosemary", "thyme", "oregano",
+    "sage", "mint", "basil", "coriander", "parsley", "dill", "fennel", "lovage",
+    "marjoram", "tarragon", "sorrel", "chervil", "savory", "watercress", "arugula"
   ];
   return vegetativeCrops.includes(lowerCrop);
 };
@@ -148,7 +196,6 @@ const needsPlantingMaterialCost = (crop: string): boolean => {
 const getPlantingMaterialCostQuestion = (crop: string) => {
   const lowerCrop = crop.toLowerCase();
 
-  // Determine the unit based on crop type
   let unit = "seedling";
   let placeholder = "e.g., 30";
 
@@ -173,6 +220,45 @@ const getPlantingMaterialCostQuestion = (crop: string) => {
   } else if (lowerCrop.includes("mango") || lowerCrop.includes("avocado") || lowerCrop.includes("orange") || lowerCrop.includes("macadamia")) {
     unit = "seedling";
     placeholder = "e.g., 150";
+  } else if (lowerCrop.includes("ginger") || lowerCrop.includes("turmeric")) {
+    unit = "kg";
+    placeholder = "e.g., 200";
+  } else if (lowerCrop.includes("vanilla")) {
+    unit = "cutting";
+    placeholder = "e.g., 50";
+  } else if (lowerCrop.includes("black pepper") || lowerCrop.includes("cardamom")) {
+    unit = "cutting";
+    placeholder = "e.g., 30";
+  } else if (lowerCrop.includes("cinnamon") || lowerCrop.includes("cloves")) {
+    unit = "seedling";
+    placeholder = "e.g., 20";
+  } else if (lowerCrop.includes("lemon grass") || lowerCrop.includes("moringa")) {
+    unit = "cutting";
+    placeholder = "e.g., 10";
+  } else if (lowerCrop.includes("aloe vera") || lowerCrop.includes("sisal") || lowerCrop.includes("bamboo")) {
+    unit = "offset/sucker";
+    placeholder = "e.g., 15";
+  } else if (lowerCrop.includes("garlic") || lowerCrop.includes("shallots") || lowerCrop.includes("chives")) {
+    unit = "clove/bulb";
+    placeholder = "e.g., 500";
+  } else if (lowerCrop.includes("stevia") || lowerCrop.includes("basil") || lowerCrop.includes("mint") ||
+             lowerCrop.includes("rosemary") || lowerCrop.includes("thyme") || lowerCrop.includes("oregano") ||
+             lowerCrop.includes("sage") || lowerCrop.includes("lavender") || lowerCrop.includes("chamomile") ||
+             lowerCrop.includes("echinacea") || lowerCrop.includes("ginseng") || lowerCrop.includes("goldenseal") ||
+             lowerCrop.includes("calendula") || lowerCrop.includes("nasturtium") || lowerCrop.includes("borage") ||
+             lowerCrop.includes("st. john's wort") || lowerCrop.includes("valerian")) {
+    unit = "seedling/cutting";
+    placeholder = "e.g., 10";
+  } else if (lowerCrop.includes("fig") || lowerCrop.includes("date palm") || lowerCrop.includes("mulberry") ||
+             lowerCrop.includes("lychee") || lowerCrop.includes("persimmon") || lowerCrop.includes("gooseberry") ||
+             lowerCrop.includes("currant") || lowerCrop.includes("elderberry") || lowerCrop.includes("rambutan") ||
+             lowerCrop.includes("durian") || lowerCrop.includes("mangosteen") || lowerCrop.includes("longan") ||
+             lowerCrop.includes("marula") || lowerCrop.includes("pili nut")) {
+    unit = "seedling";
+    placeholder = "e.g., 100";
+  } else if (lowerCrop.includes("ramie") || lowerCrop.includes("kenaf") || lowerCrop.includes("jute")) {
+    unit = "cutting/seed";
+    placeholder = "e.g., 20";
   }
 
   return {
@@ -189,7 +275,7 @@ const getPlantingMaterialQuestion = (crop: string) => {
   const cropType = getCropType(crop);
   const lowerCrop = crop.toLowerCase();
 
-  // New crops
+  // Specific crops
   if (lowerCrop === "rice") {
     return {
       id: "plantingMaterial",
@@ -199,7 +285,14 @@ const getPlantingMaterialQuestion = (crop: string) => {
       sectionKey: "section_planting_material"
     };
   }
-  if (lowerCrop === "mangoes" || lowerCrop === "macadamia") {
+  if (lowerCrop === "mangoes" || lowerCrop === "macadamia" || lowerCrop === "avocados" ||
+      lowerCrop === "oranges" || lowerCrop === "lemons" || lowerCrop === "limes" ||
+      lowerCrop === "grapefruit" || lowerCrop === "fig" || lowerCrop === "date palm" ||
+      lowerCrop === "mulberry" || lowerCrop === "lychee" || lowerCrop === "persimmon" ||
+      lowerCrop === "gooseberry" || lowerCrop === "currant" || lowerCrop === "elderberry" ||
+      lowerCrop === "rambutan" || lowerCrop === "durian" || lowerCrop === "mangosteen" ||
+      lowerCrop === "longan" || lowerCrop === "marula" || lowerCrop === "pili nut" ||
+      lowerCrop === "pomegranate" || lowerCrop === "star fruit" || lowerCrop === "guava") {
     return {
       id: "plantingMaterial",
       questionKey: "question_planting_material_fruits",
@@ -217,7 +310,17 @@ const getPlantingMaterialQuestion = (crop: string) => {
       sectionKey: "section_planting_material"
     };
   }
-  if (lowerCrop === "watermelons" || lowerCrop === "carrots" || lowerCrop === "spinach" || lowerCrop === "okra") {
+  if (lowerCrop === "watermelons" || lowerCrop === "carrots" || lowerCrop === "spinach" ||
+      lowerCrop === "okra" || lowerCrop === "cucumbers" || lowerCrop === "courgettes" ||
+      lowerCrop === "pumpkin" || lowerCrop === "radish" || lowerCrop === "beetroot" ||
+      lowerCrop === "parsnip" || lowerCrop === "turnip" || lowerCrop === "rutabaga" ||
+      lowerCrop === "amaranth" || lowerCrop === "african nightshade" || lowerCrop === "jute mallow" ||
+      lowerCrop === "spider plant" || lowerCrop === "ethiopian kale" || lowerCrop === "collard greens" ||
+      lowerCrop === "bok choy" || lowerCrop === "mustard greens" || lowerCrop === "Swiss chard" ||
+      lowerCrop === "endive" || lowerCrop === "escarole" || lowerCrop === "frisee" ||
+      lowerCrop === "radicchio" || lowerCrop === "watercress" || lowerCrop === "arugula" ||
+      lowerCrop === "celery" || lowerCrop === "leeks" || lowerCrop === "kohlrabi" ||
+      lowerCrop === "broccoli" || lowerCrop === "cauliflower" || lowerCrop === "cabbage") {
     return {
       id: "plantingMaterial",
       questionKey: "question_planting_material_vegetables",
@@ -226,7 +329,8 @@ const getPlantingMaterialQuestion = (crop: string) => {
       sectionKey: "section_planting_material"
     };
   }
-  if (lowerCrop === "chillies" || lowerCrop === "capsicums") {
+  if (lowerCrop === "chillies" || lowerCrop === "capsicums" || lowerCrop === "tomatoes" ||
+      lowerCrop === "brinjals" || lowerCrop === "french beans" || lowerCrop === "garden peas") {
     return {
       id: "plantingMaterial",
       questionKey: "question_planting_material_vegetables",
@@ -235,7 +339,11 @@ const getPlantingMaterialQuestion = (crop: string) => {
       sectionKey: "section_planting_material"
     };
   }
-  if (lowerCrop === "pigeon peas" || lowerCrop === "bambara nuts") {
+  if (lowerCrop === "pigeon peas" || lowerCrop === "bambara nuts" || lowerCrop === "cowpeas" ||
+      lowerCrop === "green grams" || lowerCrop === "groundnuts" || lowerCrop === "soya beans" ||
+      lowerCrop === "chickpea" || lowerCrop === "lentil" || lowerCrop === "faba bean" ||
+      lowerCrop === "peanut" || lowerCrop === "fenugreek" || lowerCrop === "caraway" ||
+      lowerCrop === "anise" || lowerCrop === "cumin") {
     return {
       id: "plantingMaterial",
       questionKey: "question_planting_material_legumes",
@@ -244,7 +352,10 @@ const getPlantingMaterialQuestion = (crop: string) => {
       sectionKey: "section_planting_material"
     };
   }
-  if (lowerCrop === "yams" || lowerCrop === "taro") {
+  if (lowerCrop === "yams" || lowerCrop === "taro" || lowerCrop === "irish potatoes" ||
+      lowerCrop === "sweet potatoes" || lowerCrop === "cassava" || lowerCrop === "ginger" ||
+      lowerCrop === "turmeric" || lowerCrop === "horseradish" || lowerCrop === "artichoke" ||
+      lowerCrop === "asparagus" || lowerCrop === "rhubarb") {
     return {
       id: "plantingMaterial",
       questionKey: "question_planting_material_tubers",
@@ -271,8 +382,6 @@ const getPlantingMaterialQuestion = (crop: string) => {
       sectionKey: "section_planting_material"
     };
   }
-
-  // Existing crops
   if (lowerCrop === "bananas") {
     return {
       id: "plantingMaterial",
@@ -300,42 +409,44 @@ const getPlantingMaterialQuestion = (crop: string) => {
       sectionKey: "section_planting_material"
     };
   }
-  if (lowerCrop.includes("potato")) {
-    return {
-      id: "plantingMaterial",
-      questionKey: "question_planting_material_potato",
-      type: "dropdown",
-      options: ["Certified seed potatoes", "Farm-saved tubers", "Whole tubers", "Cut pieces", "Other"],
-      sectionKey: "section_planting_material"
-    };
-  }
-  if (cropType === "tubers") {
-    return {
-      id: "plantingMaterial",
-      questionKey: "question_planting_material_tubers",
-      type: "dropdown",
-      options: ["Tubers", "Root cuttings", "Sets", "Certified seed", "Other"],
-      sectionKey: "section_planting_material"
-    };
-  }
-  if (cropType === "fruits") {
-    return {
-      id: "plantingMaterial",
-      questionKey: "question_planting_material_fruits",
-      type: "dropdown",
-      options: ["Grafted seedlings", "Seedlings", "Cuttings", "Air layers", "Other"],
-      sectionKey: "section_planting_material"
-    };
-  }
-  if (cropType === "vegetables") {
+  // Herbs and spices
+  if (lowerCrop === "basil" || lowerCrop === "mint" || lowerCrop === "rosemary" ||
+      lowerCrop === "thyme" || lowerCrop === "oregano" || lowerCrop === "sage" ||
+      lowerCrop === "lavender" || lowerCrop === "chamomile" || lowerCrop === "echinacea" ||
+      lowerCrop === "ginseng" || lowerCrop === "goldenseal" || lowerCrop === "stevia" ||
+      lowerCrop === "lovage" || lowerCrop === "marjoram" || lowerCrop === "tarragon" ||
+      lowerCrop === "sorrel" || lowerCrop === "chervil" || lowerCrop === "savory" ||
+      lowerCrop === "calendula" || lowerCrop === "nasturtium" || lowerCrop === "borage" ||
+      lowerCrop === "st. john's wort" || lowerCrop === "valerian" || lowerCrop === "moringa" ||
+      lowerCrop === "lemon grass" || lowerCrop === "parsley" || lowerCrop === "coriander" ||
+      lowerCrop === "dill" || lowerCrop === "fennel") {
     return {
       id: "plantingMaterial",
       questionKey: "question_planting_material_vegetables",
       type: "dropdown",
-      options: ["Direct seeding", "Transplanting seedlings", "Sets", "Cuttings", "Other"],
+      options: ["Cuttings", "Seedlings", "Direct seeding", "Other"],
       sectionKey: "section_planting_material"
     };
   }
+  if (cropType === "forage") {
+    return {
+      id: "plantingMaterial",
+      questionKey: "question_planting_material_vegetables",
+      type: "dropdown",
+      options: ["Cuttings", "Seed", "Splits", "Other"],
+      sectionKey: "section_planting_material"
+    };
+  }
+  if (cropType === "cover") {
+    return {
+      id: "plantingMaterial",
+      questionKey: "question_planting_material_legumes",
+      type: "dropdown",
+      options: ["Direct seeding", "Certified seed", "Other"],
+      sectionKey: "section_planting_material"
+    };
+  }
+  // Default
   return {
     id: "seedSource",
     questionKey: "question_seed_source",
@@ -414,6 +525,45 @@ const getStorageQuestion = (crop: string) => {
       sectionKey: "section_storage"
     };
   }
+
+  const cropType = getCropType(crop);
+  if (cropType === "herbs") {
+    return {
+      id: "storageMethod",
+      questionKey: "question_storage_perishable",
+      type: "dropdown",
+      options: ["Sold immediately", "Drying", "Cool storage", "Other"],
+      sectionKey: "section_storage"
+    };
+  }
+  if (cropType === "forage") {
+    return {
+      id: "storageMethod",
+      questionKey: "question_storage_generic",
+      type: "dropdown",
+      options: ["Fresh use", "Hay", "Silage", "Sold immediately", "Other"],
+      sectionKey: "section_storage"
+    };
+  }
+  if (cropType === "cover") {
+    return {
+      id: "storageMethod",
+      questionKey: "question_storage_generic",
+      type: "dropdown",
+      options: ["Left in field", "Sold as seed", "Other"],
+      sectionKey: "section_storage"
+    };
+  }
+  if (cropType === "medicinal") {
+    return {
+      id: "storageMethod",
+      questionKey: "question_storage_perishable",
+      type: "dropdown",
+      options: ["Sold immediately", "Processing", "Cool storage", "Other"],
+      sectionKey: "section_storage"
+    };
+  }
+
   return {
     id: "storageMethod",
     questionKey: "question_storage_generic",
@@ -423,7 +573,7 @@ const getStorageQuestion = (crop: string) => {
   };
 };
 
-// ========== FIXED NUTRIENT DROPDOWN WITH DARK TEXT ==========
+// ========== NUTRIENT DROPDOWN ==========
 const NutrientDropdown = ({
   nutrient,
   value,
@@ -478,7 +628,7 @@ const CreateInterviewAgent = ({
   userId,
   profileImage
 }: CreateInterviewAgentProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { setCountry } = useCurrency();
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -493,7 +643,6 @@ const CreateInterviewAgent = ({
   const safeT = (key: string, params?: any): string => {
     try {
       const result = t(key, params);
-      // Handle if result is a Promise
       if (result && typeof result.then === 'function') {
         console.warn(`Translation for "${key}" returned a Promise`);
         return key;
@@ -551,7 +700,6 @@ const CreateInterviewAgent = ({
   const [farmerDetails, setFarmerDetails] = useState({
     country: "",
     farmerName: "",
-    // REMOVED phoneCountryCode and phoneNumber
     county: "",
     subCounty: "",
     ward: "",
@@ -650,6 +798,9 @@ const CreateInterviewAgent = ({
     topdressingFertilizerNutrients: "",
     potassiumFertilizerNutrients: "",
     plantsDamaged: "",
+    recDolomiticLime: "",
+    dolomiticLimePricePerBag: "",
+    wantsNutritionBenefits: "", // NEW
   });
 
   // NEW: State for nutrient selections
@@ -679,37 +830,54 @@ const CreateInterviewAgent = ({
   const retryCountRef = useRef(0);
   const maxRetries = 3;
 
-  // Update language when country changes
+  // ===== Map i18n language to speech synthesis language =====
+  const mapI18nToVoiceLanguage = (i18nLang: string): string => {
+    switch (i18nLang) {
+      case 'sw': return 'sw-KE';
+      case 'fr': return 'fr-FR';
+      case 'en': return 'en-US';
+      default: return 'en-US';
+    }
+  };
+
+  // ===== Sync voice language with global i18n language =====
   useEffect(() => {
-    if (farmerDetails.country) {
-      const lang = getLanguageFromCountry(farmerDetails.country);
-      setRecognitionLanguage(lang);
-      console.log(`CreateInterviewAgent: Language set to ${lang} for country ${farmerDetails.country}`);
+    if (i18n.language) {
+      const voiceLang = mapI18nToVoiceLanguage(i18n.language);
+      setRecognitionLanguage(voiceLang);
+      console.log(`CreateInterviewAgent: Voice language set to ${voiceLang} from i18n language ${i18n.language}`);
       if (recognitionRef.current) {
-        recognitionRef.current.lang = lang;
+        recognitionRef.current.lang = voiceLang;
       }
     }
-  }, [farmerDetails.country]);
+  }, [i18n.language]);
 
   // ========== QUESTION DEFINITIONS ==========
-
   const countryQuestion = [
     {
       id: "country",
       questionKey: "question_country",
       type: "dropdown",
       options: [
-        "kenya", "uganda", "tanzania", "rwanda", "burundi", "southsudan",
-        "ethiopia", "somalia", "djibouti", "eritrea", "nigeria", "ghana",
-        "senegal", "ivorycoast", "mali", "burkinafaso", "niger", "togo",
-        "benin", "guinea", "liberia", "sierraleone", "gambia", "capoverde",
-        "cameroon", "gabon", "chad", "car", "equatorialguinea", "congobrazzaville",
-        "congokinshasa", "angola", "saotome", "southafrica", "namibia",
-        "botswana", "zimbabwe", "zambia", "malawi", "mozambique", "madagascar",
-        "comoros", "mauritius", "seychelles", "eswatini", "lesotho", "egypt",
-        "sudan", "libya", "tunisia", "algeria", "morocco", "mauritania",
-        "usa", "uk", "europe", "other"
-      ],
+        "algeria", "angola", "antigua and barbuda", "argentina", "australia",
+        "bahamas", "barbados", "belize", "benin", "bolivia", "botswana",
+        "burkina faso", "burundi", "cameroon", "canada", "cape verde",
+        "central african republic", "chad", "colombia", "comoros",
+        "congo (brazzaville)", "congo (kinshasa)", "costa rica", "cuba",
+        "djibouti", "dominica", "dominican republic", "ecuador", "egypt",
+        "el salvador", "equatorial guinea", "eritrea", "eswatini", "ethiopia",
+        "fiji", "france", "gabon", "gambia", "ghana", "grenada", "guatemala",
+        "guinea", "guinea-bissau", "guyana", "haiti", "honduras", "india",
+        "ireland", "ivory coast", "jamaica", "kenya", "kiribati", "lesotho",
+        "liberia", "libya", "madagascar", "malawi", "malaysia", "mali",
+        "malta", "mauritania", "mauritius", "mexico", "morocco", "mozambique",
+        "namibia", "niger", "nigeria", "panama", "papua new guinea", "paraguay",
+        "peru", "philippines", "rwanda", "saint lucia", "sao tome and principe",
+        "senegal", "seychelles", "sierra leone", "singapore", "somalia",
+        "south africa", "south sudan", "spain", "sudan", "suriname", "tanzania",
+        "togo", "trinidad and tobago", "tunisia", "uganda", "united kingdom",
+        "united states", "uruguay", "vanuatu", "venezuela", "zambia", "zimbabwe"
+      ].sort((a, b) => a.localeCompare(b)),
       sectionKey: "section_location"
     }
   ];
@@ -724,25 +892,48 @@ const CreateInterviewAgent = ({
     }
   ];
 
-  // CROP SELECTION QUESTION - Q3
+  // Updated crop selection with all 200+ crops
   const cropSelectionQuestion = {
     id: "crops",
     questionKey: "question_crop_enterprise",
     type: "dropdown",
     options: [
-      "maize", "beans", "finger millet", "sorghum", "soya beans", "cowpeas",
-      "green grams", "bambara nuts", "groundnuts", "sunflower", "simsim",
-      "coffee", "cotton", "sugarcane", "tobacco", "cassava", "sweet potatoes",
-      "irish potatoes", "tomatoes", "kales", "cabbages", "onions", "carrots",
-      "capsicums", "chillies", "brinjals", "french beans", "garden peas",
-      "bananas", "oranges", "pineapples", "mangoes", "avocados", "pawpaws",
-      "passion fruit", "rice", "watermelons", "spinach", "pigeon peas",
-      "yams", "taro", "okra", "tea", "macadamia", "cocoa"
-    ],
+      "african nightshade", "alfalfa", "almond", "aloe vera", "amaranth", "amaranth grain",
+      "anise", "artichoke", "arugula", "asparagus", "avocados", "bambaranuts", "bamboo",
+      "bananas", "barley", "basil", "beans", "beetroot", "black pepper", "bok choy", "borage",
+      "brachiaria", "brazil nut", "breadfruit", "brinjals", "broccoli", "buckwheat",
+      "buffel grass", "cabbages", "calendula", "calliandra", "canavalia", "capsicums",
+      "caraway", "cardamom", "carrots", "cashew", "cassava", "cauliflower", "cayenne",
+      "celery", "cenchrus", "chamomile", "chervil", "chestnut", "chickpea", "chillies",
+      "chives", "cinnamon", "clover", "cloves", "cocoa", "coconut", "coffee", "collard greens",
+      "coriander", "cotton", "courgettes", "cowpeas", "crotalaria paulina", "cucumbers",
+      "cumin", "currant", "date palm", "desmodium", "dill", "dolichos", "durian",
+      "echinacea", "elderberry", "endive", "escarole", "ethiopian kale", "faba bean",
+      "fennel", "fenugreek", "fig", "finger millet", "flax", "fonio", "forage sorghum",
+      "french beans", "frisee", "garden peas", "garlic", "ginger", "ginseng", "goldenseal",
+      "gooseberry", "grapefruit", "green grams", "groundnuts", "guava", "guinea grass",
+      "hazelnut", "hemp", "hibiscus", "hops", "horseradish", "irish potatoes", "italian ryegrass",
+      "jackfruit", "jalapeno", "jute", "jute mallow", "kales", "kamut", "kenaf", "kohlrabi",
+      "lavender", "leeks", "lemon grass", "lemons", "lentil", "lettuce", "leucaena", "limes",
+      "longan", "lovage", "lucerne", "lychee", "macadamia", "maize", "mangoes", "mangosteen",
+      "marjoram", "marula", "millet", "mint", "moringa", "mucuna", "mulberry", "mushroom",
+      "mustard", "mustard greens", "napier grass", "napier hybrid", "nasturtium", "oats",
+      "oil palm", "okra", "onions", "oranges", "orchard grass", "oregano", "oyster nut",
+      "parsley", "parsnip", "passion fruit", "pawpaws", "peanut", "pecan", "persimmon",
+      "pigeonpeas", "pili nut", "pineapples", "pistachio", "pomegranate", "potatoes",
+      "pumpkin", "pumpkin leaves", "pyrethrum", "quinoa", "radicchio", "radish", "rambutan",
+      "ramie", "rapeseed", "rhodes grass", "rhubarb", "rice", "rosemary", "rubber",
+      "rutabaga", "safflower", "sage", "savory", "sesame", "sesbania", "shallots", "shea",
+      "simsim", "sisal", "slender leaf", "sorghum", "sorrel", "soya beans", "spelt", "spider plant",
+      "spinach", "St. John's wort", "star fruit", "stevia", "stinging nettle", "sugarcane",
+      "sunn hemp", "sunflower", "sweet potatoes", "sweet potato leaves", "Swiss chard",
+      "tarragon", "taro", "tea", "teff", "thyme", "timothy grass", "tobacco", "tomatoes",
+      "triticale", "turmeric", "turnip", "turnip greens", "valerian", "vanilla", "vetch",
+      "walnut", "wasabi", "watercress", "watermelons", "wheat", "white clover", "yams"
+    ].sort((a, b) => a.localeCompare(b)),
     sectionKey: "section_crops"
   };
 
-  // SALE DATE QUESTION
   const saleDateQuestion = {
     id: "saleDate",
     questionKey: "question_sale_date",
@@ -752,7 +943,6 @@ const CreateInterviewAgent = ({
     sectionKey: "section_production"
   };
 
-  // NUTRIENT DEFICIENCY QUESTIONS
   const deficiencyQuestions = [
     {
       id: "deficiencySymptoms",
@@ -779,7 +969,6 @@ const CreateInterviewAgent = ({
     }
   ];
 
-  // NEW: Nutrient detail questions (only if soil test done)
   const nutrientDetailQuestions = [
     {
       id: "plantingFertilizerNutrients",
@@ -807,7 +996,6 @@ const CreateInterviewAgent = ({
     },
   ];
 
-  // NEW: Plants damaged question (data-only)
   const plantsDamagedQuestion = {
     id: "plantsDamaged",
     questionKey: "question_plants_damaged",
@@ -817,17 +1005,31 @@ const CreateInterviewAgent = ({
     sectionKey: "section_pests"
   };
 
+  // NEW: Forced Yes question for nutrition benefits
+  const nutritionBenefitsQuestion = {
+    id: "wantsNutritionBenefits",
+    questionKey: "question_wants_nutrition_benefits",
+    type: "button",
+    options: ["Yes"],
+    sectionKey: "section_nutrition"
+  };
+
   const getCropSpecificQuestions = () => {
     if (!farmerDetails.crops) return [];
     const crop = farmerDetails.crops;
     const spacingOptions = getSpacingOptions(crop);
 
+    // Variety dropdown only for East African countries
+    const eastAfricanCountries = ["kenya", "uganda", "tanzania", "rwanda", "burundi", "south sudan"];
+    const isEastAfrica = farmerDetails.country && eastAfricanCountries.includes(farmerDetails.country.toLowerCase());
+
     return [
       {
         id: "cropVarieties",
         questionKey: "question_crop_varieties",
-        type: "text",
-        placeholder: "e.g., H614",
+        type: isEastAfrica ? "dropdown" : "text",
+        options: isEastAfrica ? getVarietiesOptions(crop) : [],
+        placeholder: isEastAfrica ? "Select variety" : "e.g., H614",
         sectionKey: "section_crops"
       },
       {
@@ -908,7 +1110,6 @@ const CreateInterviewAgent = ({
       placeholder: "e.g., 5",
       sectionKey: "section_farm"
     },
-    // REMOVED duplicate cultivatedAcres
     {
       id: "waterSources",
       questionKey: "question_water_sources",
@@ -970,6 +1171,7 @@ const CreateInterviewAgent = ({
     }
 
     questions.push({ id: "calciticLimePricePerBag", questionKey: "question_lime_price", type: "number", placeholder: "e.g., 300", step: "any", sectionKey: "section_finance" });
+    questions.push({ id: "dolomiticLimePricePerBag", questionKey: "question_dolomitic_lime_price", type: "number", placeholder: "e.g., 300", step: "any", sectionKey: "section_finance" });
 
     return questions;
   };
@@ -1048,7 +1250,6 @@ const CreateInterviewAgent = ({
       placeholder: "e.g., John Mugo",
       sectionKey: "section_personal"
     },
-    // REMOVED phoneNumber question
     { id: "county", questionKey: "question_county", type: "text", placeholder: "e.g., Bungoma", sectionKey: "section_location" },
     { id: "subCounty", questionKey: "question_sub_county", type: "text", placeholder: "e.g., Kimilili", sectionKey: "section_location" },
     { id: "ward", questionKey: "question_ward", type: "text", placeholder: "e.g., Kimilili", sectionKey: "section_location" },
@@ -1089,6 +1290,15 @@ const CreateInterviewAgent = ({
     {
       id: "recCalciticLime",
       questionKey: "question_rec_calcitic_lime",
+      type: "number",
+      step: "any",
+      placeholder: "e.g., 120",
+      dependsOn: { field: "hasDoneSoilTest", value: "Yes" },
+      sectionKey: "section_soil_test_recommendations"
+    },
+    {
+      id: "recDolomiticLime",
+      questionKey: "question_rec_dolomitic_lime",
       type: "number",
       step: "any",
       placeholder: "e.g., 120",
@@ -1329,6 +1539,9 @@ const CreateInterviewAgent = ({
       questions = [...questions, ...deficiencyQuestions];
     }
 
+    // NEW: Add forced Yes nutrition question after deficiency questions
+    questions = [...questions, nutritionBenefitsQuestion];
+
     questions = [...questions, ...conservationQuestion];
     questions = [...questions, ...challengesQuestions];
     questions = [...questions, ...personalLocationQuestions];
@@ -1345,14 +1558,13 @@ const CreateInterviewAgent = ({
     setDebugInfo(prev => ({ ...prev, totalQuestions: visibleQuestions.length }));
   }, [visibleQuestions.length]);
 
-  // ========== FIXED: Speech recognition initialization with proper dependencies ==========
+  // ========== Speech recognition initialization ==========
   useEffect(() => {
     let isMounted = true;
 
     const checkVoiceSupport = () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window && isMounted) {
         const voices = window.speechSynthesis.getVoices();
-        // Only update if voice mode actually changed
         setDebugInfo(prev => {
           const newMode = voices.length > 0 ? "REAL" : "SIMULATED";
           if (prev.voiceMode === newMode) return prev;
@@ -1362,8 +1574,6 @@ const CreateInterviewAgent = ({
     };
 
     checkVoiceSupport();
-
-    // Use setTimeout to avoid multiple rapid calls
     const timeoutId = setTimeout(checkVoiceSupport, 500);
 
     if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) && !recognitionRef.current) {
@@ -1412,7 +1622,6 @@ const CreateInterviewAgent = ({
       };
     }
 
-    // Cleanup function
     return () => {
       isMounted = false;
       clearTimeout(timeoutId);
@@ -1422,7 +1631,7 @@ const CreateInterviewAgent = ({
     };
   }, [recognitionLanguage, safeT]);
 
-  // ========== FIXED: Voice assistant ref setup - prevents multiple toasts ==========
+  // ========== Voice assistant ref setup ==========
   useEffect(() => {
     let isMounted = true;
 
@@ -1431,20 +1640,105 @@ const CreateInterviewAgent = ({
       return;
     }
 
-    if (!voiceAssistantRef.current) {
-      voiceAssistantRef.current = { speak: async (text: string) => streamQuestionWithVoice(text) };
-      // Only show toast once when voice is first enabled
-      if (isMounted && voiceEnabled) {
-        toast.success(safeT('voice_ready'));
-      }
+    voiceAssistantRef.current = { speak: async (text: string) => streamQuestionWithVoice(text) };
+    if (isMounted && voiceEnabled) {
+      toast.success(safeT('voice_ready'));
     }
 
     return () => {
       isMounted = false;
     };
-  }, [voiceEnabled, safeT]); // Only re-run when voiceEnabled changes
+  }, [voiceEnabled, safeT, recognitionLanguage]);
 
-  // Stream question with voice
+  // ---------- ENHANCED VOICE SELECTION WITH RETRIES (FRENCH, SWAHILI, ENGLISH) ----------
+  const getBestVoiceForLanguage = async (language: string): Promise<SpeechSynthesisVoice | null> => {
+    console.log(`getBestVoiceForLanguage: looking for ${language}`);
+
+    const waitForVoices = (): Promise<SpeechSynthesisVoice[]> => {
+      return new Promise((resolve) => {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length) {
+          console.log(`Initial voices loaded: ${voices.length}`);
+          resolve(voices);
+          return;
+        }
+        const onChanged = () => {
+          const newVoices = window.speechSynthesis.getVoices();
+          if (newVoices.length) {
+            window.speechSynthesis.onvoiceschanged = null;
+            console.log(`Voices loaded via onvoiceschanged: ${newVoices.length}`);
+            resolve(newVoices);
+          }
+        };
+        window.speechSynthesis.onvoiceschanged = onChanged;
+        setTimeout(() => {
+          window.speechSynthesis.onvoiceschanged = null;
+          console.log('Voices load timeout, using current list');
+          resolve(window.speechSynthesis.getVoices());
+        }, 3000);
+      });
+    };
+
+    const findFrenchVoice = (voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null => {
+      let vivienne = voices.find(v => v.lang.startsWith('fr') && v.name.toLowerCase().includes('vivienne'));
+      if (vivienne) return vivienne;
+      const frenchFemale = voices.find(v => v.lang.startsWith('fr') &&
+        (v.name.toLowerCase().includes('denise') ||
+         v.name.toLowerCase().includes('google français female') ||
+         v.name.toLowerCase().includes('marie') ||
+         v.name.toLowerCase().includes('chloe')));
+      if (frenchFemale) return frenchFemale;
+      const anyFrench = voices.find(v => v.lang.startsWith('fr'));
+      return anyFrench || null;
+    };
+
+    const findSwahiliVoice = (voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null => {
+      let rafiki = voices.find(v => v.lang === 'sw-KE' && v.name.toLowerCase().includes('rafiki'));
+      if (rafiki) return rafiki;
+      const anySwahili = voices.find(v => v.lang === 'sw-KE');
+      return anySwahili || null;
+    };
+
+    let voices = await waitForVoices();
+    if (!voices.length) return null;
+
+    if (language === 'fr-FR' || language === 'fr-CA' || language.startsWith('fr')) {
+      let frenchVoice = findFrenchVoice(voices);
+      let attempts = 0;
+      while (!frenchVoice && attempts < 5) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        voices = window.speechSynthesis.getVoices();
+        frenchVoice = findFrenchVoice(voices);
+        attempts++;
+      }
+      if (frenchVoice) return frenchVoice;
+      console.warn('No French voice found after retries');
+    }
+
+    if (language === 'sw-KE' || language === 'sw-TZ' || language.startsWith('sw')) {
+      let swahiliVoice = findSwahiliVoice(voices);
+      let attempts = 0;
+      while (!swahiliVoice && attempts < 5) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        voices = window.speechSynthesis.getVoices();
+        swahiliVoice = findSwahiliVoice(voices);
+        attempts++;
+      }
+      if (swahiliVoice) return swahiliVoice;
+      console.warn('No Swahili voice found after retries');
+    }
+
+    // English voice priority: Samantha → Aria → Zira → Jenny
+    const englishFemale = voices.find(v => v.lang.startsWith('en-') &&
+      (v.name.toLowerCase().includes('samantha') ||
+       v.name.toLowerCase().includes('aria') ||
+       v.name.toLowerCase().includes('zira') ||
+       v.name.toLowerCase().includes('jenny')));
+    if (englishFemale) return englishFemale;
+
+    return voices[0] || null;
+  };
+
   const streamQuestionWithVoice = async (fullText: string) => {
     if (!voiceEnabled || !window.speechSynthesis) {
       setStreamingQuestion(fullText);
@@ -1470,41 +1764,10 @@ const CreateInterviewAgent = ({
     utterance.pitch = 1.1;
     utterance.lang = recognitionLanguage;
 
-    const voices = window.speechSynthesis.getVoices();
-
-    const femaleVoicePatterns = [
-      'Google UK', 'Google', 'Samantha', 'Microsoft Jenny',
-      'Microsoft Aria', 'Microsoft Sonia', 'Microsoft Vivienne',
-      'Moira', 'Tessa', 'Karen', 'Veena', 'Nicky', 'Catherine',
-      'Fiona', 'Martha', 'Naomi', 'Sangeeta', 'Rishi', 'Lekha',
-      'Zira', 'Heera', 'Kalpana', 'Hemant', 'Prabhat', 'Sagar'
-    ];
-
-    let selectedVoice = voices.find(voice =>
-      voice.lang === recognitionLanguage &&
-      femaleVoicePatterns.some(pattern => voice.name.includes(pattern))
-    );
-
-    if (!selectedVoice) {
-      selectedVoice = voices.find(voice =>
-        femaleVoicePatterns.some(pattern => voice.name.includes(pattern))
-      );
-    }
-
-    if (!selectedVoice) {
-      const malePatterns = ['Daniel', 'James', 'David', 'John', 'Paul', 'Mark', 'Michael'];
-      selectedVoice = voices.find(voice =>
-        !malePatterns.some(pattern => voice.name.includes(pattern))
-      );
-    }
-
-    if (!selectedVoice && voices.length > 0) {
-      selectedVoice = voices[0];
-    }
-
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-      console.log(`Using voice: ${selectedVoice.name} (${selectedVoice.lang}) - FEMALE ONLY`);
+    const bestVoice = await getBestVoiceForLanguage(recognitionLanguage);
+    if (bestVoice) {
+      utterance.voice = bestVoice;
+      console.log(`Using voice: ${bestVoice.name} (${bestVoice.lang})`);
     }
 
     setIsSpeaking(true);
@@ -1537,7 +1800,6 @@ const CreateInterviewAgent = ({
     window.speechSynthesis.speak(utterance);
   };
 
-  // Speak acknowledgment
   const speakAcknowledgment = async (answer: string, fieldId: string) => {
     let acknowledgment = "";
 
@@ -1557,6 +1819,10 @@ const CreateInterviewAgent = ({
       acknowledgment = safeT('ack_rec_potassium', { answer });
     } else if (fieldId === "recCalciticLime") {
       acknowledgment = safeT('ack_rec_lime', { answer });
+    } else if (fieldId === "recDolomiticLime") {
+      acknowledgment = safeT('ack_rec_dolomitic_lime', { answer });
+    } else if (fieldId === "dolomiticLimePricePerBag") {
+      acknowledgment = safeT('ack_dolomitic_lime_price', { answer });
     } else if (fieldId === "targetYield") {
       acknowledgment = safeT('ack_target_yield_kg', { answer });
     } else if (fieldId === "actualYieldKg") {
@@ -1566,8 +1832,6 @@ const CreateInterviewAgent = ({
     } else if (fieldId === "country") {
       acknowledgment = safeT('ack_country', { answer });
       setCountry(answer);
-    } else if (fieldId === "phoneNumber") {
-      acknowledgment = safeT('ack_phone', { code: selectedCountryCode, number: answer });
     } else if (fieldId === "crops") {
       acknowledgment = safeT('ack_crops', { answer });
     } else if (fieldId === "plantingDate") {
@@ -1579,6 +1843,8 @@ const CreateInterviewAgent = ({
       acknowledgment = safeT('ack_deficiency_location', { answer });
     } else if (fieldId === "plantsDamaged") {
       acknowledgment = safeT('ack_plants_damaged', { answer });
+    } else if (fieldId === "wantsNutritionBenefits") {
+      acknowledgment = safeT('ack_wants_nutrition_benefits', { answer });
     } else {
       acknowledgment = safeT('ack_generic', { answer });
     }
@@ -1587,18 +1853,15 @@ const CreateInterviewAgent = ({
     toast.success(safeT('recorded', { answer }));
   };
 
-  // ========== HANDLE VOICE TOGGLE ==========
   const handleVoiceToggle = (enabled: boolean) => {
     setVoiceEnabled(enabled);
     toast.success(enabled ? safeT('voice_mode_on') : safeT('voice_mode_off'));
   };
 
-  // Process nutrient selections - FIXED to properly save values
   const handleNutrientSubmit = (type: string, nutrients: any) => {
     const nutrientString = Object.entries(nutrients)
       .filter(([_, value]) => value && value !== "" && value !== "0" && value !== "0%")
       .map(([key, value]) => {
-        // Extract just the number, remove % if present
         const percent = value.toString().replace('%', '');
         return `${percent}${key.toUpperCase()}`;
       })
@@ -1609,11 +1872,9 @@ const CreateInterviewAgent = ({
       [type]: nutrientString || "No additional nutrients"
     }));
 
-    // Show success toast
     toast.success(safeT('nutrients_recorded'));
   };
 
-  // Process answer with VALIDATION
   const processAnswer = async (answer: string) => {
     if (currentStep !== "configuring") return;
 
@@ -1624,7 +1885,6 @@ const CreateInterviewAgent = ({
     // Check if this is a custom nutrient question
     if (currentConfig.id === "plantingFertilizerNutrients") {
       handleNutrientSubmit("plantingFertilizerNutrients", plantingNutrients);
-      // Skip to next question
       if (configStep < visibleQuestions.length - 1) {
         setConfigStep(prev => prev + 1);
         setTimeout(() => askQuestion(configStep + 1), 2500);
@@ -1641,6 +1901,21 @@ const CreateInterviewAgent = ({
     }
     if (currentConfig.id === "potassiumFertilizerNutrients") {
       handleNutrientSubmit("potassiumFertilizerNutrients", potassiumNutrients);
+      if (configStep < visibleQuestions.length - 1) {
+        setConfigStep(prev => prev + 1);
+        setTimeout(() => askQuestion(configStep + 1), 2500);
+      }
+      return;
+    }
+
+    // NEW: Handle forced Yes button
+    if (currentConfig.id === "wantsNutritionBenefits") {
+      // Force value to "Yes" regardless of what user said
+      finalValue = "Yes";
+      setFarmerDetails(prev => ({ ...prev, wantsNutritionBenefits: finalValue }));
+      setLastSubmittedAnswer("Yes");
+      await speakAcknowledgment("Yes", currentConfig.id);
+      setUserTranscript("");
       if (configStep < visibleQuestions.length - 1) {
         setConfigStep(prev => prev + 1);
         setTimeout(() => askQuestion(configStep + 1), 2500);
@@ -1694,7 +1969,7 @@ const CreateInterviewAgent = ({
           if (!confirmed) return;
         }
 
-        const maxYieldPerAcre = {
+        const maxYieldPerAcre: Record<string, number> = {
           maize: 5000,
           beans: 3000,
           onions: 15000,
@@ -1719,7 +1994,7 @@ const CreateInterviewAgent = ({
           "sweet potatoes": 20000
         };
         const crop = farmerDetails.crops?.toLowerCase() || 'maize';
-        const maxYield = maxYieldPerAcre[crop as keyof typeof maxYieldPerAcre] || 20000;
+        const maxYield = maxYieldPerAcre[crop] || 20000;
         const acres = parseFloat(farmerDetails.cropAcres) || 1;
 
         if (yieldKg > maxYield * acres * 1.5) {
@@ -1785,12 +2060,6 @@ const CreateInterviewAgent = ({
       cleanAnswer = parts[parts.length - 1].trim();
     }
 
-    if (currentConfig.id === "phoneNumber") {
-      cleanAnswer = cleanAnswer.replace(/\+?\d{1,3}\s?/, '').trim();
-      const digits = cleanAnswer.match(/\d+/g);
-      cleanAnswer = digits ? digits.join('') : cleanAnswer;
-    }
-
     if (currentConfig.type === "number") {
       const numbers = cleanAnswer.match(/\d+\.?\d*/g);
       cleanAnswer = numbers ? numbers.join('') : "0";
@@ -1811,16 +2080,14 @@ const CreateInterviewAgent = ({
       finalValue = cleanAnswer.split(/[.\s]+/).pop()?.toLowerCase() || cleanAnswer;
     } else if (currentConfig.id === "ward") {
       finalValue = cleanAnswer.split(/[.\s]+/).pop()?.toLowerCase() || cleanAnswer;
+    } else if (currentConfig.id === "wantsNutritionBenefits") {
+      finalValue = "Yes";
     } else {
       finalValue = cleanAnswer;
     }
 
     if (currentConfig.id === "country" && finalValue) {
       setCountry(finalValue);
-    }
-
-    if (currentConfig.id === "phoneNumber") {
-      finalValue = `${selectedCountryCode} ${finalValue}`;
     }
 
     setFarmerDetails(prev => ({ ...prev, [currentConfig.id]: finalValue }));
@@ -1875,7 +2142,6 @@ const CreateInterviewAgent = ({
     setFarmerDetails({
       country: "",
       farmerName: "",
-      // REMOVED phoneCountryCode and phoneNumber
       county: "",
       subCounty: "",
       ward: "",
@@ -1974,6 +2240,9 @@ const CreateInterviewAgent = ({
       topdressingFertilizerNutrients: "",
       potassiumFertilizerNutrients: "",
       plantsDamaged: "",
+      recDolomiticLime: "",
+      dolomiticLimePricePerBag: "",
+      wantsNutritionBenefits: "",
     });
 
     setPlantingNutrients({ s: "", ca: "", mg: "", zn: "", b: "", cu: "", mn: "" });
@@ -1995,6 +2264,11 @@ const CreateInterviewAgent = ({
     setLastSubmittedAnswer("");
 
     await voiceAssistantRef.current.speak(question);
+
+    // Do NOT start voice listening for multiselect, button, or custom nutrient questions
+    if (visibleQuestions[step].type !== "multiselect" && visibleQuestions[step].type !== "button" && !visibleQuestions[step].renderCustom) {
+      safeStartListening();
+    }
   };
 
   const generateSession = async () => {
@@ -2064,10 +2338,7 @@ const CreateInterviewAgent = ({
     ? `${currentWordIndex}/${questionWordsRef.current.length} ${safeT('words')}`
     : '';
 
-  // ✅ Define q here to fix "q is not defined" error
-  const q = visibleQuestions[configStep];
-
-  // FIXED nutrient selector with dark text
+  // Helper for nutrient selector rendering
   const renderNutrientSelector = useCallback((
     type: string,
     nutrients: any,
@@ -2113,12 +2384,14 @@ const CreateInterviewAgent = ({
         </button>
       </div>
     );
-  }, [plantingNutrients, topdressingNutrients, potassiumNutrients, configStep, visibleQuestions.length, safeT]);
+  }, [plantingNutrients, topdressingNutrients, potassiumNutrients, configStep, visibleQuestions.length, safeT, handleNutrientSubmit]);
 
+  // Input render function
   const renderInput = useCallback(() => {
     const q = visibleQuestions[configStep];
     if (!q) return null;
 
+    // Custom nutrient selectors
     if (q.id === "plantingFertilizerNutrients") {
       return renderNutrientSelector("planting", plantingNutrients, setPlantingNutrients);
     }
@@ -2127,6 +2400,22 @@ const CreateInterviewAgent = ({
     }
     if (q.id === "potassiumFertilizerNutrients") {
       return renderNutrientSelector("potassium", potassiumNutrients, setPotassiumNutrients);
+    }
+
+    // NEW: Button type for forced Yes
+    if (q.type === "button" && q.id === "wantsNutritionBenefits") {
+      return (
+        <div className="flex justify-center">
+          <button
+            onClick={() => {
+              processAnswer("Yes");
+            }}
+            className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-2xl font-bold rounded-2xl hover:scale-105 transition-all shadow-lg"
+          >
+            {safeT('yes')}
+          </button>
+        </div>
+      );
     }
 
     if (q.type === "date") {
@@ -2219,7 +2508,7 @@ const CreateInterviewAgent = ({
         className="w-full px-4 py-3 border-2 rounded-xl text-blue-900 font-medium focus:border-blue-600 placeholder-gray-400"
       />
     );
-  }, [configStep, visibleQuestions, userTranscript, plantingNutrients, topdressingNutrients, potassiumNutrients, renderNutrientSelector, safeT]);
+  }, [configStep, visibleQuestions, userTranscript, plantingNutrients, topdressingNutrients, potassiumNutrients, renderNutrientSelector, safeT, setPlantingNutrients, setTopdressingNutrients, setPotassiumNutrients, processAnswer]);
 
   // ========== RENDER ==========
   return (
@@ -2309,7 +2598,7 @@ const CreateInterviewAgent = ({
               <div className="bg-white rounded-xl border-2 border-purple-200 p-6">
                 {renderInput()}
 
-                {!q?.renderCustom && (
+                {!visibleQuestions[configStep]?.renderCustom && visibleQuestions[configStep]?.type !== "button" && (
                   <div className="flex gap-2 mt-4">
                     <button
                       onClick={submitAnswer}

@@ -18,18 +18,71 @@ export const COUNTRY_LANGUAGE_MAP: Record<string, CountryLanguage> = {
 
   // ===== WEST AFRICA =====
   nigeria: { code: 'en-NG', name: 'English (Nigeria)', ttsSupported: true },
+  benin: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  burkina_faso: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  cameroon: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  central_african_republic: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  chad: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  comoros: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  congo: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  democratic_republic_of_congo: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  cote_divoire: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  djibouti: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  equatorial_guinea: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  gabon: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  guinea: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  madagascar: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  mali: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  mauritania: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  mauritius: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  niger: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  senegal: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  seychelles: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  togo: { code: 'fr-FR', name: 'French', ttsSupported: true },
 
-  // ===== NORTH AFRICA =====
+  // ===== NORTH AFRICA (French widely spoken) =====
   egypt: { code: 'ar-EG', name: 'Arabic (Egypt)', ttsSupported: true },
-  morocco: { code: 'ar-MA', name: 'Arabic (Morocco)', ttsSupported: true },
-  algeria: { code: 'ar-DZ', name: 'Arabic (Algeria)', ttsSupported: true },
-  tunisia: { code: 'ar-TN', name: 'Arabic (Tunisia)', ttsSupported: true },
+  morocco: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  algeria: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  tunisia: { code: 'fr-FR', name: 'French', ttsSupported: true },
   libya: { code: 'ar-LY', name: 'Arabic (Libya)', ttsSupported: true },
   sudan: { code: 'ar-SA', name: 'Arabic', ttsSupported: true },
 
+  // ===== EUROPE =====
+  france: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  belgium: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  switzerland: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  luxembourg: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  monaco: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  spain: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
+  germany: { code: 'de-DE', name: 'German', ttsSupported: true },
+  italy: { code: 'it-IT', name: 'Italian', ttsSupported: true },
+  netherlands: { code: 'nl-NL', name: 'Dutch', ttsSupported: true },
+  greece: { code: 'el-GR', name: 'Greek', ttsSupported: true },
+  portugal: { code: 'pt-PT', name: 'Portuguese', ttsSupported: true },
+  russia: { code: 'ru-RU', name: 'Russian', ttsSupported: true },
+  ukraine: { code: 'ru-UA', name: 'Russian', ttsSupported: true },
+  belarus: { code: 'ru-BY', name: 'Russian', ttsSupported: true },
+  kazakhstan: { code: 'ru-KZ', name: 'Russian', ttsSupported: true },
+  uk: { code: 'en-GB', name: 'English (UK)', ttsSupported: true },
+
+  // ===== NORTH AMERICA =====
+  canada: { code: 'fr-CA', name: 'French (Canada)', ttsSupported: true },
+  haiti: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  usa: { code: 'en-US', name: 'English (US)', ttsSupported: true },
+
+  // ===== CARIBBEAN & SOUTH AMERICA (French territories) =====
+  guadeloupe: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  martinique: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  french_guiana: { code: 'fr-FR', name: 'French', ttsSupported: true },
+
+  // ===== PACIFIC (French territories) =====
+  french_polynesia: { code: 'fr-FR', name: 'French', ttsSupported: true },
+  new_caledonia: { code: 'fr-FR', name: 'French', ttsSupported: true },
+
   // ===== SOUTH ASIA =====
   india: { code: 'hi-IN', name: 'Hindi', ttsSupported: true },
-  pakistan: { code: 'ur-PK', name: 'Urdu', ttsSupported: true }, // Keep in map for country lookup
+  pakistan: { code: 'ur-PK', name: 'Urdu', ttsSupported: true },
   bangladesh: { code: 'bn-BD', name: 'Bengali', ttsSupported: true },
 
   // ===== EAST ASIA =====
@@ -54,22 +107,7 @@ export const COUNTRY_LANGUAGE_MAP: Record<string, CountryLanguage> = {
   oman: { code: 'ar-OM', name: 'Arabic (Oman)', ttsSupported: true },
   bahrain: { code: 'ar-BH', name: 'Arabic (Bahrain)', ttsSupported: true },
 
-  // ===== EUROPE =====
-  spain: { code: 'es-ES', name: 'Spanish', ttsSupported: true },
-  france: { code: 'fr-FR', name: 'French', ttsSupported: true },
-  germany: { code: 'de-DE', name: 'German', ttsSupported: true },
-  italy: { code: 'it-IT', name: 'Italian', ttsSupported: true },
-  netherlands: { code: 'nl-NL', name: 'Dutch', ttsSupported: true },
-  greece: { code: 'el-GR', name: 'Greek', ttsSupported: true },
-  portugal: { code: 'pt-PT', name: 'Portuguese', ttsSupported: true },
-  russia: { code: 'ru-RU', name: 'Russian', ttsSupported: true },
-  ukraine: { code: 'ru-UA', name: 'Russian', ttsSupported: true },
-  belarus: { code: 'ru-BY', name: 'Russian', ttsSupported: true },
-  kazakhstan: { code: 'ru-KZ', name: 'Russian', ttsSupported: true },
-  uk: { code: 'en-GB', name: 'English (UK)', ttsSupported: true },
-
   // ===== WESTERN COUNTRIES =====
-  usa: { code: 'en-US', name: 'English (US)', ttsSupported: true },
   australia: { code: 'en-AU', name: 'English (Australia)', ttsSupported: true }
 };
 

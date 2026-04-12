@@ -369,7 +369,7 @@ export class SoilTestInterpreter {
     };
   }
 
-  // Calculate lime requirement based on pH and crop
+  // Calculate lime requirement based on pH and crop (calcitic)
   calculateLimeRequirement(ph: number, targetPh: number = 6.5, soilType: string = 'medium'): number {
     if (ph >= targetPh) return 0;
 
@@ -386,6 +386,55 @@ export class SoilTestInterpreter {
     const factor = factors[soilType] || 80;
     const diff = targetPh - ph;
     return Math.round(diff * 10 * factor);
+  }
+
+  /**
+   * Get dolomitic lime recommendation based on magnesium level and Ca:Mg ratio
+   * Similar to calcitic lime recommendation but for magnesium deficiency or imbalance.
+   */
+  getDolomiticLimeRecommendation(soilTest: SoilTestResults): {
+    needed: boolean;
+    kgPerAcre: number;
+    reason: string;
+    costEstimate: number;
+  } {
+    const mg = soilTest.magnesium || 0;
+    const ca = soilTest.calcium || 0;
+    const caMgRatio = ca / (mg || 1);
+
+    // Conditions to recommend dolomitic lime
+    const mgLow = mg < 100; // ppm threshold
+    const caMgImbalanced = caMgRatio < 2 || caMgRatio > 10; // ideal is 5-10:1
+
+    if (!mgLow && !caMgImbalanced) {
+      return { needed: false, kgPerAcre: 0, reason: "Magnesium adequate", costEstimate: 0 };
+    }
+
+    // Calculate rate: ~0.5-1.5 kg per ppm deficit (simplified)
+    let kgPerAcre = 0;
+    if (mgLow) {
+      const mgDeficit = Math.max(0, 100 - mg);
+      kgPerAcre = mgDeficit * 1.2; // ~120 kg for Mg=0 → 100 ppm deficit
+    }
+    if (caMgImbalanced && !mgLow) {
+      kgPerAcre = 80; // base rate for imbalance correction
+    }
+    kgPerAcre = Math.min(Math.max(kgPerAcre, 50), 300); // clamp between 50-300 kg/acre
+
+    let reason = "";
+    if (mgLow && caMgImbalanced) {
+      reason = `Your magnesium is low (${mg} ppm) and Ca:Mg ratio is ${caMgRatio.toFixed(1)}:1. Dolomitic lime corrects both.`;
+    } else if (mgLow) {
+      reason = `Your magnesium is low (${mg} ppm). Dolomitic lime adds magnesium without raising calcium too high.`;
+    } else {
+      reason = `Your Ca:Mg ratio is ${caMgRatio.toFixed(1)}:1 (ideal 5-10:1). Dolomitic lime balances the ratio.`;
+    }
+
+    const pricePer50kg = 300; // Ksh, adjustable – could be made configurable
+    const bags = Math.ceil(kgPerAcre / 50);
+    const costEstimate = bags * pricePer50kg;
+
+    return { needed: true, kgPerAcre, reason, costEstimate };
   }
 
   // Calculate nutrient requirements for specific crop - UPDATED with secondary nutrients

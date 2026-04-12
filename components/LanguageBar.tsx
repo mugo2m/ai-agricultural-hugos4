@@ -3,7 +3,6 @@
 import { useOfflineTranslation } from '@/lib/hooks/useOfflineTranslation';
 import { Sprout, WifiOff } from "lucide-react";
 import { LANGUAGE_OPTIONS } from '@/lib/config/language';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useMobile } from '@/lib/hooks/useMobile';
 
 interface LanguageBarProps {
@@ -16,11 +15,9 @@ export default function LanguageBar({ className = '', userId, userCountry }: Lan
   const { i18n, ready, isOnline, t } = useOfflineTranslation();
   const { isMobile } = useMobile();
 
-  // Safe translation helper
   const safeT = (key: string, params?: any): string => {
     try {
       const result = t(key, params);
-      // Handle if result is a Promise
       if (result && typeof result.then === 'function') {
         console.warn(`Translation for "${key}" returned a Promise`);
         return key;
@@ -32,14 +29,13 @@ export default function LanguageBar({ className = '', userId, userCountry }: Lan
     }
   };
 
-  // Show minimal loading while translations load
   if (!ready) {
     return (
       <div className={`w-full bg-gradient-to-r from-green-700 to-green-800 text-white py-3 px-4 ${className}`}>
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Sprout className="w-6 h-6 text-green-200 animate-pulse" />
-            <span className="text-xl font-bold text-white">{safeT('app_name')}</span>
+            <span className="text-xl font-bold text-white drop-shadow-sm">{safeT('app_name')}</span>
           </div>
           <div className="flex gap-1">
             <div className="w-8 h-8 bg-green-600 rounded-full animate-pulse"></div>
@@ -55,18 +51,12 @@ export default function LanguageBar({ className = '', userId, userCountry }: Lan
     i18n.changeLanguage(langCode);
     localStorage.setItem('preferred-language', langCode);
     document.cookie = `preferred-language=${langCode}; path=/; max-age=31536000; SameSite=Lax`;
-
-    // Optional haptic feedback on mobile
-    if (isMobile && 'vibrate' in navigator) {
-      navigator.vibrate(20);
-    }
-
+    if (isMobile && 'vibrate' in navigator) navigator.vibrate(20);
     console.log(`🌐 Language changed to: ${langCode}, cookie set`);
   };
 
   const getButtonStyle = (langCode: string) => {
     const isActive = i18n.language.startsWith(langCode);
-
     if (isActive) {
       return "bg-green-600 text-white border-2 border-white shadow-lg scale-105 active:scale-100";
     }
@@ -79,12 +69,11 @@ export default function LanguageBar({ className = '', userId, userCountry }: Lan
         {/* Logo and Brand */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-center md:justify-start">
           <Sprout className="w-6 h-6 text-green-200 flex-shrink-0" />
-          <span className="text-xl font-bold text-white">{safeT('app_name')}</span>
+          <span className="text-xl font-bold text-white drop-shadow-sm">{safeT('app_name')}</span>
           <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full ml-2 hidden sm:inline-block">
             {safeT('beta')}
           </span>
 
-          {/* Offline Indicator - shows only when offline */}
           {!isOnline && (
             <div className="flex items-center gap-1 ml-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs">
               <WifiOff className="w-3 h-3" />
@@ -93,7 +82,7 @@ export default function LanguageBar({ className = '', userId, userCountry }: Lan
           )}
         </div>
 
-        {/* Language Buttons - Mobile Optimized */}
+        {/* Language Buttons */}
         <div className="flex flex-wrap justify-center gap-2 w-full md:w-auto">
           {LANGUAGE_OPTIONS.map((lang) => (
             <button
@@ -107,9 +96,7 @@ export default function LanguageBar({ className = '', userId, userCountry }: Lan
                 flex items-center justify-center gap-1 sm:gap-2
                 flex-1 md:flex-none
                 min-w-[80px] sm:min-w-[100px] md:min-w-[120px]
-                active:scale-95
-                touch-manipulation
-                min-h-[48px]
+                active:scale-95 touch-manipulation min-h-[48px]
               `}
               aria-label={`Switch to ${lang.name}`}
             >
@@ -119,7 +106,6 @@ export default function LanguageBar({ className = '', userId, userCountry }: Lan
           ))}
         </div>
 
-        {/* Mobile Hint */}
         <div className="text-xs text-green-200 md:hidden w-full text-center">
           {safeT('tap_to_change_language')}
         </div>
