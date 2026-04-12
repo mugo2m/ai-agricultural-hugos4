@@ -7,7 +7,7 @@ import { cropPestDiseaseMap, PestDisease } from '@/lib/data/pestDiseaseMapping';
 import { getPlantingAdvice, getPlantingAdviceText } from '@/lib/data/plantingDates';
 import { getCropMaturityPeriod, getCropMaturityRange } from '@/lib/data/cropMaturity';
 import { getSpacingOptions } from '@/lib/data/spacing';
-import cropVarieties from '@/lib/data/varieties'; // Assuming the file exports the object directly
+import {cropVarieties} from '@/lib/data/varieties'; // Assuming the file exports the object directly
 import { getFertilizerRates } from '@/lib/data/fertilizerRates';
 
 interface QaOutput {
