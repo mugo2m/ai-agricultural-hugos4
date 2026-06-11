@@ -1,4 +1,3 @@
-// lib/hooks/useOfflineTranslation.ts
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { OfflineTranslationService } from '@/lib/services/offlineTranslation';
@@ -9,8 +8,18 @@ export const useOfflineTranslation = () => {
   const { isOnline } = useOffline();
   const [isReady, setIsReady] = useState(false);
 
+  // Set ready only when i18n instance is truly initialized
   useEffect(() => {
-    if (!isOnline) return;
+    if (i18n && i18n.isInitialized && ready) {
+      setIsReady(true);
+    } else {
+      setIsReady(false);
+    }
+  }, [i18n, ready]);
+
+  // Preload common translations when online and language is ready
+  useEffect(() => {
+    if (!isOnline || !isReady || !i18n?.language) return;
 
     const preloadCommonKeys = [
       'welcome',
@@ -47,32 +56,21 @@ export const useOfflineTranslation = () => {
       .catch(error => {
         console.warn('Failed to preload translations:', error);
       });
-  }, [i18n.language, isOnline]);
-
-  useEffect(() => {
-    if (ready) {
-      setIsReady(true);
-    }
-  }, [ready]);
+  }, [i18n?.language, isOnline, isReady]);
 
   const offlineT = (key: string, params?: any): string => {
+    // Fallback to key when not ready – no console warnings
+    if (!isReady || !t || !i18n?.isInitialized) {
+      return key;
+    }
     try {
-      if (!isReady || !t) {
-        console.warn(`Translation not ready for: ${key}`);
-        return key;
-      }
-
       const translation = t(key, params);
-
-      // Handle if translation returns a Promise
+      // If translation returns a Promise (shouldn't happen), fallback
       if (translation && typeof translation.then === 'function') {
-        console.warn(`Translation for "${key}" returned a Promise - using key fallback`);
         return key;
       }
-
       return typeof translation === 'string' ? translation : String(translation || key);
-    } catch (error) {
-      console.warn('Translation error, falling back to key:', key, error);
+    } catch {
       return key;
     }
   };

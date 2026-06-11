@@ -1,4 +1,4 @@
-// components/Agent.tsx – Android voice fix: only local voices, time‑based karaoke
+// components/Agent.tsx – Voice fallback: Microsoft first, then Google/Android/local, with animation fallback
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -201,41 +201,39 @@ const Agent = ({
     return 'en-US';
   })();
 
-  // ========== VOICE CANDIDATES: ONLY LOCAL / OFFLINE VOICES ==========
-  const getLocalVoiceCandidates = (): SpeechSynthesisVoice[] => {
+  // ========== VOICE CANDIDATES: MICROSOFT FIRST, THEN GOOGLE/ANDROID/LOCAL ==========
+  const getVoiceCandidates = (): SpeechSynthesisVoice[] => {
     const voices = window.speechSynthesis.getVoices();
     if (!voices.length) return [];
 
+    // Helper to detect voice types
+    const isMicrosoft = (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('microsoft');
+    const isGoogle = (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('google');
     const isLocal = (v: SpeechSynthesisVoice) => {
       const name = v.name.toLowerCase();
-      return !name.includes('online') && !name.includes('natural') && !name.includes('google') && !name.includes('cloud') && !name.includes('remote');
+      return !isMicrosoft(v) && !isGoogle(v) && !name.includes('online') && !name.includes('natural') && !name.includes('cloud') && !name.includes('remote');
     };
 
-    // Filter only local voices
+    const microsoftVoices = voices.filter(isMicrosoft);
+    const googleVoices = voices.filter(isGoogle);
     const localVoices = voices.filter(isLocal);
-    if (localVoices.length === 0) return [];
 
-    // Prioritise by language: exact match, then en-GB, en-US, any English, then any
-    const exact = localVoices.filter(v => v.lang === recognitionLanguage);
-    const enGB = localVoices.filter(v => v.lang === 'en-GB');
-    const enUS = localVoices.filter(v => v.lang === 'en-US');
-    const anyEn = localVoices.filter(v => v.lang.startsWith('en'));
-    const any = [...localVoices];
-
-    const candidates: SpeechSynthesisVoice[] = [];
-    const addUnique = (list: SpeechSynthesisVoice[]) => {
-      for (const v of list) {
-        if (!candidates.some(ex => ex.name === v.name && ex.lang === v.lang)) {
-          candidates.push(v);
-        }
-      }
+    // Prioritise by language within each group
+    const sortByLang = (list: SpeechSynthesisVoice[]): SpeechSynthesisVoice[] => {
+      const exact = list.filter(v => v.lang === recognitionLanguage);
+      const enGB = list.filter(v => v.lang === 'en-GB');
+      const enUS = list.filter(v => v.lang === 'en-US');
+      const anyEn = list.filter(v => v.lang.startsWith('en'));
+      const others = list.filter(v => !exact.includes(v) && !enGB.includes(v) && !enUS.includes(v) && !anyEn.includes(v));
+      return [...exact, ...enGB, ...enUS, ...anyEn, ...others];
     };
-    addUnique(exact);
-    addUnique(enGB);
-    addUnique(enUS);
-    addUnique(anyEn);
-    addUnique(any);
-    return candidates;
+
+    const sortedMicrosoft = sortByLang(microsoftVoices);
+    const sortedGoogle = sortByLang(googleVoices);
+    const sortedLocal = sortByLang(localVoices);
+
+    // Microsoft first, then Google, then other local
+    return [...sortedMicrosoft, ...sortedGoogle, ...sortedLocal];
   };
 
   const waitForVoices = (maxAttempts = 10): Promise<void> => {
@@ -359,7 +357,7 @@ const Agent = ({
     return speechText;
   };
 
-  // ========== KARAOKE STREAMING WITH LOCAL VOICES ONLY ==========
+  // ========== KARAOKE STREAMING WITH FALLBACK TO ANIMATION ==========
   const streamRecommendationKaraoke = async (rawRecommendation: string, index: number) => {
     if (!voiceEnabled || !window.speechSynthesis) return;
 
@@ -404,12 +402,13 @@ const Agent = ({
     };
     startAnimation();
 
-    // Voice candidates – only local voices
-    const candidates = getLocalVoiceCandidates();
+    // Get voice candidates (Microsoft first, then Google, then local)
+    const candidates = getVoiceCandidates();
     if (candidates.length === 0) {
-      // No local voices – rely on animation only; mark as read when animation ends
+      // No voices at all – rely on animation only
       setTimeout(() => {
         if (activeStreamingRec === index && !readRecommendations.has(index)) {
+          if (animationId) cancelAnimationFrame(animationId);
           setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
           setReadRecommendations(prev => new Set(prev).add(index));
           setActiveStreamingRec(null);
@@ -421,9 +420,10 @@ const Agent = ({
     let voiceIdx = 0;
     const trySpeak = () => {
       if (voiceIdx >= candidates.length) {
-        // All local voices failed – rely on animation
+        // All voices failed – rely on animation only
         setTimeout(() => {
           if (activeStreamingRec === index && !readRecommendations.has(index)) {
+            if (animationId) cancelAnimationFrame(animationId);
             setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
             setReadRecommendations(prev => new Set(prev).add(index));
             setActiveStreamingRec(null);
@@ -449,7 +449,7 @@ const Agent = ({
       };
 
       utterance.onerror = (err) => {
-        console.warn(`Local voice ${voice.name} (${voice.lang}) failed, trying next`);
+        console.warn(`Voice ${voice.name} (${voice.lang}) failed, trying next`);
         voiceIdx++;
         trySpeak();
       };
@@ -459,7 +459,7 @@ const Agent = ({
     };
     trySpeak();
 
-    // Safety timeout
+    // Safety timeout in case speech never ends
     setTimeout(() => {
       if (activeStreamingRec === index && !readRecommendations.has(index)) {
         if (animationId) cancelAnimationFrame(animationId);
@@ -487,7 +487,7 @@ const Agent = ({
 
       setTimeout(() => {
         const speechText = prepareForSpeech(text);
-        const candidates = getLocalVoiceCandidates();
+        const candidates = getVoiceCandidates();
         if (candidates.length === 0) {
           resolve();
           return;
