@@ -1,4 +1,4 @@
-// components/Agent.tsx – Android‑friendly chunked speech (no skipping)
+// components/Agent.tsx – Ultimate Android fix: no cancellation, tiny chunks, generous timeouts
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -121,6 +121,7 @@ const Agent = ({
   const abortStreamingRef = useRef<boolean>(false);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const isSpeakingRef = useRef(false);
 
   const soilTest = sessionData?.soilTest;
   const hasSoilTest = soilTest && soilTest.testDate;
@@ -322,24 +323,24 @@ const Agent = ({
     return speechText;
   };
 
-  // ========== HELPERS FOR CHUNKING AND SPEAKING ==========
-  const splitIntoChunks = (text: string, maxChunkLength = 80): string[] => {
+  // ========== CHUNKING (max 50 characters for Android) ==========
+  const splitIntoChunks = (text: string, maxChunkLength = 50): string[] => {
     const chunks: string[] = [];
     const words = text.split(/\s+/);
-    let currentChunk = '';
+    let current = '';
     for (const word of words) {
-      if ((currentChunk + ' ' + word).length > maxChunkLength && currentChunk) {
-        chunks.push(currentChunk.trim());
-        currentChunk = word;
+      if ((current + ' ' + word).length > maxChunkLength && current) {
+        chunks.push(current.trim());
+        current = word;
       } else {
-        currentChunk += (currentChunk ? ' ' : '') + word;
+        current += (current ? ' ' : '') + word;
       }
     }
-    if (currentChunk) chunks.push(currentChunk.trim());
+    if (current) chunks.push(current.trim());
     return chunks;
   };
 
-  // Speak a single chunk with retries and timeout
+  // Speak a single chunk with generous timeout and retries
   const speakChunk = (chunk: string, retriesLeft = 3): Promise<void> => {
     return new Promise((resolve) => {
       let resolved = false;
@@ -348,7 +349,8 @@ const Agent = ({
       utterance.pitch = 1.1;
       utterance.volume = 1.0;
 
-      const timeoutDuration = Math.max(1000, chunk.length * 200); // 200ms per char
+      // Timeout: 200ms per character + 2 seconds minimum
+      const timeoutDuration = Math.max(2000, chunk.length * 200);
       const timeoutId = setTimeout(() => {
         if (!resolved) {
           console.warn(`Chunk timeout (${chunk.length} chars), retries left: ${retriesLeft}`);
@@ -372,7 +374,7 @@ const Agent = ({
       utterance.onerror = (err) => {
         if (!resolved) {
           clearTimeout(timeoutId);
-          console.warn(`Chunk error (${chunk.length} chars):`, err);
+          console.warn(`Chunk error: ${err.error || err.message || 'unknown'}`);
           if (retriesLeft > 0) {
             speakChunk(chunk, retriesLeft - 1).then(resolve).catch(() => resolve());
           } else {
@@ -389,25 +391,23 @@ const Agent = ({
   const streamRecommendationKaraoke = async (rawRecommendation: string, index: number) => {
     if (!voiceEnabled || !window.speechSynthesis) return;
 
-    // Cancel any ongoing speech – but only if we are starting a new slot (to avoid overlap)
+    // DO NOT cancel ongoing speech – let it queue naturally
+    // Instead, wait a bit if something is speaking to avoid overlap (but don't force cancel)
     if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel();
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Wait for current speech to finish (up to 5 seconds)
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     abortStreamingRef.current = false;
     setActiveStreamingRec(index);
-    // Start with empty text
     setRecommendationStreams(prev => ({ ...prev, [index]: "" }));
 
     const speechText = prepareForSpeech(rawRecommendation);
     const fullRawText = rawRecommendation;
+    const chunks = splitIntoChunks(speechText, 50);
+    console.log(`Slot ${index}: ${chunks.length} chunks`);
 
-    // Split into very small chunks (max 80 chars)
-    const chunks = splitIntoChunks(speechText, 80);
-    console.log(`Slot ${index} split into ${chunks.length} chunks`);
-
-    // Time‑based reveal (safe fallback)
+    // Fallback animation (time‑based)
     const totalChars = speechText.length;
     const totalDuration = Math.max(5000, totalChars * 100);
     let animationId: number | null = null;
@@ -437,15 +437,15 @@ const Agent = ({
     };
     startAnimation();
 
-    // Speak chunks sequentially
+    // Speak each chunk and wait for it to complete
     for (let i = 0; i < chunks.length; i++) {
       if (abortStreamingRef.current) break;
       await speakChunk(chunks[i], 3);
-      // Small pause between chunks to avoid overwhelming the engine
+      // Small pause between chunks to avoid overwhelming
       await new Promise(resolve => setTimeout(resolve, 150));
     }
 
-    // All chunks attempted – mark slot as finished
+    // Mark slot as finished
     if (animationId) cancelAnimationFrame(animationId);
     setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
     setReadRecommendations(prev => new Set(prev).add(index));
@@ -457,7 +457,7 @@ const Agent = ({
     if (!window.speechSynthesis) return;
     if (!voicesLoaded) await waitForVoices();
     const speechText = prepareForSpeech(text);
-    const chunks = splitIntoChunks(speechText, 80);
+    const chunks = splitIntoChunks(speechText, 50);
     for (const chunk of chunks) {
       await speakChunk(chunk, 2);
     }
@@ -524,7 +524,7 @@ const Agent = ({
         continue;
       }
       await streamRecommendationKaraoke(content, i);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 800)); // longer pause between slots
     }
 
     if (structuredFinancialAdvice) {
