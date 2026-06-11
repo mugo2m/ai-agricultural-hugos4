@@ -1,4 +1,4 @@
-// components/Agent.tsx – Voice fallback: Microsoft first, then Google/Android/local, with animation fallback
+// components/Agent.tsx – Reliable chunked speech (no skipping on laptop)
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -101,7 +101,7 @@ const Agent = ({
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceInitializing, setVoiceInitializing] = useState(false);
-  const [hasPaid, setHasPaid] = useState(true); // For demo; adjust as needed
+  const [hasPaid, setHasPaid] = useState(true);
   const [paymentChecked, setPaymentChecked] = useState(true);
   const [paymentUsed, setPaymentUsed] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -200,41 +200,6 @@ const Agent = ({
     if (lang === 'es') return 'es-ES';
     return 'en-US';
   })();
-
-  // ========== VOICE CANDIDATES: MICROSOFT FIRST, THEN GOOGLE/ANDROID/LOCAL ==========
-  const getVoiceCandidates = (): SpeechSynthesisVoice[] => {
-    const voices = window.speechSynthesis.getVoices();
-    if (!voices.length) return [];
-
-    // Helper to detect voice types
-    const isMicrosoft = (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('microsoft');
-    const isGoogle = (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('google');
-    const isLocal = (v: SpeechSynthesisVoice) => {
-      const name = v.name.toLowerCase();
-      return !isMicrosoft(v) && !isGoogle(v) && !name.includes('online') && !name.includes('natural') && !name.includes('cloud') && !name.includes('remote');
-    };
-
-    const microsoftVoices = voices.filter(isMicrosoft);
-    const googleVoices = voices.filter(isGoogle);
-    const localVoices = voices.filter(isLocal);
-
-    // Prioritise by language within each group
-    const sortByLang = (list: SpeechSynthesisVoice[]): SpeechSynthesisVoice[] => {
-      const exact = list.filter(v => v.lang === recognitionLanguage);
-      const enGB = list.filter(v => v.lang === 'en-GB');
-      const enUS = list.filter(v => v.lang === 'en-US');
-      const anyEn = list.filter(v => v.lang.startsWith('en'));
-      const others = list.filter(v => !exact.includes(v) && !enGB.includes(v) && !enUS.includes(v) && !anyEn.includes(v));
-      return [...exact, ...enGB, ...enUS, ...anyEn, ...others];
-    };
-
-    const sortedMicrosoft = sortByLang(microsoftVoices);
-    const sortedGoogle = sortByLang(googleVoices);
-    const sortedLocal = sortByLang(localVoices);
-
-    // Microsoft first, then Google, then other local
-    return [...sortedMicrosoft, ...sortedGoogle, ...sortedLocal];
-  };
 
   const waitForVoices = (maxAttempts = 10): Promise<void> => {
     return new Promise((resolve) => {
@@ -357,24 +322,72 @@ const Agent = ({
     return speechText;
   };
 
-  // ========== KARAOKE STREAMING WITH FALLBACK TO ANIMATION ==========
+  // ========== CHUNK TEXT INTO SMALL PIECES (max 150 chars) ==========
+  const chunkText = (text: string, maxChunkLength = 150): string[] => {
+    const chunks: string[] = [];
+    let current = '';
+    const sentences = text.split(/(?<=[.!?])\s+|(?:\n\s*)+/);
+    for (const sentence of sentences) {
+      const words = sentence.split(/\s+/);
+      for (const word of words) {
+        if ((current + ' ' + word).length > maxChunkLength && current.length > 0) {
+          chunks.push(current.trim());
+          current = word;
+        } else {
+          current += (current ? ' ' : '') + word;
+        }
+      }
+      if (current) {
+        chunks.push(current.trim());
+        current = '';
+      }
+    }
+    if (current) chunks.push(current.trim());
+    return chunks.filter(c => c.length > 0);
+  };
+
+  // ========== SPEECH WITH CHUNKING AND RETRY ==========
+  const speakChunk = (chunk: string, retries = 2): Promise<void> => {
+    return new Promise((resolve) => {
+      const utterance = new SpeechSynthesisUtterance(chunk);
+      utterance.rate = 0.9;
+      utterance.pitch = 1.1;
+      utterance.volume = 1.0;
+      let resolved = false;
+      utterance.onend = () => {
+        if (!resolved) { resolved = true; resolve(); }
+      };
+      utterance.onerror = (err) => {
+        console.warn(`Chunk error (${chunk.length} chars):`, err);
+        if (retries > 0) {
+          setTimeout(() => {
+            speakChunk(chunk, retries - 1).then(resolve).catch(resolve);
+          }, 300);
+        } else {
+          if (!resolved) { resolved = true; resolve(); }
+        }
+      };
+      window.speechSynthesis.speak(utterance);
+    });
+  };
+
   const streamRecommendationKaraoke = async (rawRecommendation: string, index: number) => {
     if (!voiceEnabled || !window.speechSynthesis) return;
 
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel();
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-
+    // Do NOT cancel ongoing speech – let it queue naturally
     abortStreamingRef.current = false;
     setActiveStreamingRec(index);
     setRecommendationStreams(prev => ({ ...prev, [index]: "" }));
 
     const speechText = prepareForSpeech(rawRecommendation);
     const fullRawText = rawRecommendation;
-    const estimatedDuration = Math.max(1000, speechText.length * 70);
+    const chunks = chunkText(speechText, 150);
 
-    // Time-based animation (always runs)
+    // Estimate total duration: 100ms per character
+    const totalChars = speechText.length;
+    const estimatedDuration = Math.max(3000, totalChars * 100);
+
+    // Progressive text reveal based on total duration (time-based)
     let animationId: number | null = null;
     let startTime = 0;
     const updateProgress = (progress: number) => {
@@ -402,122 +415,30 @@ const Agent = ({
     };
     startAnimation();
 
-    // Get voice candidates (Microsoft first, then Google, then local)
-    const candidates = getVoiceCandidates();
-    if (candidates.length === 0) {
-      // No voices at all – rely on animation only
-      setTimeout(() => {
-        if (activeStreamingRec === index && !readRecommendations.has(index)) {
-          if (animationId) cancelAnimationFrame(animationId);
-          setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
-          setReadRecommendations(prev => new Set(prev).add(index));
-          setActiveStreamingRec(null);
-        }
-      }, estimatedDuration + 500);
-      return;
+    // Speak chunks sequentially
+    for (let i = 0; i < chunks.length; i++) {
+      if (abortStreamingRef.current) break;
+      await speakChunk(chunks[i], 2);
+      // Small delay between chunks to avoid overwhelm
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    let voiceIdx = 0;
-    const trySpeak = () => {
-      if (voiceIdx >= candidates.length) {
-        // All voices failed – rely on animation only
-        setTimeout(() => {
-          if (activeStreamingRec === index && !readRecommendations.has(index)) {
-            if (animationId) cancelAnimationFrame(animationId);
-            setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
-            setReadRecommendations(prev => new Set(prev).add(index));
-            setActiveStreamingRec(null);
-          }
-        }, estimatedDuration + 500);
-        return;
-      }
-
-      const utterance = new SpeechSynthesisUtterance(speechText);
-      const voice = candidates[voiceIdx];
-      utterance.voice = voice;
-      utterance.lang = voice.lang;
-      utterance.rate = 0.9;
-      utterance.pitch = 1.1;
-      utterance.volume = 1.0;
-
-      utterance.onend = () => {
-        if (animationId) cancelAnimationFrame(animationId);
-        setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
-        setReadRecommendations(prev => new Set(prev).add(index));
-        setActiveStreamingRec(null);
-        currentUtteranceRef.current = null;
-      };
-
-      utterance.onerror = (err) => {
-        console.warn(`Voice ${voice.name} (${voice.lang}) failed, trying next`);
-        voiceIdx++;
-        trySpeak();
-      };
-
-      currentUtteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
-    };
-    trySpeak();
-
-    // Safety timeout in case speech never ends
-    setTimeout(() => {
-      if (activeStreamingRec === index && !readRecommendations.has(index)) {
-        if (animationId) cancelAnimationFrame(animationId);
-        setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
-        setReadRecommendations(prev => new Set(prev).add(index));
-        setActiveStreamingRec(null);
-      }
-    }, estimatedDuration + 2000);
+    // Mark as read after all chunks attempted
+    if (animationId) cancelAnimationFrame(animationId);
+    setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
+    setReadRecommendations(prev => new Set(prev).add(index));
+    setActiveStreamingRec(null);
+    currentUtteranceRef.current = null;
   };
 
   const speakWithVoice = async (text: string): Promise<void> => {
-    return new Promise(async (resolve) => {
-      if (!window.speechSynthesis) {
-        resolve();
-        return;
-      }
-
-      if (!voicesLoaded) {
-        await waitForVoices();
-      }
-
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-      }
-
-      setTimeout(() => {
-        const speechText = prepareForSpeech(text);
-        const candidates = getVoiceCandidates();
-        if (candidates.length === 0) {
-          resolve();
-          return;
-        }
-        let idx = 0;
-        const trySpeak = () => {
-          if (idx >= candidates.length) {
-            resolve();
-            return;
-          }
-          const utterance = new SpeechSynthesisUtterance(speechText);
-          const voice = candidates[idx];
-          utterance.voice = voice;
-          utterance.lang = voice.lang;
-          utterance.rate = 0.9;
-          utterance.pitch = 1.1;
-          utterance.volume = 1.0;
-
-          utterance.onend = () => resolve();
-          utterance.onerror = () => {
-            idx++;
-            trySpeak();
-          };
-          window.speechSynthesis.speak(utterance);
-        };
-        trySpeak();
-
-        setTimeout(() => resolve(), Math.max(text.length * 20, 3000));
-      }, 100);
-    });
+    if (!window.speechSynthesis) return;
+    if (!voicesLoaded) await waitForVoices();
+    const speechText = prepareForSpeech(text);
+    const chunks = chunkText(speechText, 150);
+    for (const chunk of chunks) {
+      await speakChunk(chunk, 1);
+    }
   };
 
   const streamAllRecommendations = async () => {
