@@ -1,4 +1,4 @@
-// components/Agent.tsx – Ultimate Android fix: no cancellation, tiny chunks, generous timeouts
+// components/Agent.tsx – Code One: natural continuous speech + progressive reveal (onboundary)
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -53,22 +53,13 @@ const Agent = ({
   const getDisplaySymbol = (): string => currency.symbol || 'Ksh';
 
   const getSpokenCurrencyName = (): string => {
+    if (i18n.language === 'es') return 'Euros';
     const lang = i18n.language;
     switch (currency.code) {
-      case 'KES':
-        if (lang === 'fr') return 'Shillings kényans';
-        if (lang === 'sw') return 'Shilingi za Kenya';
-        return 'Kenyan Shillings';
-      case 'UGX':
-        if (lang === 'fr') return 'Shillings ougandais';
-        if (lang === 'sw') return 'Shilingi za Uganda';
-        return 'Ugandan Shillings';
-      case 'TZS':
-        if (lang === 'fr') return 'Shillings tanzaniens';
-        if (lang === 'sw') return 'Shilingi za Tanzania';
-        return 'Tanzanian Shillings';
-      default:
-        return currency.name;
+      case 'KES': return lang === 'fr' ? 'Shillings kényans' : lang === 'sw' ? 'Shilingi za Kenya' : 'Kenyan Shillings';
+      case 'UGX': return lang === 'fr' ? 'Shillings ougandais' : lang === 'sw' ? 'Shilingi za Uganda' : 'Ugandan Shillings';
+      case 'TZS': return lang === 'fr' ? 'Shillings tanzaniens' : lang === 'sw' ? 'Shilingi za Tanzania' : 'Tanzanian Shillings';
+      default: return currency.name;
     }
   };
 
@@ -92,8 +83,8 @@ const Agent = ({
       const template = i18n.t(key);
       if (!params) return template;
       let result = template;
-      for (const [k, v] of Object.entries(params)) {
-        result = result.replace(new RegExp(`{{${k}}}`, 'g'), String(v));
+      for (const [paramKey, paramValue] of Object.entries(params)) {
+        result = result.replace(new RegExp(`{{${paramKey}}}`, 'g'), String(paramValue));
       }
       return result;
     } catch { return key; }
@@ -102,7 +93,6 @@ const Agent = ({
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceInitializing, setVoiceInitializing] = useState(false);
   const [hasPaid, setHasPaid] = useState(true);
-  const [paymentChecked, setPaymentChecked] = useState(true);
   const [paymentUsed, setPaymentUsed] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -118,10 +108,7 @@ const Agent = ({
   const voiceServiceRef = useRef<VoiceService | null>(null);
   const mountedRef = useRef(true);
   const voiceServiceInitializedRef = useRef(false);
-  const abortStreamingRef = useRef<boolean>(false);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const isSpeakingRef = useRef(false);
 
   const soilTest = sessionData?.soilTest;
   const hasSoilTest = soilTest && soilTest.testDate;
@@ -131,6 +118,7 @@ const Agent = ({
   const farmerCountry = sessionData?.country || 'kenya';
   const cropName = sessionData?.crops?.[0] || '';
 
+  // ========== FULL getGapKeyFromCrop (complete mapping) ==========
   const getGapKeyFromCrop = (crop: string): string => {
     if (!crop) return 'gap_generic';
     const cropLower = crop.toLowerCase().trim();
@@ -202,7 +190,93 @@ const Agent = ({
     return 'en-US';
   })();
 
-  const waitForVoices = (maxAttempts = 10): Promise<void> => {
+  // ========== FULL getBestVoice (complete logic) ==========
+  const getBestVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    console.log(`Looking for voice for language: ${recognitionLanguage}`);
+
+    const findBritishEnglishFemale = (): SpeechSynthesisVoice | null => {
+      const femaleNames = ['libby', 'hazel', 'susan', 'maisie', 'sonia', 'kate', 'victoria', 'millie', 'olivia', 'google uk english female', 'microsoft libby', 'microsoft hazel', 'microsoft susan', 'microsoft maisie', 'microsoft sonia', 'british english female', 'uk english female'];
+      for (const name of femaleNames) {
+        const voice = voices.find(v => v.lang === 'en-GB' && v.name.toLowerCase().includes(name));
+        if (voice) return voice;
+      }
+      const maleIndicators = ['george', 'ryan', 'thomas', 'david', 'mark', 'james', 'john', 'paul', 'michael'];
+      const anyBritishFemale = voices.find(v => v.lang === 'en-GB' && !maleIndicators.some(m => v.name.toLowerCase().includes(m)));
+      if (anyBritishFemale) return anyBritishFemale;
+      return voices.find(v => v.lang === 'en-GB') || null;
+    };
+
+    const findAmericanEnglishFemale = (): SpeechSynthesisVoice | null => {
+      const femaleNames = ['samantha', 'victoria', 'zira', 'jenny', 'aria', 'google us english female', 'microsoft jenny', 'microsoft zira', 'microsoft aria', 'us english female'];
+      for (const name of femaleNames) {
+        const voice = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes(name));
+        if (voice) return voice;
+      }
+      const maleIndicators = ['david', 'mark', 'james', 'john', 'paul', 'michael', 'alex', 'thomas'];
+      const anyFemale = voices.find(v => v.lang === 'en-US' && !maleIndicators.some(m => v.name.toLowerCase().includes(m)));
+      if (anyFemale) return anyFemale;
+      return voices.find(v => v.lang === 'en-US') || null;
+    };
+
+    const findFrenchVoice = (): SpeechSynthesisVoice | null => {
+      let vivienne = voices.find(v => v.lang.startsWith('fr') && v.name.toLowerCase().includes('vivienne'));
+      if (vivienne) return vivienne;
+      const frenchFemale = voices.find(v => v.lang.startsWith('fr') && (v.name.toLowerCase().includes('denise') || v.name.toLowerCase().includes('google français female') || v.name.toLowerCase().includes('marie') || v.name.toLowerCase().includes('chloe')));
+      if (frenchFemale) return frenchFemale;
+      return voices.find(v => v.lang.startsWith('fr')) || null;
+    };
+
+    const findSpanishVoice = (): SpeechSynthesisVoice | null => {
+      const femaleNames = ['elena', 'ximena', 'maria', 'paloma', 'sofia', 'catalina', 'salome', 'belkys', 'ramona', 'andrea', 'lorena', 'teresa', 'marta', 'karla', 'dalia', 'yolanda', 'margarita', 'tania', 'camila', 'karina', 'elvira', 'valentina', 'paola', 'michelle', 'gabriela', 'lucia', 'laura', 'fernanda', 'victoria', 'monica', 'paulina', 'sabina', 'helena', 'florencia'];
+      for (const name of femaleNames) {
+        const voice = voices.find(v => v.lang.startsWith('es') && v.name.toLowerCase().includes(name));
+        if (voice) return voice;
+      }
+      const nonMale = voices.find(v => v.lang.startsWith('es') && !v.name.toLowerCase().includes('alvaro') && !v.name.toLowerCase().includes('jorge') && !v.name.toLowerCase().includes('manuel') && !v.name.toLowerCase().includes('andres') && !v.name.toLowerCase().includes('carlos') && !v.name.toLowerCase().includes('juan') && !v.name.toLowerCase().includes('luis') && !v.name.toLowerCase().includes('rodrigo') && !v.name.toLowerCase().includes('javier'));
+      if (nonMale) return nonMale;
+      return null;
+    };
+
+    const findSwahiliVoice = (): SpeechSynthesisVoice | null => {
+      let swahiliVoices = voices.filter(v => v.lang === 'sw-KE' && (v.name.includes('Rafiki') || v.name.includes('Zuri') || v.name.includes('Aisha') || v.name.includes('Kenya')));
+      if (swahiliVoices.length > 0) return swahiliVoices[0];
+      swahiliVoices = voices.filter(v => v.lang === 'sw-KE');
+      if (swahiliVoices.length > 0) return swahiliVoices[0];
+      return null;
+    };
+
+    if (recognitionLanguage === 'en-GB') {
+      const britishVoice = findBritishEnglishFemale();
+      if (britishVoice) return { voice: britishVoice, language: 'en-GB' };
+      const anyNonMale = voices.find(v => v.lang.startsWith('en') && !v.name.toLowerCase().includes('male'));
+      if (anyNonMale) return { voice: anyNonMale, language: 'en-GB' };
+    }
+    if (recognitionLanguage === 'en-US') {
+      const usVoice = findAmericanEnglishFemale();
+      if (usVoice) return { voice: usVoice, language: 'en-US' };
+      const anyNonMale = voices.find(v => v.lang.startsWith('en') && !v.name.toLowerCase().includes('male'));
+      if (anyNonMale) return { voice: anyNonMale, language: 'en-US' };
+    }
+    if (recognitionLanguage === 'fr-FR' || recognitionLanguage === 'fr-CA' || recognitionLanguage.startsWith('fr')) {
+      const frenchVoice = findFrenchVoice();
+      if (frenchVoice) return { voice: frenchVoice, language: 'fr-FR' };
+    }
+    if (recognitionLanguage === 'es-ES' || recognitionLanguage.startsWith('es')) {
+      const spanishVoice = findSpanishVoice();
+      if (spanishVoice) return { voice: spanishVoice, language: 'es-ES' };
+    }
+    if (recognitionLanguage === 'sw-KE' || recognitionLanguage === 'sw-TZ' || recognitionLanguage.startsWith('sw')) {
+      const swahiliVoice = findSwahiliVoice();
+      if (swahiliVoice) return { voice: swahiliVoice, language: 'sw-KE' };
+    }
+    const anyEnglish = voices.find(v => v.lang.startsWith('en') && !v.name.toLowerCase().includes('male'));
+    if (anyEnglish) return { voice: anyEnglish, language: 'en-GB' };
+    if (voices.length > 0) return { voice: voices[0], language: 'en-GB' };
+    return { voice: null, language: 'en-GB' };
+  };
+
+  const waitForVoices = (maxAttempts = 5): Promise<void> => {
     return new Promise((resolve) => {
       const check = (attempt = 0) => {
         const voices = window.speechSynthesis.getVoices();
@@ -210,7 +284,7 @@ const Agent = ({
           setVoicesLoaded(true);
           resolve();
         } else if (attempt < maxAttempts) {
-          setTimeout(() => check(attempt + 1), 300);
+          setTimeout(() => check(attempt + 1), 500);
         } else {
           setVoicesLoaded(false);
           resolve();
@@ -221,17 +295,19 @@ const Agent = ({
   };
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      waitForVoices();
-      if (window.speechSynthesis.onvoiceschanged !== undefined) {
-        window.speechSynthesis.onvoiceschanged = () => waitForVoices();
+    if (typeof window !== 'undefined') {
+      const supported = 'speechSynthesis' in window;
+      if (supported) {
+        waitForVoices();
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+          window.speechSynthesis.onvoiceschanged = () => waitForVoices();
+        }
       }
     }
   }, []);
 
   useEffect(() => {
     setHasPaid(true);
-    setPaymentChecked(true);
   }, [interviewId, userId]);
 
   useEffect(() => {
@@ -323,144 +399,112 @@ const Agent = ({
     return speechText;
   };
 
-  // ========== CHUNKING (max 50 characters for Android) ==========
-  const splitIntoChunks = (text: string, maxChunkLength = 50): string[] => {
-    const chunks: string[] = [];
-    const words = text.split(/\s+/);
-    let current = '';
-    for (const word of words) {
-      if ((current + ' ' + word).length > maxChunkLength && current) {
-        chunks.push(current.trim());
-        current = word;
-      } else {
-        current += (current ? ' ' : '') + word;
-      }
-    }
-    if (current) chunks.push(current.trim());
-    return chunks;
-  };
-
-  // Speak a single chunk with generous timeout and retries
-  const speakChunk = (chunk: string, retriesLeft = 3): Promise<void> => {
-    return new Promise((resolve) => {
-      let resolved = false;
-      const utterance = new SpeechSynthesisUtterance(chunk);
-      utterance.rate = 0.9;
-      utterance.pitch = 1.1;
-      utterance.volume = 1.0;
-
-      // Timeout: 200ms per character + 2 seconds minimum
-      const timeoutDuration = Math.max(2000, chunk.length * 200);
-      const timeoutId = setTimeout(() => {
-        if (!resolved) {
-          console.warn(`Chunk timeout (${chunk.length} chars), retries left: ${retriesLeft}`);
-          if (retriesLeft > 0) {
-            speakChunk(chunk, retriesLeft - 1).then(resolve).catch(() => resolve());
-          } else {
-            resolved = true;
-            resolve();
-          }
-        }
-      }, timeoutDuration);
-
-      utterance.onend = () => {
-        if (!resolved) {
-          clearTimeout(timeoutId);
-          resolved = true;
-          resolve();
-        }
-      };
-
-      utterance.onerror = (err) => {
-        if (!resolved) {
-          clearTimeout(timeoutId);
-          console.warn(`Chunk error: ${err.error || err.message || 'unknown'}`);
-          if (retriesLeft > 0) {
-            speakChunk(chunk, retriesLeft - 1).then(resolve).catch(() => resolve());
-          } else {
-            resolved = true;
-            resolve();
-          }
-        }
-      };
-
-      window.speechSynthesis.speak(utterance);
-    });
-  };
-
+  // ========== PROGRESSIVE REVEAL WITH NATURAL SPEECH (onboundary) ==========
   const streamRecommendationKaraoke = async (rawRecommendation: string, index: number) => {
     if (!voiceEnabled || !window.speechSynthesis) return;
 
-    // DO NOT cancel ongoing speech – let it queue naturally
-    // Instead, wait a bit if something is speaking to avoid overlap (but don't force cancel)
     if (window.speechSynthesis.speaking) {
-      // Wait for current speech to finish (up to 5 seconds)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      window.speechSynthesis.cancel();
+      await new Promise(r => setTimeout(r, 200));
     }
 
-    abortStreamingRef.current = false;
     setActiveStreamingRec(index);
     setRecommendationStreams(prev => ({ ...prev, [index]: "" }));
 
     const speechText = prepareForSpeech(rawRecommendation);
-    const fullRawText = rawRecommendation;
-    const chunks = splitIntoChunks(speechText, 50);
-    console.log(`Slot ${index}: ${chunks.length} chunks`);
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    const { voice, language } = getBestVoice();
+    if (voice) utterance.voice = voice;
+    utterance.lang = language;
+    utterance.rate = 0.9;
+    utterance.pitch = 1.1;
+    utterance.volume = 1.0;
 
-    // Fallback animation (time‑based)
-    const totalChars = speechText.length;
-    const totalDuration = Math.max(5000, totalChars * 100);
-    let animationId: number | null = null;
-    let startTime = 0;
-    const updateProgress = (progress: number) => {
-      if (abortStreamingRef.current) return;
-      const charIndex = Math.floor(progress * fullRawText.length);
-      setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText.substring(0, charIndex) }));
+    utterance.onboundary = (event) => {
+      if (event.name === 'word') {
+        const ratio = event.charIndex / speechText.length;
+        const rawIndex = Math.min(rawRecommendation.length, Math.floor(ratio * rawRecommendation.length));
+        const revealed = rawRecommendation.substring(0, rawIndex);
+        setRecommendationStreams(prev => ({ ...prev, [index]: revealed }));
+      }
     };
-    const startAnimation = () => {
-      if (animationId) cancelAnimationFrame(animationId);
-      startTime = 0;
-      const animate = (timestamp: number) => {
-        if (abortStreamingRef.current) return;
-        if (!startTime) startTime = timestamp;
-        const elapsed = timestamp - startTime;
-        const progress = Math.min(1, elapsed / totalDuration);
-        updateProgress(progress);
-        if (progress < 1) {
-          animationId = requestAnimationFrame(animate);
-        } else {
-          setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
-          animationId = null;
-        }
+
+    // Wait for the utterance to finish before resolving
+    await new Promise<void>((resolve) => {
+      utterance.onend = () => {
+        setRecommendationStreams(prev => ({ ...prev, [index]: rawRecommendation }));
+        setReadRecommendations(prev => new Set(prev).add(index));
+        setActiveStreamingRec(null);
+        resolve();
       };
-      animationId = requestAnimationFrame(animate);
-    };
-    startAnimation();
-
-    // Speak each chunk and wait for it to complete
-    for (let i = 0; i < chunks.length; i++) {
-      if (abortStreamingRef.current) break;
-      await speakChunk(chunks[i], 3);
-      // Small pause between chunks to avoid overwhelming
-      await new Promise(resolve => setTimeout(resolve, 150));
-    }
-
-    // Mark slot as finished
-    if (animationId) cancelAnimationFrame(animationId);
-    setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
-    setReadRecommendations(prev => new Set(prev).add(index));
-    setActiveStreamingRec(null);
-    currentUtteranceRef.current = null;
+      utterance.onerror = (event) => {
+        console.error("Speech error:", event);
+        setRecommendationStreams(prev => ({ ...prev, [index]: rawRecommendation }));
+        setReadRecommendations(prev => new Set(prev).add(index));
+        setActiveStreamingRec(null);
+        resolve();
+      };
+      window.speechSynthesis.speak(utterance);
+      currentUtteranceRef.current = utterance;
+    });
   };
 
   const speakWithVoice = async (text: string): Promise<void> => {
-    if (!window.speechSynthesis) return;
-    if (!voicesLoaded) await waitForVoices();
-    const speechText = prepareForSpeech(text);
-    const chunks = splitIntoChunks(speechText, 50);
-    for (const chunk of chunks) {
-      await speakChunk(chunk, 2);
-    }
+    return new Promise(async (resolve) => {
+      if (!window.speechSynthesis) {
+        resolve();
+        return;
+      }
+
+      if (!voicesLoaded) {
+        await waitForVoices();
+      }
+
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
+
+      setTimeout(() => {
+        const speechText = prepareForSpeech(text);
+        const utterance = new SpeechSynthesisUtterance(speechText);
+        utterance.rate = 0.9;
+        utterance.pitch = 1.1;
+        utterance.volume = 1.0;
+
+        const { voice, language } = getBestVoice();
+        utterance.voice = voice;
+        utterance.lang = language;
+
+        console.log(`🔊 Speaking with voice: ${utterance.voice?.name || 'default'} (${utterance.lang})`);
+
+        let resolved = false;
+
+        utterance.onend = () => {
+          if (!resolved) {
+            resolved = true;
+            resolve();
+          }
+        };
+
+        utterance.onerror = (event) => {
+          console.error("Speech error with", utterance.voice?.name, ":", event);
+          if (!resolved) {
+            resolved = true;
+            utterance.voice = null;
+            window.speechSynthesis.speak(utterance);
+          }
+        };
+
+        window.speechSynthesis.speak(utterance);
+
+        setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            resolve();
+          }
+        }, Math.max(text.length * 20, 3000));
+      }, 100);
+    });
   };
 
   const streamAllRecommendations = async () => {
@@ -524,7 +568,7 @@ const Agent = ({
         continue;
       }
       await streamRecommendationKaraoke(content, i);
-      await new Promise(resolve => setTimeout(resolve, 800)); // longer pause between slots
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     if (structuredFinancialAdvice) {
@@ -610,6 +654,7 @@ const Agent = ({
     return safeT('start_voice_session');
   };
 
+  // ========== RENDER: progressive text ==========
   const renderRecommendationText = (item: StructuredItem, idx: number) => {
     let displayContent = '';
 
@@ -650,28 +695,26 @@ const Agent = ({
       return null;
     }
 
-    const displayedText = recommendationStreams[idx] || '';
     const isActive = activeStreamingRec === idx;
     const isRead = readRecommendations.has(idx);
-
     if (!isActive && !isRead) return null;
 
-    const finalText = isActive ? displayedText : displayContent;
+    // For active: show progressive text; for read: show full content
+    let finalText = isActive ? (recommendationStreams[idx] || '') : displayContent;
     if (!finalText) return null;
 
     const displaySymbol = getDisplaySymbol();
     const originalSymbol = currency.symbol;
-    let processedText = finalText;
     if (displaySymbol !== originalSymbol) {
       const escapedOrig = originalSymbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      processedText = processedText.replace(new RegExp(escapedOrig, 'g'), displaySymbol);
+      finalText = finalText.replace(new RegExp(escapedOrig, 'g'), displaySymbol);
     }
     if (displaySymbol !== 'Ksh') {
-      processedText = processedText.replace(/Ksh/g, displaySymbol);
+      finalText = finalText.replace(/Ksh/g, displaySymbol);
     }
 
-    const lines = processedText.split(/\n/);
-    const progressPercent = (displayedText.length / displayContent.length) * 100;
+    const lines = finalText.split(/\n/);
+    const progressPercent = (recommendationStreams[idx]?.length || 0) / displayContent.length * 100;
 
     return (
       <div
@@ -693,7 +736,7 @@ const Agent = ({
                 </span>
               ))}
             </p>
-            {isActive && displayContent.length > 0 && (
+            {isActive && (
               <div className="mt-3 flex items-center gap-2">
                 <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div
@@ -731,19 +774,6 @@ const Agent = ({
                 {sessionData?.country && <span className="text-gray-400">• {sessionData.country}</span>}
                 {hasSoilTest && <span className="text-purple-600">• {safeT('soil_test')}</span>}
               </div>
-              {interviewId && userId && (
-                <div className="mt-1">
-                  {hasPaid ? (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                      {safeT('payment_verified', { symbol: getDisplaySymbol(), amount: 3 })}
-                    </span>
-                  ) : (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                      {safeT('payment_required', { symbol: getDisplaySymbol(), amount: 3 })}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -765,25 +795,7 @@ const Agent = ({
             </button>
           </div>
         </div>
-        {isSpeaking && (
-          <div className="mt-2 text-xs text-blue-600 flex items-center gap-1">
-            <Volume2 className="w-3 h-3 animate-pulse" />
-            <span>{safeT('speaking')}</span>
-          </div>
-        )}
       </div>
-
-      {!voiceEnabled && structuredList.length > 0 && (
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <VolumeX className="w-6 h-6 text-yellow-600" />
-            <div>
-              <p className="font-semibold text-yellow-800">Voice is OFF</p>
-              <p className="text-sm text-yellow-700">Click "Voice ON" above, then "Start Voice Session" to hear recommendations with karaoke effect.</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="flex flex-row gap-4 justify-center">
         {sessionData?.grossMarginAnalysis && (
@@ -823,22 +835,6 @@ const Agent = ({
           <div className="space-y-4">
             {structuredList.map((item, idx) => renderRecommendationText(item, idx))}
           </div>
-          {interventions.length > 0 && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-xl border-2 border-blue-300">
-              <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
-                <Beaker className="w-5 h-5" />
-                {safeT('precision_fertilizer_calculations')}
-              </h4>
-              <div className="space-y-3">
-                {interventions.map((inv: any, idx: number) => (
-                  <div key={idx} className="border-l-4 border-red-500 pl-3 py-1">
-                    <p className="font-semibold text-gray-800">{inv.nutrient}: {inv.value} ({inv.level})</p>
-                    <p className="text-sm text-gray-700">{inv.recommendation}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           {!hasSoilTest && (
             <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-300">
               <p className="text-yellow-800 text-sm flex items-center gap-2">
