@@ -1,4 +1,4 @@
-// components/Agent.tsx – Code One Updated: chunked speech + time‑based reveal (Android fix)
+// components/Agent.tsx – Complete: natural speech + time‑based progressive reveal (no chunking, no delays)
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -109,7 +109,7 @@ const Agent = ({
   const mountedRef = useRef(true);
   const voiceServiceInitializedRef = useRef(false);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const abortStreamingRef = useRef(false);
+  const abortAnimationRef = useRef<number | null>(null);
 
   const soilTest = sessionData?.soilTest;
   const hasSoilTest = soilTest && soilTest.testDate;
@@ -296,13 +296,10 @@ const Agent = ({
   };
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const supported = 'speechSynthesis' in window;
-      if (supported) {
-        waitForVoices();
-        if (window.speechSynthesis.onvoiceschanged !== undefined) {
-          window.speechSynthesis.onvoiceschanged = () => waitForVoices();
-        }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      waitForVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => waitForVoices();
       }
     }
   }, []);
@@ -400,108 +397,36 @@ const Agent = ({
     return speechText;
   };
 
-  // ========== CHUNKING (max 50 characters for Android) ==========
-  const splitIntoChunks = (text: string, maxChunkLength = 50): string[] => {
-    const chunks: string[] = [];
-    const words = text.split(/\s+/);
-    let current = '';
-    for (const word of words) {
-      if ((current + ' ' + word).length > maxChunkLength && current) {
-        chunks.push(current.trim());
-        current = word;
-      } else {
-        current += (current ? ' ' : '') + word;
-      }
-    }
-    if (current) chunks.push(current.trim());
-    return chunks;
-  };
-
-  // Speak a single chunk with timeout and retry
-  const speakChunk = (chunk: string, retriesLeft = 2): Promise<void> => {
-    return new Promise((resolve) => {
-      let resolved = false;
-      const utterance = new SpeechSynthesisUtterance(chunk);
-      utterance.rate = 0.9;
-      utterance.pitch = 1.1;
-      utterance.volume = 1.0;
-
-      const { voice, language } = getBestVoice();
-      if (voice) utterance.voice = voice;
-      utterance.lang = language;
-
-      // Timeout: 150ms per character + 1 second minimum
-      const timeoutDuration = Math.max(1500, chunk.length * 150);
-      const timeoutId = setTimeout(() => {
-        if (!resolved) {
-          console.warn(`Chunk timeout (${chunk.length} chars), retries left: ${retriesLeft}`);
-          if (retriesLeft > 0) {
-            speakChunk(chunk, retriesLeft - 1).then(resolve).catch(() => resolve());
-          } else {
-            resolved = true;
-            resolve();
-          }
-        }
-      }, timeoutDuration);
-
-      utterance.onend = () => {
-        if (!resolved) {
-          clearTimeout(timeoutId);
-          resolved = true;
-          resolve();
-        }
-      };
-
-      utterance.onerror = (err) => {
-        if (!resolved) {
-          clearTimeout(timeoutId);
-          console.warn(`Chunk error: ${err.error || err.message || 'unknown'}`);
-          if (retriesLeft > 0) {
-            speakChunk(chunk, retriesLeft - 1).then(resolve).catch(() => resolve());
-          } else {
-            resolved = true;
-            resolve();
-          }
-        }
-      };
-
-      window.speechSynthesis.speak(utterance);
-    });
-  };
-
-  // ========== PROGRESSIVE REVEAL WITH CHUNKING AND TIME‑BASED ANIMATION ==========
+  // ========== SIMPLE TIME‑BASED PROGRESSIVE REVEAL + NATURAL SPEECH ==========
   const streamRecommendationKaraoke = async (rawRecommendation: string, index: number) => {
     if (!voiceEnabled || !window.speechSynthesis) return;
 
-    // Wait if something is already speaking (avoid cancellation)
+    // Cancel any ongoing speech
     if (window.speechSynthesis.speaking) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      window.speechSynthesis.cancel();
+      await new Promise(r => setTimeout(r, 200));
     }
 
-    abortStreamingRef.current = false;
     setActiveStreamingRec(index);
     setRecommendationStreams(prev => ({ ...prev, [index]: "" }));
 
-    const speechText = prepareForSpeech(rawRecommendation);
     const fullRawText = rawRecommendation;
-    const chunks = splitIntoChunks(speechText, 50);
-    console.log(`Slot ${index}: ${chunks.length} chunks`);
-
-    // Time‑based animation (fallback for Android)
+    const speechText = prepareForSpeech(rawRecommendation);
     const totalChars = speechText.length;
-    const totalDuration = Math.max(5000, totalChars * 100);
-    let animationId: number | null = null;
+    // Estimate speech duration: average 80ms per character + 3 seconds minimum
+    const totalDuration = Math.max(3000, totalChars * 80);
     let startTime = 0;
+    let animationId: number | null = null;
+
     const updateProgress = (progress: number) => {
-      if (abortStreamingRef.current) return;
       const charIndex = Math.floor(progress * fullRawText.length);
       setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText.substring(0, charIndex) }));
     };
+
     const startAnimation = () => {
       if (animationId) cancelAnimationFrame(animationId);
       startTime = 0;
       const animate = (timestamp: number) => {
-        if (abortStreamingRef.current) return;
         if (!startTime) startTime = timestamp;
         const elapsed = timestamp - startTime;
         const progress = Math.min(1, elapsed / totalDuration);
@@ -515,31 +440,53 @@ const Agent = ({
       };
       animationId = requestAnimationFrame(animate);
     };
+
     startAnimation();
 
-    // Speak chunks sequentially
-    for (let i = 0; i < chunks.length; i++) {
-      if (abortStreamingRef.current) break;
-      await speakChunk(chunks[i], 2);
-      await new Promise(resolve => setTimeout(resolve, 150));
-    }
+    // Speak the entire recommendation as one utterance
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    const { voice, language } = getBestVoice();
+    if (voice) utterance.voice = voice;
+    utterance.lang = language;
+    utterance.rate = 0.9;
+    utterance.pitch = 1.1;
+    utterance.volume = 1.0;
 
-    // Final update
-    if (animationId) cancelAnimationFrame(animationId);
-    setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
-    setReadRecommendations(prev => new Set(prev).add(index));
-    setActiveStreamingRec(null);
-    currentUtteranceRef.current = null;
+    await new Promise<void>((resolve) => {
+      utterance.onend = () => {
+        if (animationId) cancelAnimationFrame(animationId);
+        setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
+        setReadRecommendations(prev => new Set(prev).add(index));
+        setActiveStreamingRec(null);
+        resolve();
+      };
+      utterance.onerror = (err) => {
+        console.error("Speech error:", err);
+        if (animationId) cancelAnimationFrame(animationId);
+        setRecommendationStreams(prev => ({ ...prev, [index]: fullRawText }));
+        setReadRecommendations(prev => new Set(prev).add(index));
+        setActiveStreamingRec(null);
+        resolve();
+      };
+      window.speechSynthesis.speak(utterance);
+      currentUtteranceRef.current = utterance;
+    });
   };
 
   const speakWithVoice = async (text: string): Promise<void> => {
     if (!window.speechSynthesis) return;
     if (!voicesLoaded) await waitForVoices();
     const speechText = prepareForSpeech(text);
-    const chunks = splitIntoChunks(speechText, 50);
-    for (const chunk of chunks) {
-      await speakChunk(chunk, 2);
-    }
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    const { voice, language } = getBestVoice();
+    if (voice) utterance.voice = voice;
+    utterance.lang = language;
+    utterance.rate = 0.9;
+    return new Promise((resolve) => {
+      utterance.onend = () => resolve();
+      utterance.onerror = () => resolve();
+      window.speechSynthesis.speak(utterance);
+    });
   };
 
   const streamAllRecommendations = async () => {
