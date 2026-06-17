@@ -1,4 +1,4 @@
-// components/Agent.tsx – Complete: natural speech + time‑based progressive reveal (no chunking, no delays)
+// components/Agent.tsx – Complete: natural speech + time‑based progressive reveal + Farmers Comments
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -104,6 +104,12 @@ const Agent = ({
   const [readRecommendations, setReadRecommendations] = useState<Set<number>>(new Set());
   const [recommendationStreams, setRecommendationStreams] = useState<{[key: number]: string}>({});
   const [activeStreamingRec, setActiveStreamingRec] = useState<number | null>(null);
+
+  // ---------- Farmers Comments State ----------
+  const [farmerComment, setFarmerComment] = useState<string>("");
+  const [isCommentSubmitting, setIsCommentSubmitting] = useState<boolean>(false);
+  const [commentSubmitted, setCommentSubmitted] = useState<boolean>(false);
+
   const nameUsageCountRef = useRef(0);
   const voiceServiceRef = useRef<VoiceService | null>(null);
   const mountedRef = useRef(true);
@@ -118,6 +124,41 @@ const Agent = ({
   const farmerName = sessionData?.farmerName || userName || "Farmer";
   const farmerCountry = sessionData?.country || 'kenya';
   const cropName = sessionData?.crops?.[0] || '';
+
+  // ---------- Submit Farmers Comment ----------
+  const submitFarmerComment = async () => {
+    if (!farmerComment.trim() || !sessionData) return;
+    setIsCommentSubmitting(true);
+    setCommentSubmitted(false);
+
+    try {
+      const res = await fetch('/api/farmer/farmerscomments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          comment: farmerComment,
+          farmerName: sessionData.farmerName || userName || "Farmer",
+          userId: userId,
+          sessionId: sessionData.id || interviewId,
+          crop: sessionData.primaryCrop || sessionData.crops?.[0] || '',
+          country: sessionData.country || 'kenya'
+        })
+      });
+
+      if (res.ok) {
+        setCommentSubmitted(true);
+        setFarmerComment('');
+        toast.success(safeT('feedback_saved', 'Comment saved successfully!'));
+      } else {
+        toast.error(safeT('feedback_failed', 'Failed to save comment. Please try again.'));
+      }
+    } catch (error) {
+      console.error("Error submitting farmer comment:", error);
+      toast.error(safeT('feedback_failed', 'Failed to save comment. Please try again.'));
+    } finally {
+      setIsCommentSubmitting(false);
+    }
+  };
 
   // ========== FULL getGapKeyFromCrop (complete mapping) ==========
   const getGapKeyFromCrop = (crop: string): string => {
@@ -830,6 +871,31 @@ const Agent = ({
           </div>
         </div>
       )}
+
+      {/* ========== FARMERS COMMENTS SECTION ========== */}
+      <div className="mt-2 p-4 bg-gray-50 rounded-xl border-2 border-gray-300">
+        <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
+          💬 {safeT('farmers_comments', 'Farmers Comments / Suggestions')}
+        </h4>
+        <textarea
+          value={farmerComment}
+          onChange={(e) => setFarmerComment(e.target.value)}
+          placeholder={safeT('write_suggestion_placeholder', 'Write your suggestion to improve the content...')}
+          className="w-full p-3 border rounded-xl text-gray-800 h-24 resize-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        />
+        <button
+          onClick={submitFarmerComment}
+          disabled={!farmerComment.trim() || isCommentSubmitting}
+          className="mt-2 px-6 py-2 bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50 hover:bg-blue-700 transition-colors"
+        >
+          {isCommentSubmitting
+            ? safeT('submitting', 'Submitting...')
+            : safeT('submit_farmers_comment', 'Submit Farmers Comment')}
+        </button>
+        {commentSubmitted && (
+          <p className="text-green-600 text-sm mt-2">✅ {safeT('thanks_for_feedback', 'Thank you! Your comment helps us improve.')}</p>
+        )}
+      </div>
 
       <MPESAPaymentModal
         isOpen={showPaymentModal}
