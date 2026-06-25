@@ -1,19 +1,11 @@
-"use client";
-
-import { useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+// app/payment/verify/page.tsx
+import { Suspense } from 'react';
+import PaymentVerifyContent from './PaymentVerifyContent';
 
 export default function PaymentVerifyPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const transactionId = searchParams.get('transaction_id');
-
-  useEffect(() => {
-    if (transactionId) {
-      // You can also call the verify endpoint here as a fallback
-      router.push('/');
-    }
-  }, [transactionId, router]);
-
-  return <div>Verifying payment...</div>;
+  return (
+    <Suspense fallback={<div>Loading payment verification...</div>}>
+      <PaymentVerifyContent />
+    </Suspense>
+  );
 }
