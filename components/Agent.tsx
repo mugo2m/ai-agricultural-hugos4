@@ -1,4 +1,4 @@
-// components/Agent.tsx – Complete: natural speech + time‑based progressive reveal + Farmers Comments
+// components/Agent.tsx – Complete: natural speech + time‑based progressive reveal + Farmers Comments + Paystack Payment (KES forced, display in local currency from session country)
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -7,7 +7,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useOfflineTranslation } from '@/lib/hooks/useOfflineTranslation';
 import VoiceService from "@/lib/voice/VoiceService";
-import { MPESAPaymentModal } from "@/components/Payment/MPESAPaymentModal";
+import { PaystackPaymentModal } from "@/components/Payment/PaystackPaymentModal";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import {
@@ -25,6 +25,8 @@ import {
   VolumeX,
 } from "lucide-react";
 import { useCurrency } from '@/lib/context/CurrencyContext';
+// Import the currency map to get display data from session country
+import { COUNTRY_CURRENCY_MAP, DEFAULT_CURRENCY } from '@/lib/config/currency';
 
 const LINE_BREAK = '␊';
 
@@ -39,6 +41,46 @@ interface StructuredItem {
   key: string;
   params?: Record<string, any>;
 }
+
+// ==================== STATIC EXCHANGE RATES ====================
+// 1 KES = X local currency (approximate, update periodically or use live API)
+const EXCHANGE_RATES: Record<string, number> = {
+  KES: 1,
+  USD: 0.010, GBP: 0.008, AUD: 0.010, NZD: 0.011, CAD: 0.010,
+  UGX: 28, TZS: 23, RWF: 10, NGN: 1.3, GHS: 0.08,
+  ZAR: 0.14, ZMW: 0.018, MWK: 2.3, BWP: 0.10, ZWL: 3.2,
+  SZL: 0.14, LSL: 0.14, NAD: 0.14, MZN: 0.80, AOA: 1.1,
+  SDG: 6.0, SSP: 0.25, SLL: 0.003, LRD: 0.002, GMD: 0.008,
+  KMF: 0.005, SCR: 0.017, MUR: 0.028, JMD: 0.15, TTD: 0.065,
+  BBD: 0.020, BSD: 0.010, BZD: 0.020, GYD: 0.20, SRD: 0.035,
+  FJD: 0.015, PGK: 0.026, INR: 0.85, PKR: 2.0, BDT: 1.2,
+  LKR: 0.30, NPR: 1.3, PHP: 0.60, MYR: 0.035, SGD: 0.013,
+  HKD: 0.080,
+  EUR: 0.009, XOF: 6.0, XAF: 6.0, MGA: 5.0, DJF: 2.0,
+  CDF: 2.8, GNF: 9.0, MRU: 0.035, HTG: 0.014, XCD: 0.027,
+  COP: 4.0, ARS: 1.0, CLP: 0.9, PEN: 0.035, UYU: 0.040,
+  PYG: 7.0, BOB: 0.065, VES: 0.03, CRC: 0.050, GTQ: 0.075,
+  HNL: 0.025, NIO: 0.034, PAB: 0.010, DOP: 0.060, CUP: 0.010,
+  MXN: 0.18,
+  BIF: 2.0, SOS: 0.006,
+};
+
+const getLocalAmount = (amountKES: number, currencyCode: string): string => {
+  const rate = EXCHANGE_RATES[currencyCode] || 1;
+  const local = amountKES * rate;
+  if (currencyCode === 'EUR' || currencyCode === 'USD' || currencyCode === 'GBP') {
+    return local.toFixed(2);
+  }
+  if (local < 1) return local.toFixed(2);
+  if (local < 10) return local.toFixed(1);
+  return local.toFixed(0);
+};
+
+// Helper to get display currency from session country
+const getDisplayCurrencyFromSession = (sessionCountry?: string) => {
+  const country = sessionCountry?.toLowerCase() || 'kenya';
+  return COUNTRY_CURRENCY_MAP[country] || DEFAULT_CURRENCY;
+};
 
 const Agent = ({
   userName,
@@ -92,10 +134,10 @@ const Agent = ({
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceInitializing, setVoiceInitializing] = useState(false);
-  const [hasPaid, setHasPaid] = useState(true);
-  const [paymentUsed, setPaymentUsed] = useState(false);
+  const [hasPaid, setHasPaid] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [welcomeSpoken, setWelcomeSpoken] = useState(false);
   const [recommendationsSpoken, setRecommendationsSpoken] = useState(false);
   const [structuredList, setStructuredList] = useState<any[]>([]);
@@ -124,6 +166,35 @@ const Agent = ({
   const farmerName = sessionData?.farmerName || userName || "Farmer";
   const farmerCountry = sessionData?.country || 'kenya';
   const cropName = sessionData?.crops?.[0] || '';
+  const farmerEmail = sessionData?.farmerEmail || sessionData?.email || 'farmer@example.com';
+  const farmerPhone = sessionData?.phoneNumber || sessionData?.phone || '';
+
+  // ---------- Get the session ID reliably ----------
+  const getSessionId = () => {
+    return sessionData?.id || interviewId || null;
+  };
+
+  // ---------- Load payment status from localStorage ----------
+  useEffect(() => {
+    const id = getSessionId();
+    if (id) {
+      const paid = localStorage.getItem(`paid_${id}`);
+      if (paid === 'true') {
+        setHasPaid(true);
+      }
+    }
+  }, [sessionData, interviewId]);
+
+  // ---------- NEW: If session already has recommendations, mark as paid (free viewing) ----------
+  useEffect(() => {
+    if (sessionData && (sessionData.structuredList?.length > 0 || sessionData.recommendations?.length > 0)) {
+      setHasPaid(true);
+      const id = getSessionId();
+      if (id) {
+        localStorage.setItem(`paid_${id}`, 'true');
+      }
+    }
+  }, [sessionData, interviewId]);
 
   // ---------- Submit Farmers Comment ----------
   const submitFarmerComment = async () => {
@@ -346,10 +417,6 @@ const Agent = ({
   }, []);
 
   useEffect(() => {
-    setHasPaid(true);
-  }, [interviewId, userId]);
-
-  useEffect(() => {
     if (!mountedRef.current) return;
     if (voiceServiceInitializedRef.current && voiceServiceRef.current) return;
 
@@ -454,7 +521,6 @@ const Agent = ({
     const fullRawText = rawRecommendation;
     const speechText = prepareForSpeech(rawRecommendation);
     const totalChars = speechText.length;
-    // Estimate speech duration: average 80ms per character + 3 seconds minimum
     const totalDuration = Math.max(3000, totalChars * 80);
     let startTime = 0;
     let animationId: number | null = null;
@@ -484,7 +550,6 @@ const Agent = ({
 
     startAnimation();
 
-    // Speak the entire recommendation as one utterance
     const utterance = new SpeechSynthesisUtterance(speechText);
     const { voice, language } = getBestVoice();
     if (voice) utterance.voice = voice;
@@ -603,44 +668,47 @@ const Agent = ({
     await speakWithVoice(safeT('post_recommendations'));
   };
 
+  // ---- START VOICE INTERVIEW (with payment logic) ----
   const startVoiceInterview = async () => {
-    if (!voiceEnabled) {
-      toast.error("Please turn voice ON first by clicking the 'Voice ON' button");
-      return;
-    }
+    if (isProcessing) return;
+    setIsProcessing(true);
 
-    if (interviewId && userId) {
-      if (paymentUsed) {
-        toast.info(safeT('payment_used_new'));
-        setShowPaymentModal(true);
-        return;
-      }
+    try {
+      // If not paid, show payment modal
       if (!hasPaid) {
         toast.info(safeT('payment_required_to_start'));
         setShowPaymentModal(true);
+        setIsProcessing(false);
         return;
       }
-    }
 
-    if (!voiceServiceRef.current) {
-      const initToast = toast.loading(safeT('initializing_voice'));
-      setVoiceInitializing(true);
-      let attempts = 0;
-      while (!voiceServiceRef.current && attempts < 15) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        attempts++;
+      // If paid, check voice
+      if (!voiceEnabled) {
+        toast.error("Please turn voice ON first by clicking the 'Voice ON' button");
+        setIsProcessing(false);
+        return;
       }
-      toast.dismiss(initToast);
-      setVoiceInitializing(false);
+
+      // Proceed with voice service
       if (!voiceServiceRef.current) {
-        toast.error(safeT('voice_service_failed'));
-        return;
+        const initToast = toast.loading(safeT('initializing_voice'));
+        setVoiceInitializing(true);
+        let attempts = 0;
+        while (!voiceServiceRef.current && attempts < 15) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          attempts++;
+        }
+        toast.dismiss(initToast);
+        setVoiceInitializing(false);
+        if (!voiceServiceRef.current) {
+          toast.error(safeT('voice_service_failed'));
+          setIsProcessing(false);
+          return;
+        }
       }
-    }
 
-    setIsLoading(true);
+      setIsLoading(true);
 
-    try {
       if (sessionData && voiceServiceRef.current && typeof voiceServiceRef.current.startFarmerSession === 'function') {
         await voiceServiceRef.current.startFarmerSession(sessionData);
       }
@@ -648,7 +716,6 @@ const Agent = ({
       if (sessionData && !welcomeSpoken) {
         setWelcomeSpoken(true);
         nameUsageCountRef.current = 0;
-
         setRecommendationStreams({});
         setReadRecommendations(new Set());
 
@@ -664,22 +731,33 @@ const Agent = ({
       toast.error(safeT('failed_to_start', { message: error.message }));
     } finally {
       setIsLoading(false);
+      setIsProcessing(false);
     }
   };
 
-  const isStartButtonDisabled = isLoading || !voiceEnabled || !hasPaid || voiceInitializing;
+  // ---- Button state ----
+  const isStartButtonDisabled = isLoading || voiceInitializing || isProcessing;
+
+  const getDisplayCurrency = () => {
+    return getDisplayCurrencyFromSession(sessionData?.country);
+  };
 
   const getStartButtonText = () => {
     if (isLoading) return safeT('starting');
     if (voiceInitializing) return safeT('initializing');
-    if (!hasPaid) return safeT('pay_to_start', { symbol: getDisplaySymbol(), amount: 3 });
+    if (!hasPaid) {
+      const displayCurrency = getDisplayCurrency();
+      const localAmount = getLocalAmount(10, displayCurrency.code);
+      const symbol = displayCurrency.symbol;
+      const payText = safeT('pay') || 'Pay';
+      return `${payText} ${symbol} ${localAmount}`;
+    }
     if (!voiceEnabled) return "Turn Voice ON First";
     return safeT('start_voice_session');
   };
 
   const renderRecommendationText = (item: StructuredItem, idx: number) => {
     let displayContent = '';
-
     if (item.params?.content) {
       displayContent = item.params.content;
     } else if (item.key === 'gap_grouped') {
@@ -713,9 +791,7 @@ const Agent = ({
       displayContent = safeT(item.key, item.params);
     }
 
-    if (!displayContent || displayContent.trim() === '') {
-      return null;
-    }
+    if (!displayContent || displayContent.trim() === '') return null;
 
     const displayedText = recommendationStreams[idx] || '';
     const isActive = activeStreamingRec === idx;
@@ -762,10 +838,7 @@ const Agent = ({
             {isActive && displayContent.length > 0 && (
               <div className="mt-3 flex items-center gap-2">
                 <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-purple-600 transition-all duration-150"
-                    style={{ width: `${progressPercent}%` }}
-                  />
+                  <div className="h-full bg-purple-600 transition-all duration-150" style={{ width: `${progressPercent}%` }} />
                 </div>
                 <span className="text-sm text-purple-700 font-medium">
                   {Math.round(progressPercent)}%
@@ -897,19 +970,27 @@ const Agent = ({
         )}
       </div>
 
-      <MPESAPaymentModal
+      {/* ========== PAYSTACK PAYMENT MODAL ========== */}
+      <PaystackPaymentModal
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         onSuccess={() => {
           setShowPaymentModal(false);
           setHasPaid(true);
-          setPaymentUsed(false);
+          const id = getSessionId();
+          if (id) {
+            localStorage.setItem(`paid_${id}`, 'true');
+          }
           toast.success(safeT('payment_confirmed'));
-          setTimeout(() => startVoiceInterview(), 1500);
+          startVoiceInterview();
         }}
-        cost={3}
-        interviewId={interviewId || ""}
-        userId={userId || ""}
+        amount={10}
+        currency="KES"
+        displayAmount={getLocalAmount(10, getDisplayCurrency().code)}
+        displayCurrency={getDisplayCurrency().code}
+        email={farmerEmail}
+        phone={farmerPhone}
+        name={farmerName}
       />
 
       <OfflineBanner />

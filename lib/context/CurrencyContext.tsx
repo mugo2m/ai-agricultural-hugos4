@@ -9,7 +9,7 @@ interface CurrencyContextType {
   country: string;
   currency: CountryCurrency;
   setCountry: (country: string) => void;
-  setDisplayCurrency: (currencyCode: string) => void; // Manual override
+  setDisplayCurrency: (currencyCode: string) => void;
 }
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
@@ -24,7 +24,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const savedCountry = localStorage.getItem('selected-country');
     if (savedCountry) {
-      const normalizedSaved = savedCountry.toLowerCase(); // Normalize case
+      const normalizedSaved = savedCountry.toLowerCase();
       if (COUNTRY_CURRENCY_MAP[normalizedSaved]) {
         setCountryState(normalizedSaved);
         setCurrencyState(COUNTRY_CURRENCY_MAP[normalizedSaved]);
